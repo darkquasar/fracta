@@ -1,0 +1,17 @@
+bin/
+tmp/
+.fracta/
+.worktrees/
+.claude/
+.op-env
+.mcp.json
+.mcp.json.*
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+fracta
+go.work.sum
