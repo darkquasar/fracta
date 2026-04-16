@@ -1,0 +1,33 @@
+label: Hunt
+layer: particular
+description: >
+  A HYPER-structured hunt. Tracks hypothesis, status, budget, and links
+  to expected observations and involved entities.
+
+properties:
+  id:
+    type: string
+    required: true
+    unique: true
+  status:
+    type: string
+    required: true
+    description: "Hunt stage: orient, triage, research, discover, develop, closed"
+  hypothesis:
+    type: string
+    required: true
+  duration_budget:
+    type: string
+    required: false
+  time_range:
+    type: string
+    required: false
+  priority:
+    type: string
+    required: false
+
+indexes:
+  - properties: [id]
+    type: exact
+  - properties: [status]
+    type: exact

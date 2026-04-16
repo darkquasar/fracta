@@ -1,0 +1,19 @@
+label: Identity
+layer: particular
+description: A specific IAM identity (user, role, service account).
+
+properties:
+  arn:
+    type: string
+    required: true
+    unique: true
+  type:
+    type: string
+    required: false
+  account_id:
+    type: string
+    required: false
+
+indexes:
+  - properties: [arn]
+    type: exact

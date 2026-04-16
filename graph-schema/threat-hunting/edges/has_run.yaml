@@ -1,0 +1,10 @@
+type: HAS_RUN
+description: >
+  Links a StrategyVersion to its execution records.
+  StrategyVersion -> HAS_RUN -> StrategyRun.
+
+endpoints:
+  from: [StrategyVersion]
+  to: [StrategyRun]
+
+properties: {}

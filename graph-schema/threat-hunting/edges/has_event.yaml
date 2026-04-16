@@ -1,0 +1,8 @@
+type: HAS_EVENT
+description: A hunt or investigation has an associated security event.
+
+endpoints:
+  from: [Hunt, Investigation]
+  to: [Event]
+
+properties: {}

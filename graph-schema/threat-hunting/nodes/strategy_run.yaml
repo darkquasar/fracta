@@ -1,0 +1,39 @@
+label: StrategyRun
+layer: universal
+description: >
+  A single execution record of a strategy version. Capped at 50 per version.
+
+properties:
+  id:
+    type: string
+    required: true
+    unique: true
+    description: Unique run identifier
+  started_at:
+    type: string
+    required: true
+    description: ISO 8601 start timestamp
+  status:
+    type: string
+    required: true
+    description: "Run outcome: success, failure, error"
+  duration_ms:
+    type: int
+    required: false
+    description: Total execution duration in milliseconds
+  step_count:
+    type: int
+    required: false
+    description: Number of pipeline steps executed
+  findings_count:
+    type: int
+    required: false
+    description: Number of findings produced
+  ran_to_completion:
+    type: bool
+    required: false
+    description: Whether the run completed without errors
+
+indexes:
+  - properties: [id]
+    type: exact

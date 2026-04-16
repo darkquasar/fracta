@@ -1,0 +1,38 @@
+label: DataStore
+layer: universal
+description: >
+  A physical data storage location keyed by URI. Independent of MCP transport.
+
+properties:
+  uri:
+    type: string
+    required: true
+    unique: true
+    description: "Storage URI (e.g., elastic://elastic/audit-prod-*, snowflake://acct/db/schema/table)"
+  type:
+    type: string
+    required: true
+    description: Storage type (elasticsearch, snowflake, s3, pending)
+  description:
+    type: string
+    required: false
+  index_pattern:
+    type: string
+    required: false
+    description: Index pattern for Elasticsearch-type stores
+  retention_days:
+    type: int
+    required: false
+    description: Data retention period in days
+  _status:
+    type: string
+    required: false
+    description: "Lifecycle status: speculative, confirmed, stale"
+  _confirmed_at:
+    type: string
+    required: false
+    description: "RFC3339 timestamp when status was confirmed"
+
+indexes:
+  - properties: [uri]
+    type: exact

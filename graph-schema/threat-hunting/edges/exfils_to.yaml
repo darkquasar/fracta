@@ -1,0 +1,8 @@
+type: EXFILS_TO
+description: A system exfiltrates data to another system or IP (C2, data staging).
+
+endpoints:
+  from: [System]
+  to: [System, IP]
+
+properties: {}

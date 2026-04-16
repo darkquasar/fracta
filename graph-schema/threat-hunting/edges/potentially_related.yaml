@@ -1,0 +1,8 @@
+type: POTENTIALLY_RELATED
+description: Two entities are potentially related based on investigative analysis.
+
+endpoints:
+  from: [Event, System, Identity, IP, Hunt]
+  to: [Event, System, Identity, IP, Hunt]
+
+properties: {}

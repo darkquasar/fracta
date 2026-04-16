@@ -1,0 +1,8 @@
+type: AFFECTS_IDENTITY
+description: An event or finding affects a specific identity.
+
+endpoints:
+  from: [Event]
+  to: [Identity]
+
+properties: {}

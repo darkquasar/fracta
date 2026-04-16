@@ -1,0 +1,10 @@
+type: QUERYABLE_VIA
+description: >
+  Data store is queryable through this MCP server.
+  DataStore -> QUERYABLE_VIA -> MCPServer.
+
+endpoints:
+  from: [DataStore]
+  to: [MCPServer]
+
+properties: {}

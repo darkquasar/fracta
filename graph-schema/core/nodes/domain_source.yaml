@@ -1,0 +1,20 @@
+label: DomainSource
+layer: universal
+description: >
+  A domain concept or data stream (e.g., CloudTrail, VPC Flow Logs).
+  Domain-agnostic — works for threat hunting, physics, bioinformatics.
+  Replaces LogSource.
+
+properties:
+  name:
+    type: string
+    required: true
+    unique: true
+    description: Canonical name of the domain source
+  description:
+    type: string
+    required: false
+
+indexes:
+  - properties: [name]
+    type: exact

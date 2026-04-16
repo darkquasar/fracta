@@ -1,0 +1,17 @@
+type: OBSERVED_IN
+description: A particular entity was observed in a specific domain source.
+
+endpoints:
+  from: [IP, Identity, Session, System, Event]
+  to: [DomainSource]
+
+properties:
+  count:
+    type: int
+    required: false
+  first:
+    type: string
+    required: false
+  last:
+    type: string
+    required: false

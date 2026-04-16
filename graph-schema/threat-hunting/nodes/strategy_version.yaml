@@ -1,0 +1,46 @@
+label: StrategyVersion
+layer: universal
+description: >
+  A specific version of a strategy, tracking lifecycle status and effectiveness scores.
+
+properties:
+  name:
+    type: string
+    required: true
+    description: Strategy name (matches parent Strategy.name)
+  version:
+    type: string
+    required: true
+    description: Version identifier from contract.yaml
+  status:
+    type: string
+    required: true
+    description: "Lifecycle status: exploratory, validated, promoted, deprecated, retired"
+  created_at:
+    type: string
+    required: true
+    description: ISO 8601 creation timestamp
+  total_runs:
+    type: int
+    required: false
+    description: Total number of runs for this version
+  successful_runs:
+    type: int
+    required: false
+    description: Number of successful runs
+  reliability:
+    type: float
+    required: false
+    description: successful_runs / total_runs
+  efficiency:
+    type: float
+    required: false
+    description: findings_count / duration_seconds
+  composite_score:
+    type: float
+    required: false
+    description: "Weighted composite: 0.6*reliability + 0.4*efficiency"
+
+indexes:
+  - properties: [name, version]
+    type: exact

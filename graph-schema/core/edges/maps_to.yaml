@@ -1,0 +1,9 @@
+type: MAPS_TO
+description: >
+  Semantic mapping between an MCP output field and a strategy input column.
+
+endpoints:
+  from: [MCPField]
+  to: [StrategyColumn]
+
+properties: {}

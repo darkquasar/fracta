@@ -1,0 +1,11 @@
+type: ASSUMED
+description: IAM role assumption chain.
+
+endpoints:
+  from: [Identity]
+  to: [Identity]
+
+properties:
+  timestamp:
+    type: string
+    required: false

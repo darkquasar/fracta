@@ -1,0 +1,19 @@
+label: Session
+layer: particular
+description: A specific role session or authentication session.
+
+properties:
+  id:
+    type: string
+    required: true
+    unique: true
+  start_time:
+    type: string
+    required: false
+  end_time:
+    type: string
+    required: false
+
+indexes:
+  - properties: [id]
+    type: exact

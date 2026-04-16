@@ -1,0 +1,22 @@
+label: Semantic
+layer: universal
+description: >
+  A controlled vocabulary entry for field classification.
+
+properties:
+  name:
+    type: string
+    required: true
+    unique: true
+    description: Canonical semantic tag name
+  description:
+    type: string
+    required: true
+  join_method:
+    type: string
+    required: true
+    description: "How values are matched: exact, arn_prefix, range, numeric_range, semantic"
+
+indexes:
+  - properties: [name]
+    type: exact

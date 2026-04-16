@@ -1,0 +1,8 @@
+type: DETECTED_ON
+description: A security event or finding was detected on a system.
+
+endpoints:
+  from: [Event]
+  to: [System]
+
+properties: {}

@@ -1,0 +1,14 @@
+type: CORRELATES_WITH
+description: Cross-source correlation between two particular entities.
+
+endpoints:
+  from: [IP, Identity, Session, System, Event]
+  to: [IP, Identity, Session, System, Event]
+
+properties:
+  method:
+    type: string
+    required: false
+  confidence:
+    type: float
+    required: false

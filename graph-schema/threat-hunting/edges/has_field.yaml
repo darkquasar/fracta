@@ -1,0 +1,8 @@
+type: HAS_FIELD
+description: Domain source contains this field.
+
+endpoints:
+  from: [DomainSource]
+  to: [FieldType]
+
+properties: {}

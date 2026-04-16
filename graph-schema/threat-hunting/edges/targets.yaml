@@ -1,0 +1,8 @@
+type: TARGETS
+description: A hunt or investigation targets a system, identity, or IP for analysis.
+
+endpoints:
+  from: [Hunt, Investigation]
+  to: [System, Identity, IP]
+
+properties: {}

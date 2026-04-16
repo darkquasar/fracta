@@ -1,0 +1,14 @@
+type: ACCESSED
+description: Identity accessed a resource.
+
+endpoints:
+  from: [Identity]
+  to: [System]
+
+properties:
+  action:
+    type: string
+    required: false
+  timestamp:
+    type: string
+    required: false

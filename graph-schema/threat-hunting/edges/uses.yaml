@@ -1,0 +1,8 @@
+type: USES
+description: An identity uses a system or resource.
+
+endpoints:
+  from: [Identity]
+  to: [System, IP]
+
+properties: {}

@@ -1,0 +1,10 @@
+type: STORED_IN
+description: >
+  Domain source data is physically stored in this data store.
+  DomainSource -> STORED_IN -> DataStore.
+
+endpoints:
+  from: [DomainSource]
+  to: [DataStore]
+
+properties: {}

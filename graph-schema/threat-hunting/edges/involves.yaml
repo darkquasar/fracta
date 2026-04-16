@@ -1,0 +1,8 @@
+type: INVOLVES
+description: Investigation or Hunt touches this entity.
+
+endpoints:
+  from: [Investigation, Hunt]
+  to: [IP, Identity, Session, System, Event, Finding]
+
+properties: {}

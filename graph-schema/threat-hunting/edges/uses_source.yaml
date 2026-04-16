@@ -1,0 +1,8 @@
+type: USES_SOURCE
+description: Strategy or Hunt queries this domain source.
+
+endpoints:
+  from: [Strategy, Hunt]
+  to: [DomainSource]
+
+properties: {}

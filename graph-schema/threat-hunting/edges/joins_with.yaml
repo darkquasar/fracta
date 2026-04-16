@@ -1,0 +1,19 @@
+type: JOINS_WITH
+description: >
+  Two fields can be joined across sources. Bidirectional.
+
+endpoints:
+  from: [FieldType]
+  to: [FieldType]
+
+properties:
+  confidence:
+    type: float
+    required: false
+  method:
+    type: string
+    required: false
+    description: Join method (exact, prefix, range, fuzzy)
+  note:
+    type: string
+    required: false

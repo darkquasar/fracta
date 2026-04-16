@@ -1,0 +1,73 @@
+rules:
+  - name: mcptool_missing_returns_field
+    layer: universal
+    severity: error
+    query: |
+      MATCH (m:MCPTool)
+      WHERE NOT (m)-[:RETURNS_FIELD]->()
+      RETURN m.name AS name, m.tool AS tool, m.mcp_server AS server
+    gap_template:
+      type: missing_mcp_fields
+      description: "MCPTool '{name}' (tool: {tool}, server: {server}) has no RETURNS_FIELD relationships"
+      suggested_action: "Add MCPField nodes for key fields returned by '{tool}' and wire RETURNS_FIELD edges"
+
+  - name: mcptool_unreachable_via_provides
+    layer: universal
+    severity: error
+    query: |
+      MATCH (m:MCPTool)
+      WHERE NOT ()-[:PROVIDES]->(m)
+      RETURN m.name AS name, m.tool AS tool
+    gap_template:
+      type: orphaned_mcp_tool
+      description: "MCPTool '{name}' is not connected to any MCPServer via PROVIDES"
+      suggested_action: "Create an MCPServer and wire PROVIDES to MCPTool '{name}'"
+
+  - name: mcpserver_missing_queryable_via
+    layer: universal
+    severity: error
+    query: |
+      MATCH (ms:MCPServer)
+      WHERE NOT ()-[:QUERYABLE_VIA]->(ms)
+      RETURN ms.config_key AS config_key
+    gap_template:
+      type: orphaned_mcp_server
+      description: "MCPServer '{config_key}' has no DataStore pointing to it via QUERYABLE_VIA"
+      suggested_action: "Create a DataStore and wire QUERYABLE_VIA to MCPServer '{config_key}'"
+
+  - name: hunt_no_outgoing_edges
+    layer: particular
+    severity: error
+    query: |
+      MATCH (h:Hunt)
+      WHERE NOT (h)-[]->()
+      RETURN h.name AS name
+    gap_template:
+      type: empty_hunt
+      description: "Hunt '{name}' has no linked nodes — no Systems, Identities, or Events have been recorded"
+      suggested_action: "Link discovered entities to the hunt via TARGETS, HAS_EVENT, or INVOLVES edges"
+
+  - name: mcpfield_missing_required_properties
+    layer: universal
+    severity: error
+    query: |
+      MATCH (f:MCPField)
+      WHERE f.name IS NULL OR f.type IS NULL
+      RETURN f.semantic AS semantic, ID(f) AS node_id
+    gap_template:
+      type: incomplete_mcp_field
+      description: "MCPField with semantic '{semantic}' is missing required name or type property"
+      suggested_action: "SET f.name and f.type on MCPField node {node_id} — both are required"
+
+  - name: node_missing_source_provenance
+    layer: universal
+    severity: warning
+    query: |
+      MATCH (n)
+      WHERE labels(n)[0] IN ['MCPTool', 'MCPServer', 'DomainSource', 'MCPField']
+        AND n._source IS NULL
+      RETURN labels(n)[0] AS label, n.name AS name
+    gap_template:
+      type: missing_provenance
+      description: "{label} '{name}' has no _source provenance — origin is unknown"
+      suggested_action: "SET n._source = '<writer-identity>' on {label} '{name}'"

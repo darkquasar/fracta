@@ -1,0 +1,22 @@
+label: Investigation
+layer: particular
+description: An investigation context grouping related observations and findings.
+
+properties:
+  id:
+    type: string
+    required: true
+    unique: true
+  title:
+    type: string
+    required: true
+  status:
+    type: string
+    required: false
+  created_at:
+    type: string
+    required: false
+
+indexes:
+  - properties: [id]
+    type: exact

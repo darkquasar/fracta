@@ -1,0 +1,8 @@
+type: RETURNS_FIELD
+description: MCP tool returns this field in its response.
+
+endpoints:
+  from: [MCPTool]
+  to: [MCPField]
+
+properties: {}

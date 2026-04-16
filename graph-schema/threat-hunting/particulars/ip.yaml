@@ -1,0 +1,22 @@
+label: IP
+layer: particular
+description: A specific IP address observed during an investigation.
+
+properties:
+  value:
+    type: string
+    required: true
+    unique: true
+  first_seen:
+    type: string
+    required: false
+  last_seen:
+    type: string
+    required: false
+  geo:
+    type: string
+    required: false
+
+indexes:
+  - properties: [value]
+    type: exact

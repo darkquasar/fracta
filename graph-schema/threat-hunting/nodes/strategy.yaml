@@ -1,0 +1,25 @@
+label: Strategy
+layer: universal
+
+properties:
+  name:
+    type: string
+    required: true
+    unique: true
+  description:
+    type: string
+    required: false
+  tags:
+    type: string_list
+    required: false
+  path:
+    type: string
+    required: true
+  trust_level:
+    type: string
+    required: false
+    description: "Security tier: trusted, semi-trusted, untrusted"
+
+indexes:
+  - properties: [name]
+    type: exact

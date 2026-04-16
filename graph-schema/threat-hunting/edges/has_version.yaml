@@ -1,0 +1,10 @@
+type: HAS_VERSION
+description: >
+  Links a Strategy to its versioned instances.
+  Strategy -> HAS_VERSION -> StrategyVersion.
+
+endpoints:
+  from: [Strategy]
+  to: [StrategyVersion]
+
+properties: {}

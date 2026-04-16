@@ -1,0 +1,26 @@
+label: MCPTool
+layer: universal
+description: >
+  A callable MCP tool provided by an MCP server. Replaces MCPSource + ToolRef.
+
+properties:
+  name:
+    type: string
+    required: true
+    unique: true
+    description: Dot-namespaced tool name (e.g., "elastic.search")
+  tool:
+    type: string
+    required: true
+    description: MCP tool name (e.g., "search")
+  mcp_server:
+    type: string
+    required: true
+    description: MCP server identifier from fracta.yaml
+  description:
+    type: string
+    required: false
+
+indexes:
+  - properties: [name]
+    type: exact

@@ -1,0 +1,23 @@
+label: ExpectedObservation
+layer: particular
+description: >
+  A behavior the hunt expects to find if the hypothesis is correct.
+
+properties:
+  description:
+    type: string
+    required: true
+  log_source:
+    type: string
+    required: false
+  field:
+    type: string
+    required: false
+  value:
+    type: string
+    required: false
+  confidence:
+    type: string
+    required: false
+
+indexes: []

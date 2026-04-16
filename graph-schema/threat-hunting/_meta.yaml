@@ -1,0 +1,21 @@
+name: threat-hunting
+version: 2
+description: Threat hunting graph ontology
+authority:
+  scaffold:
+    - FieldType
+    - Strategy
+    - StrategyVersion
+    - StrategyColumn
+  computed:
+    - StrategyRun
+  discovered:
+    - Hunt
+    - Investigation
+    - Event
+    - Finding
+    - System
+    - Identity
+    - IP
+    - Session
+    - ExpectedObservation

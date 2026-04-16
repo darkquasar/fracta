@@ -1,0 +1,8 @@
+type: USES_TOOL
+description: Strategy depends on this MCP tool being available.
+
+endpoints:
+  from: [Strategy]
+  to: [MCPTool]
+
+properties: {}

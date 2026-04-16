@@ -1,0 +1,71 @@
+vocabulary:
+  - name: ip_address
+    description: An IPv4 or IPv6 address
+
+  - name: identity_arn
+    description: AWS IAM identity ARN or principal ID
+
+  - name: account_id
+    description: AWS account identifier
+
+  - name: timestamp
+    description: Event timestamp
+
+  - name: api_action
+    description: API call or event name
+
+  - name: finding_id
+    description: Security finding identifier
+
+  - name: severity
+    description: Alert or finding severity level
+
+  - name: session_id
+    description: Session or request identifier
+
+  - name: hostname
+    description: DNS hostname or FQDN
+
+  - name: alert_description
+    description: Human-readable alert or finding text
+
+  - name: user_agent
+    description: HTTP user agent string
+
+  - name: region
+    description: Cloud region or geographic location
+
+  # Threat semantics (from live hunt investigations)
+  - name: malware_execution
+    description: Execution of malicious software on a system
+
+  - name: credential_theft
+    description: Theft or unauthorized access to credentials
+
+  - name: credential_dump
+    description: Dumping of credential material from memory or storage
+
+  - name: credential_prompt
+    description: Deceptive prompt to harvest user credentials
+
+  - name: keychain_dump
+    description: Extraction of secrets from OS keychain or credential store
+
+  - name: infostealer
+    description: Malware designed to exfiltrate sensitive data
+
+  - name: c2_infrastructure
+    description: Command and control infrastructure used by threat actors
+
+  - name: file_deletion
+    description: Deletion of files, potentially for anti-forensics
+
+  - name: supply_chain_attack
+    description: Attack targeting software supply chain (packages, dependencies)
+
+  # Asset semantics (from live investigations)
+  - name: pypi_package
+    description: Python package from PyPI registry
+
+  - name: vulnerability
+    description: Known software vulnerability (CVE or similar)

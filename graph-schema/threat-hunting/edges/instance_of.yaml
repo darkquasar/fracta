@@ -1,0 +1,8 @@
+type: INSTANCE_OF
+description: Links a particular-layer instance to its universal-layer type.
+
+endpoints:
+  from: [IP, Identity, Session, System, Event]
+  to: [FieldType]
+
+properties: {}

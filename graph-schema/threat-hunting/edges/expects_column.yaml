@@ -1,0 +1,13 @@
+type: EXPECTS_COLUMN
+description: >
+  Strategy requires this column in a staging table.
+
+endpoints:
+  from: [Strategy]
+  to: [StrategyColumn]
+
+properties:
+  table:
+    type: string
+    required: true
+    description: Name of the staging DuckDB table

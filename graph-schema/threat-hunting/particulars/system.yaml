@@ -1,0 +1,19 @@
+label: System
+layer: particular
+description: A specific resource or system (EC2 instance, S3 bucket, etc.).
+
+properties:
+  arn:
+    type: string
+    required: true
+    unique: true
+  type:
+    type: string
+    required: false
+  region:
+    type: string
+    required: false
+
+indexes:
+  - properties: [arn]
+    type: exact

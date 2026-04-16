@@ -1,0 +1,16 @@
+label: Finding
+layer: particular
+description: A conclusion from strategy execution or manual analysis.
+
+properties:
+  summary:
+    type: string
+    required: true
+  confidence:
+    type: string
+    required: false
+  evidence:
+    type: string
+    required: false
+
+indexes: []

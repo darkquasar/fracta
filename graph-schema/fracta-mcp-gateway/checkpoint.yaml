@@ -1,0 +1,86 @@
+rules:
+  - name: mcptool_missing_provenance
+    layer: universal
+    severity: warning
+    query: |
+      MATCH (mt:MCPTool)
+      WHERE mt._source IN ['gateway:auto', 'reconciler:auto']
+        AND mt._updated_at IS NULL
+      RETURN mt.name AS name
+
+  - name: mcptool_name_not_namespaced
+    layer: universal
+    severity: error
+    query: |
+      MATCH (mt:MCPTool)
+      WHERE mt._source IN ['gateway:auto', 'reconciler:auto']
+        AND NOT mt.name CONTAINS '.'
+      RETURN mt.name AS name
+
+  - name: stale_null_source_inventory
+    layer: universal
+    severity: warning
+    query: |
+      MATCH (n)
+      WHERE labels(n)[0] IN ['MCPTool', 'MCPServer']
+        AND n._source IS NULL
+      RETURN labels(n)[0] AS label, n.name AS name
+
+  - name: orphaned_legacy_toolref
+    layer: universal
+    severity: warning
+    query: |
+      MATCH (t:ToolRef)
+      RETURN t.name AS name, t.mcp_server AS server
+
+  - name: datastore_pending_uri
+    layer: universal
+    severity: warning
+    query: |
+      MATCH (ds:DataStore)
+      WHERE ds.uri STARTS WITH 'pending://'
+      RETURN ds.uri AS uri
+    gap_template:
+      type: pending_datastore
+      description: "DataStore '{uri}' has a placeholder URI — agent should discover real storage location"
+      suggested_action: "Investigate what storage backs this MCP server and update the DataStore URI"
+
+  - name: inventory_wrong_source
+    layer: universal
+    severity: error
+    query: |
+      MATCH (n)
+      WHERE labels(n)[0] IN ['MCPTool', 'MCPServer']
+        AND n._source IS NOT NULL
+        AND NOT n._source IN ['reconciler:auto', 'gateway:auto', 'migration:v1']
+      RETURN labels(n)[0] AS label, n.name AS name, n._source AS source
+    gap_template:
+      type: inventory_wrong_source
+      description: "Inventory node {label} '{name}' has unauthorized _source '{source}' — only reconciler, gateway, or migration may write inventory"
+      suggested_action: "Investigate why a non-inventory writer set _source='{source}' on {label} '{name}' and correct the provenance"
+
+  - name: scaffold_inventory_source
+    layer: universal
+    severity: error
+    query: |
+      MATCH (n)
+      WHERE labels(n)[0] IN ['DomainSource', 'DataStore', 'MCPField']
+        AND n._source IN ['reconciler:auto', 'gateway:auto']
+      RETURN labels(n)[0] AS label, COALESCE(n.name, n.uri) AS identifier, n._source AS source
+    gap_template:
+      type: scaffold_inventory_source
+      description: "Scaffold node {label} '{identifier}' has inventory _source '{source}' — reconciler/gateway should not write scaffold nodes"
+      suggested_action: "Correct _source on {label} '{identifier}' to reflect the actual writer (agent, strategy, or user)"
+
+  - name: inventory_pending_migration
+    layer: universal
+    severity: warning
+    query: |
+      MATCH (n)
+      WHERE labels(n)[0] IN ['MCPTool', 'MCPServer']
+        AND n._source = 'migration:v1'
+      RETURN labels(n)[0] AS label, n.name AS name
+    gap_template:
+      type: inventory_pending_migration
+      description: "Inventory node {label} '{name}' still carries migration:v1 provenance — reconciler hasn't claimed it yet"
+      suggested_action: "This self-heals on the next reconciler sync cycle. Persistent hits indicate the server may no longer be in fracta.yaml"

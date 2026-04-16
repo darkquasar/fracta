@@ -1,0 +1,8 @@
+type: EXPECTS
+description: Hunt expects to observe this behavior if hypothesis is correct.
+
+endpoints:
+  from: [Hunt]
+  to: [ExpectedObservation]
+
+properties: {}

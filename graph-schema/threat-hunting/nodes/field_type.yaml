@@ -1,0 +1,32 @@
+label: FieldType
+layer: universal
+description: >
+  A field within a log source. Carries a semantic tag from the controlled
+  vocabulary for cross-source join discovery.
+
+properties:
+  name:
+    type: string
+    required: true
+    description: Field name as it appears in the source
+  data_type:
+    type: string
+    required: true
+  semantic:
+    type: string
+    required: false
+    ref: semantics
+  _status:
+    type: string
+    required: false
+    description: "Lifecycle status: speculative, confirmed, stale"
+  _confirmed_at:
+    type: string
+    required: false
+    description: "RFC3339 timestamp when status was confirmed"
+
+indexes:
+  - properties: [name]
+    type: exact
+  - properties: [semantic]
+    type: exact

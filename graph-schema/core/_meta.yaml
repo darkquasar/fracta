@@ -1,0 +1,12 @@
+name: core
+version: 2
+description: Core graph ontology shared across all domains
+authority:
+  inventory:
+    - MCPTool
+    - MCPServer
+  scaffold:
+    - DomainSource
+    - DataStore
+    - MCPField
+    - Semantic

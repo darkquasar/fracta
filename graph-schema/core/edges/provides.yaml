@@ -1,0 +1,10 @@
+type: PROVIDES
+description: >
+  MCPServer provides this callable tool.
+  MCPServer -> PROVIDES -> MCPTool.
+
+endpoints:
+  from: [MCPServer]
+  to: [MCPTool]
+
+properties: {}

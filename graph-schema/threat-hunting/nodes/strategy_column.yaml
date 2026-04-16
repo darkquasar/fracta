@@ -1,0 +1,24 @@
+label: StrategyColumn
+layer: universal
+description: >
+  A column that a strategy expects in a staging DuckDB table.
+
+properties:
+  name:
+    type: string
+    required: true
+  type:
+    type: string
+    required: true
+    description: DuckDB column type (VARCHAR, TIMESTAMP, INT, DOUBLE, etc.)
+  semantic:
+    type: string
+    required: false
+    ref: semantics
+  description:
+    type: string
+    required: false
+
+indexes:
+  - properties: [name]
+    type: exact
