@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "elastic": {
+      "args": [
+        "-y",
+        "@elastic/mcp-server"
+      ],
+      "command": "npx"
+    },
+    "fracta-agent": {
+      "args": [
+        "serve",
+        "--agent-mode",
+        "--root",
+        "/tmp/test-project"
+      ],
+      "command": "fracta"
+    }
+  }
+}

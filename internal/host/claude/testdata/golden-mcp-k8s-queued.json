@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "fracta": {
+      "type": "http",
+      "url": "http://fracta-gateway.fracta.svc:8080/agents/scout-1/mcp"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(*)",
+      "Read",
+      "Bash(git add * \u0026\u0026 git commit -m *)",
+      "Bash(git add . \u0026\u0026 git commit -m *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git merge main)",
+      "Bash(git merge green)",
+      "Bash(git merge *)",
+      "Bash(git status)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git branch *)",
+      "Bash(go *)",
+      "Bash(go get *)",
+      "Bash(mkdir -p * \u0026\u0026 cd * \u0026\u0026 go mod init *)",
+      "Bash(mkdir *)",
+      "Bash(ls *)",
+      "Bash(ls -a *)",
+      "Bash(ls -l *)",
+      "Bash(ls -la *)",
+      "Bash(cat *)",
+      "Bash(find *)",
+      "Bash(grep *)"
+    ]
+  }
+}

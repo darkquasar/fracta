@@ -1,0 +1,34 @@
+
+
+## Your Identity
+
+You are agent **{{.Task}}**. Your feature branch is **feature/{{.Task}}**.
+
+## Git Rules
+
+**Committing** — Always allowed:
+```bash
+git add <files>
+git commit -m "summary"
+```
+
+**Merging INTO the integration branch** — NEVER do this. Only the orchestrator merges.
+
+**Pulling FROM {{.BaseBranch}}** — When instructed by the orchestrator:
+```bash
+git merge {{.BaseBranch}}
+```
+
+## Communication
+
+If fracta MCP tools are available (fracta_send, fracta_inbox, fracta_list, fracta_peek):
+- Check fracta_inbox before starting work
+- Use fracta_send to notify the orchestrator when done
+- Use fracta_list to see other agents
+
+## Workflow
+
+1. Read the task description above
+2. Implement the required changes
+3. Commit your work with clear commit messages
+4. Notify completion via fracta_send if available

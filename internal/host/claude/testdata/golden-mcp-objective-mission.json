@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "fracta-agent": {
+      "args": [
+        "serve",
+        "--agent-mode",
+        "--root",
+        "/tmp/test-project",
+        "--agent-task",
+        "hunter-3",
+        "--objective-id",
+        "obj-456",
+        "--mission-id",
+        "99"
+      ],
+      "command": "fracta"
+    }
+  }
+}
