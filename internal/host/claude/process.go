@@ -49,7 +49,7 @@ func ParseBatchOutput(stdout []byte, waitErr error) (host.Result, error) {
 
 	var resp Response
 	if err := json.Unmarshal(stdout, &resp); err != nil {
-		return host.Result{}, err
+		return host.Result{}, fmt.Errorf("parsing claude response: %w (raw: %s)", err, string(stdout))
 	}
 
 	return host.Result{
