@@ -39,6 +39,10 @@ type claudeContentBlock struct {
 }
 
 func (a *ClaudeStreamAdapter) ParseLine(line []byte) StreamParseResult {
+	if len(line) == 0 {
+		return StreamParseResult{}
+	}
+
 	var wire claudeWireEvent
 	if err := json.Unmarshal(line, &wire); err != nil {
 		return StreamParseResult{}
