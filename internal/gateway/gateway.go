@@ -139,6 +139,12 @@ func (g *Gateway) RegisterServer(ctx context.Context, name string) (int, error) 
 	for _, t := range tools {
 		nsName := name + "." + t.Name
 
+		// Skip if collides with a native fracta tool (no dots in native names)
+		if existing := g.mcpServer.GetTool(nsName); existing != nil {
+			g.logger.Debug("skipping duplicate tool", "tool", nsName)
+			continue
+		}
+
 		// Register proxy handler
 		proxyTool := mcp.NewToolWithRawSchema(
 			nsName,
