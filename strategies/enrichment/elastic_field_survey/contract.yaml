@@ -1,0 +1,46 @@
+name: "elastic-field-survey"
+version: "1.0.0"
+description: >
+  Survey Elasticsearch indices and field mappings for knowledge graph enrichment.
+tags: [enrichment, elasticsearch, schema-discovery]
+params:
+  index_pattern:
+    type: str
+    required: false
+    default: "*"
+    description: "Index pattern to survey (default: all non-system indices)"
+requires:
+  graph: false
+  tables:
+    es_indices:
+      description: "Elasticsearch index metadata"
+      optional: false
+      columns:
+        index:
+          type: VARCHAR
+        docs:
+          type: VARCHAR
+        size:
+          type: VARCHAR
+    es_mappings:
+      description: "Field mappings per index"
+      optional: false
+      columns:
+        index:
+          type: VARCHAR
+        field_name:
+          type: VARCHAR
+        field_type:
+          type: VARCHAR
+pinned_backend: elasticsearch
+discovery:
+  description: >
+    Requires Elasticsearch schema metadata. The orchestrator must use
+    Elasticsearch MCP tools to pre-stage index and field data.
+  mcp_hints:
+    - tool: "elasticsearch.list_indices"
+      purpose: "Get index names and doc counts"
+      stage_as: "es_indices"
+    - tool: "elasticsearch.get_mappings"
+      purpose: "Get field mappings for each index"
+      stage_as: "es_mappings"
