@@ -52,7 +52,13 @@ func (b *FanoutBus) AddSink(s Sink) {
 func (b *FanoutBus) Emit(ctx context.Context, e Event) {
 	for _, s := range b.sinks {
 		if err := s.Handle(ctx, e); err != nil {
-			b.log.Warn("sink failed", "error", err)
+			b.log.Warn("sink failed",
+				"sink", sinkName(s),
+				"event_id", e.ID,
+				"source", e.Component,
+				"action", e.Action,
+				"error", err,
+			)
 		}
 	}
 }
