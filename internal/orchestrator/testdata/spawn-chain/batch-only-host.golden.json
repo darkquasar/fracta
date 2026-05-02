@@ -1,0 +1,35 @@
+{
+  "resolved_spawn": {
+    "host_type": "batch-host",
+    "model": "batch-model",
+    "base_branch": "",
+    "mode": "batch",
+    "allowed_tools": [
+      "Read"
+    ],
+    "config_path": "",
+    "graph_addr": "",
+    "strategy_dir": ""
+  },
+  "mission_payload": {
+    "task": "batch-task",
+    "contract": "Run batch job.",
+    "base_branch": "",
+    "model": "batch-model",
+    "host_type": "batch-host",
+    "backend": "local",
+    "config_path": "",
+    "graph_addr": "",
+    "strategy_dir": "",
+    "gateway_url": ""
+  },
+  "workspace_config": {
+    "agent_mcp": false,
+    "backend": "local",
+    "config_path": "",
+    "graph_addr": "",
+    "strategy_dir": "",
+    "gateway_url": "",
+    "agent_task": "batch-task"
+  }
+}

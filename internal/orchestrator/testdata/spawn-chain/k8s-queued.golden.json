@@ -1,0 +1,54 @@
+{
+  "resolved_spawn": {
+    "host_type": "claude",
+    "model": "claude-sonnet-4-5",
+    "base_branch": "main",
+    "mode": "batch",
+    "allowed_tools": [
+      "Bash(*)",
+      "Read",
+      "Write"
+    ],
+    "config_path": "",
+    "graph_addr": "",
+    "strategy_dir": ""
+  },
+  "mission_payload": {
+    "task": "k8s-agent-1",
+    "contract": "Run the hunt.",
+    "base_branch": "main",
+    "model": "claude-sonnet-4-5",
+    "host_type": "claude",
+    "backend": "kubernetes",
+    "config_path": "",
+    "graph_addr": "",
+    "strategy_dir": "",
+    "gateway_url": "http://fracta-gateway.fracta.svc:8080",
+    "mcp_servers": {
+      "Servers": {
+        "elastic": {
+          "Local": {
+            "Command": "",
+            "Args": null,
+            "Env": null
+          },
+          "Kubernetes": {
+            "URL": "http://elastic:8000",
+            "Headers": null,
+            "Transport": "",
+            "Auth": null
+          }
+        }
+      }
+    }
+  },
+  "workspace_config": {
+    "agent_mcp": true,
+    "backend": "kubernetes",
+    "config_path": "",
+    "graph_addr": "",
+    "strategy_dir": "",
+    "gateway_url": "http://fracta-gateway.fracta.svc:8080",
+    "agent_task": "k8s-agent-1"
+  }
+}

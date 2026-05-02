@@ -1,0 +1,39 @@
+{
+  "resolved_spawn": {
+    "host_type": "claude",
+    "model": "claude-sonnet-4-5",
+    "base_branch": "main",
+    "mode": "batch",
+    "allowed_tools": [
+      "Bash(*)",
+      "Read"
+    ],
+    "config_path": "",
+    "graph_addr": "",
+    "strategy_dir": ""
+  },
+  "mission_payload": {
+    "task": "child-hunter-3",
+    "contract": "Investigate lateral movement.",
+    "base_branch": "main",
+    "model": "claude-sonnet-4-5",
+    "host_type": "claude",
+    "backend": "local",
+    "config_path": "",
+    "graph_addr": "",
+    "strategy_dir": "",
+    "gateway_url": "",
+    "objective_id": "obj-456"
+  },
+  "workspace_config": {
+    "agent_mcp": true,
+    "backend": "local",
+    "config_path": "",
+    "graph_addr": "",
+    "strategy_dir": "",
+    "gateway_url": "",
+    "agent_task": "child-hunter-3",
+    "objective_id": "obj-456",
+    "mission_id": 99
+  }
+}

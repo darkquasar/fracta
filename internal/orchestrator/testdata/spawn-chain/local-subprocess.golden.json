@@ -1,0 +1,57 @@
+{
+  "resolved_spawn": {
+    "host_type": "claude",
+    "model": "claude-sonnet-4-5",
+    "base_branch": "main",
+    "mode": "batch",
+    "allowed_tools": [
+      "Bash(*)",
+      "Read",
+      "Write"
+    ],
+    "config_path": "",
+    "graph_addr": "",
+    "strategy_dir": ""
+  },
+  "mission_payload": {
+    "task": "scout-1",
+    "contract": "Investigate the alert.",
+    "base_branch": "main",
+    "model": "claude-sonnet-4-5",
+    "host_type": "claude",
+    "backend": "local",
+    "config_path": "",
+    "graph_addr": "",
+    "strategy_dir": "",
+    "gateway_url": "",
+    "mcp_servers": {
+      "Servers": {
+        "elastic": {
+          "Local": {
+            "Command": "npx",
+            "Args": [
+              "-y",
+              "@elastic/mcp-server"
+            ],
+            "Env": null
+          },
+          "Kubernetes": {
+            "URL": "",
+            "Headers": null,
+            "Transport": "",
+            "Auth": null
+          }
+        }
+      }
+    }
+  },
+  "workspace_config": {
+    "agent_mcp": true,
+    "backend": "local",
+    "config_path": "",
+    "graph_addr": "",
+    "strategy_dir": "",
+    "gateway_url": "",
+    "agent_task": "scout-1"
+  }
+}

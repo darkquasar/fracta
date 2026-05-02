@@ -1,0 +1,36 @@
+{
+  "resolved_spawn": {
+    "host_type": "claude",
+    "model": "claude-sonnet-4-5",
+    "base_branch": "main",
+    "mode": "batch",
+    "allowed_tools": [
+      "Bash(*)",
+      "Read"
+    ],
+    "config_path": "",
+    "graph_addr": "",
+    "strategy_dir": ""
+  },
+  "mission_payload": {
+    "task": "gateway-agent",
+    "contract": "Query the graph.",
+    "base_branch": "main",
+    "model": "claude-sonnet-4-5",
+    "host_type": "claude",
+    "backend": "kubernetes",
+    "config_path": "",
+    "graph_addr": "",
+    "strategy_dir": "",
+    "gateway_url": "http://fracta-gateway.fracta.svc:8080"
+  },
+  "workspace_config": {
+    "agent_mcp": true,
+    "backend": "kubernetes",
+    "config_path": "",
+    "graph_addr": "",
+    "strategy_dir": "",
+    "gateway_url": "http://fracta-gateway.fracta.svc:8080",
+    "agent_task": "gateway-agent"
+  }
+}
