@@ -171,7 +171,7 @@ func (r *Resolver) resolveFromGraph(
 
 	records, err := r.graph.Query(ctx, cypher, map[string]any{"semantics": semantics})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("graph query: %w", err)
 	}
 	if len(records) == 0 {
 		return nil, fmt.Errorf("no domain sources found with semantics %v", semantics)
