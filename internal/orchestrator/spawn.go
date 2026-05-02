@@ -237,6 +237,10 @@ func (o *Orchestrator) prepareSpawn(task, contractContent string, resolved *Reso
 
 	logFile := filepath.Join(o.Root, model.FractaDir, model.LogsDir, task+".log")
 
+	if len(resolved.AllowedTools) == 0 {
+		return nil, fmt.Errorf("allowed_tools is empty in config; run 'fracta init' to generate defaults")
+	}
+
 	// Build ExecutionSpec — canonical contract for this spawn.
 	spec := NewExecutionSpec(resolved, task, contractContent, "" /* objectiveID */, o)
 
