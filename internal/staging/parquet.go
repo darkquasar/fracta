@@ -232,7 +232,7 @@ func WriteParquet(table string, columns []string, types []string, data [][]any, 
 		dir = DefaultStagingDir
 	}
 	if err := os.MkdirAll(dir, 0o700); err != nil {
-		return "", err
+		return "", fmt.Errorf("create staging dir: %w", err)
 	}
 
 	// Build FieldMappings from columns/types
