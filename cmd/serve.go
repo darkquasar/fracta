@@ -817,7 +817,7 @@ func loadAndApplySchema(gc *graph.FalkorDBClient, dir string) error {
 		total++
 	}
 
-	log.Info("graph schema applied", "statements", total)
+	log.Info("graph schema applied", "statements", total, "nodes", len(registry.Nodes), "edges", len(registry.Edges), "semantics", len(registry.Semantics))
 	return nil
 }
 
