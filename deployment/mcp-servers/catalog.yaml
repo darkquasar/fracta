@@ -1,0 +1,35 @@
+version: 1
+description: Fracta MCP server catalog. Each entry points to a per-server server.yaml.
+status_values:
+  tested: Connected and listed tools through fracta in at least one supported mode.
+  documented: Official or well-documented upstream exists, but fracta smoke test is still pending.
+  candidate: Community or mode-specific entry that needs fracta smoke testing before promotion.
+servers:
+  - id: fracta
+    path: fracta/server.yaml
+  - id: elastic
+    path: elastic/server.yaml
+  - id: vendor
+    path: vendor/server.yaml
+  - id: readwise
+    path: readwise/server.yaml
+  - id: notion
+    path: notion/server.yaml
+  - id: obsidian
+    path: obsidian/server.yaml
+  - id: raindrop
+    path: raindrop/server.yaml
+  - id: zotero
+    path: zotero/server.yaml
+  - id: google-drive
+    path: google-drive/server.yaml
+  - id: logseq
+    path: logseq/server.yaml
+  - id: joplin
+    path: joplin/server.yaml
+  - id: apple-notes
+    path: apple-notes/server.yaml
+  - id: noteplan
+    path: noteplan/server.yaml
+  - id: tana
+    path: tana/server.yaml

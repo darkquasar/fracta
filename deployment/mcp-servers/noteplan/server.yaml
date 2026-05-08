@@ -1,0 +1,35 @@
+id: noteplan
+name: NotePlan
+category: knowledge
+status: documented
+description: Official local MCP for NotePlan notes, tasks, reminders, and calendar-aware planning on macOS.
+upstream:
+  type: official
+  url: https://help.noteplan.co/article/277-how-to-install-the-noteplan-mcp-server
+auth:
+  modes:
+    - local_app_permissions
+  notes: Requires NotePlan installed and running on macOS.
+variants:
+  local:
+    transport: stdio
+    command: npx
+    args:
+      - -y
+      - "@noteplanco/noteplan-mcp"
+support:
+  local_process: supported_candidate_macos
+  docker_compose: not_supported_macos_app_dependency
+  kubernetes: not_supported_macos_app_dependency
+docker:
+  dockerfile: ""
+  build_target: ""
+  load_target: ""
+verification:
+  tested_on: ""
+  smoke_test: list_tools
+  expected_tools_contains:
+    - notes
+    - tasks
+    - calendar
+notes: Strong daily-notes and task-planning complement to Obsidian/Readwise-style knowledge workflows.

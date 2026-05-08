@@ -1,0 +1,41 @@
+id: readwise
+name: Readwise / Reader
+category: knowledge
+status: documented
+description: Official hosted MCP for Readwise highlights and Reader documents.
+upstream:
+  type: official
+  url: https://readwise.io/mcp
+auth:
+  modes:
+    - oauth
+  notes: Hosted server requires OAuth. Use mcp-remote until fracta has gateway-owned OAuth.
+variants:
+  remote:
+    transport: streamable-http
+    url: https://mcp2.readwise.io/mcp
+    auth: oauth
+    fracta_native: blocked_until_gateway_oauth
+  local_proxy:
+    transport: stdio
+    command: npx
+    args:
+      - -y
+      - mcp-remote
+      - https://mcp2.readwise.io/mcp
+    auth: oauth_via_mcp_remote
+support:
+  local_process: supported_via_local_proxy
+  docker_compose: blocked_until_gateway_oauth_or_proxy_packaging
+  kubernetes: blocked_until_gateway_oauth_token_store
+docker:
+  dockerfile: ""
+  build_target: ""
+  load_target: ""
+verification:
+  tested_on: ""
+  smoke_test: list_tools
+  expected_tools_contains:
+    - search
+    - highlight
+notes: High-priority knowledge gardening source for highlights, saved articles, Reader inbox triage, and resurfacing reading history.

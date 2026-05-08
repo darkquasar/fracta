@@ -1,0 +1,71 @@
+# Strategy Pod Security Standards (Restricted Profile Template)
+#
+# Apply these security controls to strategy execution pods.
+# Based on the Kubernetes Pod Security Standards "Restricted" profile,
+# which is the most restrictive policy and follows current hardening
+# best practices.
+#
+# Usage: Apply as a Kustomize overlay, Helm values, or copy into your
+# pod spec template for strategy execution pods.
+#
+# Defense layers provided:
+#   - readOnlyRootFilesystem: Prevents supply chain attacks (no pip install),
+#     blocks code injection into other strategies
+#   - runAsNonRoot: Limits damage from container escape
+#   - drop ALL capabilities: Removes dangerous syscall capabilities
+#     (SYS_PTRACE, NET_RAW, etc.)
+#   - seccompProfile RuntimeDefault: Blocks ~100 dangerous syscalls
+#     (mount, reboot, etc.)
+#   - allowPrivilegeEscalation: false: Blocks setuid, prevents container
+#     breakout via privilege escalation
+#
+# The only writable path is /tmp (emptyDir), which is used for:
+#   - Unix socket: /tmp/fracta-strategy.sock
+#   - Parquet staging: /tmp/fracta-staging/
+#   - DuckDB scratch space
+apiVersion: v1
+kind: Pod
+metadata:
+  name: fracta-strategy
+  labels:
+    app: fracta
+    component: strategy-sidecar
+spec:
+  # Fail-closed: do not run if service account token cannot be projected.
+  automountServiceAccountToken: false
+
+  securityContext:
+    # Pod-level: ensure no container runs as root.
+    runAsNonRoot: true
+    # Use seccomp RuntimeDefault to block dangerous syscalls.
+    seccompProfile:
+      type: RuntimeDefault
+
+  containers:
+    - name: strategy
+      image: fracta-strategy:latest
+      securityContext:
+        # Container cannot write to the root filesystem.
+        # Only /tmp (emptyDir mount) is writable.
+        readOnlyRootFilesystem: true
+        # Redundant with pod-level, but defense-in-depth.
+        runAsNonRoot: true
+        # Prevent setuid binaries and privilege escalation.
+        allowPrivilegeEscalation: false
+        # Drop ALL Linux capabilities -- strategy pods need none.
+        capabilities:
+          drop:
+            - ALL
+        seccompProfile:
+          type: RuntimeDefault
+
+      volumeMounts:
+        # /tmp is the only writable path: socket, staging, DuckDB scratch.
+        - name: tmp
+          mountPath: /tmp
+
+  volumes:
+    # emptyDir for /tmp -- ephemeral, per-pod, cleaned up on pod deletion.
+    # Uses disk (not tmpfs) to support Parquet staging of large datasets.
+    - name: tmp
+      emptyDir: {}

@@ -1,0 +1,218 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: git-test-scripts
+  namespace: fracta
+  labels:
+    app: fracta
+    purpose: spike-validation
+data:
+  init-repo.sh: |
+    #!/bin/sh
+    set -e
+    REPO_DIR="/workspace/shared-repo"
+    if [ ! -d "$REPO_DIR/.git" ]; then
+      echo "Initializing bare-like shared repo..."
+      mkdir -p "$REPO_DIR"
+      cd "$REPO_DIR"
+      git init --shared
+      git config user.email "init@fracta.test"
+      git config user.name "init"
+      echo "# Fracta Spike Git Test" > README.md
+      git add README.md
+      git commit -m "Initial commit"
+    else
+      echo "Repo already initialized, skipping."
+    fi
+
+  agent-a.sh: |
+    #!/bin/sh
+    set -e
+    REPO_DIR="/workspace/shared-repo"
+
+    echo "=== Agent A: Starting git operations ==="
+
+    # Wait for repo init
+    while [ ! -d "$REPO_DIR/.git" ]; do
+      echo "Waiting for repo initialization..."
+      sleep 1
+    done
+
+    cd "$REPO_DIR"
+    git config user.email "agent-a@fracta.test"
+    git config user.name "agent-a"
+
+    # Create and work on branch
+    git checkout -b feature/agent-a
+    echo "Agent A was here at $(date -u +%Y-%m-%dT%H:%M:%SZ)" > agent-a.txt
+    git add agent-a.txt
+    git commit -m "agent-a: add agent-a.txt"
+
+    echo "=== Agent A: Committed on feature/agent-a ==="
+    git log --oneline --all
+
+    # Signal completion
+    touch /workspace/shared-repo/.agent-a-done
+
+    # Wait for Agent B to finish, then verify we can see its branch
+    echo "=== Agent A: Waiting for Agent B... ==="
+    TIMEOUT=60
+    ELAPSED=0
+    while [ ! -f /workspace/shared-repo/.agent-b-done ] && [ $ELAPSED -lt $TIMEOUT ]; do
+      sleep 2
+      ELAPSED=$((ELAPSED + 2))
+    done
+
+    if [ ! -f /workspace/shared-repo/.agent-b-done ]; then
+      echo "FAIL: Agent B did not complete within ${TIMEOUT}s"
+      exit 1
+    fi
+
+    echo "=== Agent A: Verifying Agent B's branch ==="
+    git branch -a
+    if git log --oneline feature/agent-b -- 2>/dev/null | head -1 | grep -q "agent-b"; then
+      echo "PASS: Agent A can see Agent B's commits on feature/agent-b"
+    else
+      echo "FAIL: Agent A cannot see Agent B's commits"
+      exit 1
+    fi
+
+    echo "=== Agent A: All checks passed ==="
+
+  agent-b.sh: |
+    #!/bin/sh
+    set -e
+    REPO_DIR="/workspace/shared-repo"
+
+    echo "=== Agent B: Starting git operations ==="
+
+    # Wait for repo init
+    while [ ! -d "$REPO_DIR/.git" ]; do
+      echo "Waiting for repo initialization..."
+      sleep 1
+    done
+
+    cd "$REPO_DIR"
+    git config user.email "agent-b@fracta.test"
+    git config user.name "agent-b"
+
+    # Create and work on branch
+    git checkout -b feature/agent-b
+    echo "Agent B was here at $(date -u +%Y-%m-%dT%H:%M:%SZ)" > agent-b.txt
+    git add agent-b.txt
+    git commit -m "agent-b: add agent-b.txt"
+
+    echo "=== Agent B: Committed on feature/agent-b ==="
+    git log --oneline --all
+
+    # Signal completion
+    touch /workspace/shared-repo/.agent-b-done
+
+    # Wait for Agent A to finish, then verify we can see its branch
+    echo "=== Agent B: Waiting for Agent A... ==="
+    TIMEOUT=60
+    ELAPSED=0
+    while [ ! -f /workspace/shared-repo/.agent-a-done ] && [ $ELAPSED -lt $TIMEOUT ]; do
+      sleep 2
+      ELAPSED=$((ELAPSED + 2))
+    done
+
+    if [ ! -f /workspace/shared-repo/.agent-a-done ]; then
+      echo "FAIL: Agent A did not complete within ${TIMEOUT}s"
+      exit 1
+    fi
+
+    echo "=== Agent B: Verifying Agent A's branch ==="
+    git branch -a
+    if git log --oneline feature/agent-a -- 2>/dev/null | head -1 | grep -q "agent-a"; then
+      echo "PASS: Agent B can see Agent A's commits on feature/agent-a"
+    else
+      echo "FAIL: Agent B cannot see Agent A's commits"
+      exit 1
+    fi
+
+    echo "=== Agent B: All checks passed ==="
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: git-init
+  namespace: fracta
+  labels:
+    app: fracta
+    component: git-init
+spec:
+  restartPolicy: Never
+  volumes:
+    - name: shared-workspace
+      persistentVolumeClaim:
+        claimName: fracta-spike-pvc
+    - name: scripts
+      configMap:
+        name: git-test-scripts
+        defaultMode: 0755
+  containers:
+    - name: init
+      image: alpine/git:latest
+      command: ["/scripts/init-repo.sh"]
+      volumeMounts:
+        - name: shared-workspace
+          mountPath: /workspace
+        - name: scripts
+          mountPath: /scripts
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: git-agent-a
+  namespace: fracta
+  labels:
+    app: fracta
+    component: git-agent-a
+spec:
+  restartPolicy: Never
+  volumes:
+    - name: shared-workspace
+      persistentVolumeClaim:
+        claimName: fracta-spike-pvc
+    - name: scripts
+      configMap:
+        name: git-test-scripts
+        defaultMode: 0755
+  containers:
+    - name: agent-a
+      image: alpine/git:latest
+      command: ["/scripts/agent-a.sh"]
+      volumeMounts:
+        - name: shared-workspace
+          mountPath: /workspace
+        - name: scripts
+          mountPath: /scripts
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: git-agent-b
+  namespace: fracta
+  labels:
+    app: fracta
+    component: git-agent-b
+spec:
+  restartPolicy: Never
+  volumes:
+    - name: shared-workspace
+      persistentVolumeClaim:
+        claimName: fracta-spike-pvc
+    - name: scripts
+      configMap:
+        name: git-test-scripts
+        defaultMode: 0755
+  containers:
+    - name: agent-b
+      image: alpine/git:latest
+      command: ["/scripts/agent-b.sh"]
+      volumeMounts:
+        - name: shared-workspace
+          mountPath: /workspace
+        - name: scripts
+          mountPath: /scripts

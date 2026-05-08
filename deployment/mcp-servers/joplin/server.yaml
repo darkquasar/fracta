@@ -1,0 +1,37 @@
+id: joplin
+name: Joplin
+category: knowledge
+status: candidate
+description: Community MCP for Joplin notes, notebooks, todos, and search.
+upstream:
+  type: community
+  url: https://mcp.directory/servers/joplin
+auth:
+  modes:
+    - env_token
+  env_required:
+    - JOPLIN_TOKEN
+variants:
+  local:
+    transport: stdio
+    command: npx
+    args:
+      - -y
+      - joplin-mcp-server
+      - --token
+      - ${JOPLIN_TOKEN}
+support:
+  local_process: supported_candidate
+  docker_compose: possible_with_sync_backend
+  kubernetes: possible_with_sync_backend
+docker:
+  dockerfile: ""
+  build_target: ""
+  load_target: ""
+verification:
+  tested_on: ""
+  smoke_test: list_tools
+  expected_tools_contains:
+    - search
+    - note
+notes: Useful open-source note backend. Promote only after verifying token and sidecar behavior with fracta.

@@ -1,0 +1,254 @@
+# ===========================================================================
+# fracta.yaml — Local Development Mode
+# ===========================================================================
+#
+# This is the default fracta configuration for local development.
+# All components run on a single machine:
+#
+#   - Control plane daemon: auto-started by `fracta serve`, HTTP API on :9090
+#   - Gateway: subprocess managed by the CP daemon, HTTP on :8080
+#   - Agents: local subprocesses spawned by the control plane
+#   - State: SQLite at .fracta/state.db
+#   - MCP backends: local subprocesses (podman, uvx, etc.)
+#
+# The host CLI (`fracta serve`, `fracta spawn`, etc.) is always a thin client
+# that connects to the control plane daemon over HTTP. When no
+# control_plane_api.url is set, the daemon is auto-started locally.
+#
+# Run with:
+#   fracta serve --config deployment/local-process/fracta.yaml
+#
+# Or with secrets from 1Password:
+#   op run --env fracta-dev -- fracta serve --config deployment/local-process/fracta.yaml
+# ===========================================================================
+
+
+# ---------------------------------------------------------------------------
+# Logging
+# ---------------------------------------------------------------------------
+# File-based logging for the control plane daemon.
+# Level: debug, info, warn, error.
+
+logging:
+  file: .fracta/fracta.log
+  level: info
+
+
+# ---------------------------------------------------------------------------
+# External Connections
+# ---------------------------------------------------------------------------
+# Named connections to external services. Referenced by MCP servers,
+# strategy engine, and graph operations.
+#
+# Local mode expects FalkorDB to be reachable for the default gateway
+# graph/schema/strategy path. Set FALKORDB_URL to redis://localhost:6379
+# when running FalkorDB on the host or through Docker port mapping.
+
+connections:
+  elastic_main:
+    type: elasticsearch
+    url: ${ELASTIC_URL}
+    api_key: ${ELASTIC_API_KEY}
+
+  falkordb:
+    type: redis
+    url: ${FALKORDB_URL}
+    graph_name: fracta_knowledge
+
+  snowflake:
+    type: snowflake
+    account: ${SNOWFLAKE_ACCOUNT}
+    user: ${SNOWFLAKE_USER}
+    password: ${SNOWFLAKE_PASSWORD}
+
+  bedrock:
+    type: bedrock
+    region: ${AWS_REGION}
+
+
+# ---------------------------------------------------------------------------
+# Runtime
+# ---------------------------------------------------------------------------
+# Controls how agents execute and where state is stored.
+#
+# backend: "local" (subprocess) or "kubernetes" (K8s Jobs)
+# state.driver: "sqlite" (local file) or "postgres" (remote database)
+
+runtime:
+  backend: local
+  staging_dir: .fracta/staging
+  state:
+    driver: sqlite
+    sqlite:
+      path: .fracta/state.db
+  queue:
+    backend: memory
+    workers: 2
+
+
+# ---------------------------------------------------------------------------
+# Authentication & Credentials
+# ---------------------------------------------------------------------------
+# Credential profiles define how agents authenticate with LLM providers.
+# Each host references a profile by name via `auth_profile`.
+#
+# Profile structure:
+#   - runtime_auth_resolvers: commands the agent calls at runtime to get tokens
+#   - env: environment variables injected into the agent process
+#   - assertions: validation rules (require/forbid specific env vars)
+#   - default_binding: how the resolver is wired into the host adapter
+
+auth:
+  credentials:
+    profiles:
+      bedrock:
+        runtime_auth_resolvers:
+          bedrock_token:
+            type: command
+            command: "bedrock-auth-helper"
+            ttl_ms: 60000
+        env:
+          CLAUDE_CODE_USE_BEDROCK: "1"
+          CLAUDE_CODE_SKIP_BEDROCK_AUTH: "1"
+          AWS_REGION: "ap-southeast-2"
+        assertions:
+          require_env: [AWS_REGION]
+          forbid_env: [CLAUDE_CODE_SIMPLE]
+        default_binding:
+          type: claude_api_key_helper
+          runtime_auth_resolver: bedrock_token
+      opencode_bedrock:
+        auth_origins:
+          bedrock_token:
+            type: command_output
+            scope: any
+            command: ["bedrock-auth-helper"]
+        env:
+          AWS_REGION: "ap-southeast-2"
+        default_binding:
+          type: bearer_env
+          auth_origin: bedrock_token
+          env_name: AWS_BEARER_TOKEN_BEDROCK
+
+
+# ---------------------------------------------------------------------------
+# Gateway
+# ---------------------------------------------------------------------------
+# The control plane daemon supervises a gateway subprocess on this address.
+# Agents use gateway.url to discover proxied MCP backends.
+
+gateway:
+  url: http://localhost:8080
+
+
+# ---------------------------------------------------------------------------
+# Reaper
+# ---------------------------------------------------------------------------
+# Automatic cleanup of stale agents.
+
+reaper:
+  interval: 30s
+  max_age: 4h
+
+
+# ---------------------------------------------------------------------------
+# Project
+# ---------------------------------------------------------------------------
+# Default settings for all agents in this project.
+#
+# default_base_branch: git branch agents branch from
+# allowed_tools: base tool permissions granted to every agent
+
+project:
+  default_base_branch: main
+  allowed_tools:
+    - Read
+    - Edit
+    - Write
+    - Glob
+    - Grep
+    - "Bash(git *)"
+    - "Bash(go *)"
+    - "Bash(make *)"
+    - "Bash(ls *)"
+    - "Bash(cat *)"
+    - "Bash(find *)"
+    - "Bash(grep *)"
+
+
+# ---------------------------------------------------------------------------
+# Agents
+# ---------------------------------------------------------------------------
+# Default agent settings. Can be overridden per-spawn.
+#
+# default_runtime: which LLM adapter to use (claude, codex)
+# default_mode: "batch" (single-shot) or "stream" (interactive)
+
+agents:
+  default_runtime: claude
+  default_mode: batch
+  # Agent runtime adapter configurations. Each runtime defines how fracta talks
+  # to a specific LLM provider.
+  #
+  # adapter: which runtime implementation (claude, codex)
+  # auth_profile: references a credential profile from auth.credentials.profiles
+  # model_tiers: named model shortcuts (heavy/medium/light → specific models)
+  agent_runtimes:
+    claude:
+      adapter: claude
+      auth_profile: bedrock
+      model_tiers:
+        heavy: opus
+        medium: sonnet
+        light: haiku
+    codex:
+      adapter: codex
+      env:
+        OPENAI_API_KEY: "${OPENAI_API_KEY}"
+    opencode:
+      adapter: opencode
+      model: amazon-bedrock/au.anthropic.claude-sonnet-4-6
+      model_tiers:
+        heavy: amazon-bedrock/au.anthropic.claude-opus-4-6-v1
+        medium: amazon-bedrock/au.anthropic.claude-sonnet-4-6
+        light: amazon-bedrock/au.anthropic.claude-haiku-4-5-20251001-v1
+      auth_profile: opencode_bedrock
+
+
+# ---------------------------------------------------------------------------
+# Ontology
+# ---------------------------------------------------------------------------
+# Knowledge graph schema definitions. Loaded at startup to define the
+# universal layer (types, relationships, constraints).
+
+ontology:
+  schemas:
+    - path: graph-schema/core
+    - path: graph-schema/threat-hunting
+    - path: graph-schema/fracta-mcp-gateway
+
+
+# ---------------------------------------------------------------------------
+# MCP Servers
+# ---------------------------------------------------------------------------
+# Backend MCP tool servers that the gateway proxies to agents.
+# Local-process mode starts these as subprocesses. Compose/K8s gateway
+# configs use `remote` URL entries for already-running MCP servers.
+
+mcp_servers:
+  servers:
+    elastic:
+      local:
+        command: podman
+        args: ["run", "-i", "--rm", "-e", "ES_URL", "-e", "ES_API_KEY", "docker.elastic.co/mcp/elasticsearch", "stdio"]
+        env:
+          ES_URL: "${ELASTIC_URL}"
+          ES_API_KEY: "${ELASTIC_API_KEY}"
+    vendor:
+      local:
+        command: uvx
+        args: ["--from", "git+https://github.com/Sentinel-One/vendor-mcp.git", "vendor-mcp", "--mode", "stdio"]
+    bedrock-auth-helper:
+      local:
+        command: bedrock-auth-helper
+        args: ["mcp", "serve", "--profile", "jira,github,kb,confluence,buildkite,rms"]

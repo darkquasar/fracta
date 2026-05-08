@@ -1,0 +1,38 @@
+id: logseq
+name: Logseq
+category: knowledge
+status: candidate
+description: Community MCPs for local Logseq graph pages, blocks, journals, and graph exploration.
+upstream:
+  type: community
+  url: https://github.com/joelhooks/logseq-mcp-tools
+auth:
+  modes:
+    - env_token
+  env_required:
+    - LOGSEQ_API_TOKEN
+variants:
+  local:
+    transport: stdio
+    command: npx
+    args:
+      - -y
+      - logseq-mcp-tools
+    env:
+      required:
+        - LOGSEQ_API_TOKEN
+support:
+  local_process: supported_candidate
+  docker_compose: not_recommended_local_desktop_dependency
+  kubernetes: not_supported_local_desktop_dependency
+docker:
+  dockerfile: ""
+  build_target: ""
+  load_target: ""
+verification:
+  tested_on: ""
+  smoke_test: list_tools
+  expected_tools_contains:
+    - pages
+    - journal
+notes: Good fit for outliner/graph-based knowledge gardens. Needs local Logseq setup and token verification.

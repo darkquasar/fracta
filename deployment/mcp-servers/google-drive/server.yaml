@@ -1,0 +1,34 @@
+id: google-drive
+name: Google Drive / Docs
+category: knowledge
+status: candidate
+description: Google Drive and Google Workspace file search/read connector for docs, sheets, slides, PDFs, and shared folders.
+upstream:
+  type: reference
+  url: https://github.com/modelcontextprotocol/servers
+auth:
+  modes:
+    - oauth
+  notes: Requires Google OAuth credentials and token persistence.
+variants:
+  local_reference:
+    transport: stdio
+    command: npx
+    args:
+      - -y
+      - "@modelcontextprotocol/server-gdrive"
+    auth: oauth
+support:
+  local_process: supported_after_google_oauth_setup
+  docker_compose: blocked_until_oauth_credentials_mounting
+  kubernetes: blocked_until_gateway_oauth_or_secret_mounting
+docker:
+  dockerfile: ""
+  build_target: ""
+  load_target: ""
+verification:
+  tested_on: ""
+  smoke_test: list_tools
+  expected_tools_contains:
+    - search
+notes: Broad corpus source rather than a note-native garden. Include for users whose knowledge lives in shared docs and folders.

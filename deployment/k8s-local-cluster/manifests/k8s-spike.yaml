@@ -1,0 +1,41 @@
+# k8s-spike.yaml — Spike Job: prove Docker image → K8s Job → Claude CLI → Bedrock auth → LLM response
+# Run with: make k8s-spike
+# No auth Secret needed — pod fetches its own token via the credentials proxy (fetch-bedrock-token)
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: spike-agent-ping
+  namespace: fracta
+  labels:
+    app: fracta
+    purpose: spike-validation
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: agent
+          image: fracta/agent:latest
+          imagePullPolicy: Never
+          args:
+            - "claude"
+            - "-p"
+            - "Respond with exactly: pong"
+            - "--output-format"
+            - "json"
+            - "--permission-mode"
+            - "dontAsk"
+          env:
+            - name: ANTHROPIC_MODEL
+              value: "global.anthropic.claude-haiku-4-5-20251001-v1:0"
+            - name: AWS_REGION
+              value: "ap-southeast-2"
+          resources:
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+            requests:
+              memory: "256Mi"
+              cpu: "250m"

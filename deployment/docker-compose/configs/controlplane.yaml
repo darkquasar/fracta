@@ -1,0 +1,194 @@
+# ===========================================================================
+# controlplane.yaml — Docker Compose Control Plane (Server-Side)
+# ===========================================================================
+#
+# This config runs INSIDE the controlplane container. It is the lifecycle
+# authority for the entire compose stack:
+#   - Spawns agents as local subprocesses (LocalBackend)
+#   - Persists state in Postgres (shared with gateway)
+#   - Runs mission queue workers in-process
+#   - Exposes HTTP API on :9090 for thin clients
+#
+# The host thin client connects to this container via:
+#   control_plane_api.url: http://localhost:9090
+#
+# This file is bind-mounted into the container at /etc/fracta/controlplane.yaml
+# by deployment/docker-compose/docker-compose.yml.
+# ===========================================================================
+
+
+# ---------------------------------------------------------------------------
+# Logging
+# ---------------------------------------------------------------------------
+
+logging:
+  file: /workspace/logs/fracta-controlplane.log
+  level: info
+
+
+# ---------------------------------------------------------------------------
+# External Connections
+# ---------------------------------------------------------------------------
+# Container-internal DNS names (resolved by Docker Compose networking).
+
+connections:
+  falkordb:
+    type: redis
+    url: redis://falkordb:6379
+    graph_name: fracta_knowledge
+
+
+# ---------------------------------------------------------------------------
+# Runtime
+# ---------------------------------------------------------------------------
+# backend: "local" — agents run as subprocesses inside this container.
+# state: Postgres for durable state and mission queue.
+
+runtime:
+  backend: local
+  state:
+    driver: postgres
+    postgres:
+      dsn: "postgres://fracta:fracta@postgres:5432/fracta?sslmode=disable"
+      max_conns: 10
+      min_conns: 2
+      max_conn_lifetime: "30m"
+      max_conn_idle_time: "5m"
+  queue:
+    backend: postgres
+    workers: 2
+    lease_timeout: "30m"
+
+
+# ---------------------------------------------------------------------------
+# Gateway
+# ---------------------------------------------------------------------------
+# The gateway runs as a separate container in the compose stack.
+# url: where the control plane directs agents to connect for MCP tools.
+# listen: not used here (the gateway container owns its own listen address).
+
+gateway:
+  url: http://gateway:8080
+
+
+# ---------------------------------------------------------------------------
+# Control Plane API
+# ---------------------------------------------------------------------------
+# HTTP API for thin clients (host CLI, MCP server).
+
+control_plane_api:
+  listen: ":9090"
+
+
+# ---------------------------------------------------------------------------
+# Reaper
+# ---------------------------------------------------------------------------
+
+reaper:
+  interval: 30s
+  max_age: 4h
+
+
+# ---------------------------------------------------------------------------
+# Project
+# ---------------------------------------------------------------------------
+
+project:
+  default_base_branch: main
+  allowed_tools:
+    - Read
+    - Edit
+    - Write
+    - Glob
+    - Grep
+    - "Bash(git *)"
+    - "Bash(go *)"
+    - "Bash(make *)"
+    - "Bash(ls *)"
+    - "Bash(cat *)"
+    - "Bash(find *)"
+    - "Bash(grep *)"
+
+
+# ---------------------------------------------------------------------------
+# Agents
+# ---------------------------------------------------------------------------
+
+agents:
+  default_runtime: claude
+  default_mode: batch
+  agent_runtimes:
+    claude:
+      adapter: claude
+      model: global.anthropic.claude-sonnet-4-6
+      model_tiers:
+        heavy: global.anthropic.claude-opus-4-6-v1
+        medium: global.anthropic.claude-sonnet-4-6
+        light: global.anthropic.claude-haiku-4-5-20251001-v1:0
+      auth_profile: bedrock
+    opencode:
+      adapter: opencode
+      model: amazon-bedrock/au.anthropic.claude-sonnet-4-6
+      model_tiers:
+        heavy: amazon-bedrock/au.anthropic.claude-opus-4-6-v1
+        medium: amazon-bedrock/au.anthropic.claude-sonnet-4-6
+        light: amazon-bedrock/au.anthropic.claude-haiku-4-5-20251001-v1:0
+      auth_profile: opencode_bedrock
+
+
+# ---------------------------------------------------------------------------
+# Authentication & Credentials
+# ---------------------------------------------------------------------------
+# Credential profiles for LLM providers inside the compose stack.
+# The bedrock profile uses the in-container fetch-bedrock-token helper
+# which calls the corporate proxy (requires corporate network access).
+
+auth:
+  credentials:
+    profiles:
+      bedrock:
+        auth_origins:
+          proxy:
+            type: http_header_token
+            scope: agent_runtime
+            request:
+              method: HEAD
+              url: https://ai-proxy.example.com
+              headers:
+                X-AWS-Region: "${AWS_REGION}"
+            extract:
+              header: x-bedrock-token
+        runtime_auth_resolvers:
+          bedrock_helper:
+            type: command
+            command: /usr/local/bin/fetch-bedrock-token
+            ttl_ms: 60000
+            order: [proxy]
+        env:
+          CLAUDE_CODE_USE_BEDROCK: "1"
+          CLAUDE_CODE_SKIP_BEDROCK_AUTH: "1"
+          AWS_REGION: "ap-southeast-2"
+        assertions:
+          require_env: [AWS_REGION]
+          forbid_env: [CLAUDE_CODE_SIMPLE]
+        default_binding:
+          type: claude_api_key_helper
+          runtime_auth_resolver: bedrock_helper
+      opencode_bedrock:
+        auth_origins:
+          proxy_token:
+            type: http_header_token
+            scope: any
+            request:
+              method: HEAD
+              url: https://ai-proxy.example.com
+              headers:
+                X-AWS-Region: "${AWS_REGION}"
+            extract:
+              header: x-bedrock-token
+        env:
+          AWS_REGION: "ap-southeast-2"
+        default_binding:
+          type: bearer_env
+          auth_origin: proxy_token
+          env_name: AWS_BEARER_TOKEN_BEDROCK

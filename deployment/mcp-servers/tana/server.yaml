@@ -1,0 +1,46 @@
+id: tana
+name: Tana
+category: knowledge
+status: documented
+description: Tana local MCP/API and community Input API MCP for structured nodes, tasks, fields, and supertags.
+upstream:
+  type: official_and_community
+  url: https://tana.inc/docs/local-api-mcp
+auth:
+  modes:
+    - local_app
+    - env_token
+  env_optional:
+    - TANA_API_TOKEN
+    - TANA_DEFAULT_TARGET
+variants:
+  local_api:
+    transport: streamable-http
+    url: http://localhost:8262/mcp
+    auth: local_app
+  input_api:
+    transport: stdio
+    command: npx
+    args:
+      - -y
+      - tana-mcp
+    env:
+      required:
+        - TANA_API_TOKEN
+      optional:
+        - TANA_DEFAULT_TARGET
+support:
+  local_process: supported_candidate
+  docker_compose: not_recommended_for_local_api
+  kubernetes: possible_only_with_input_api_token
+docker:
+  dockerfile: ""
+  build_target: ""
+  load_target: ""
+verification:
+  tested_on: ""
+  smoke_test: list_tools
+  expected_tools_contains:
+    - create_plain_node
+    - create_node_structure
+notes: Good structured knowledge target. Prefer the official local API when Tana Desktop is running; use Input API token mode for automation.

@@ -1,0 +1,53 @@
+# Strategy Pod NetworkPolicy (template)
+#
+# Default-deny egress for strategy pods, with explicit allowances for
+# only the services strategies need: FalkorDB (graph) and DNS.
+#
+# Defense layers provided:
+#   - Blocks data exfiltration to external hosts
+#   - Blocks lateral movement to other cluster services
+#   - Strategy pods cannot reach the internet, Elasticsearch, or any
+#     service not explicitly listed below
+#
+# Requirements:
+#   - A CNI that supports NetworkPolicy (Calico, Cilium, etc.)
+#   - Docker Desktop's default CNI does NOT enforce NetworkPolicy.
+#     This manifest has no effect on Docker Desktop -- use a production
+#     CNI for enforcement.
+#
+# Customization:
+#   - If strategies need additional backends (e.g., Neptune in prod),
+#     add egress rules below with appropriate selectors.
+#   - For trusted-tier strategies that need Elasticsearch access,
+#     create a separate NetworkPolicy with broader egress rules and
+#     apply it to those specific pods via different labels.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: strategy-pod-egress
+spec:
+  podSelector:
+    matchLabels:
+      app: fracta
+      component: strategy-sidecar
+  policyTypes:
+    - Egress
+
+  egress:
+    # Allow FalkorDB (Redis protocol on port 6379).
+    # Strategies need graph access for ontology lookups.
+    - to:
+        - podSelector:
+            matchLabels:
+              app: falkordb
+      ports:
+        - port: 6379
+          protocol: TCP
+
+    # Allow DNS resolution (required for any network communication).
+    # kube-dns / CoreDNS runs on port 53 UDP and TCP.
+    - ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP

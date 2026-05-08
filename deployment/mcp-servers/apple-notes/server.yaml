@@ -1,0 +1,33 @@
+id: apple-notes
+name: Apple Notes
+category: knowledge
+status: candidate
+description: Community local MCP options for searching and reading Apple Notes on macOS.
+upstream:
+  type: community
+  url: https://github.com/sirmews/apple-notes-mcp
+auth:
+  modes:
+    - macos_local_permissions
+  notes: Requires macOS permissions such as Full Disk Access or Automation depending on the chosen server.
+variants:
+  local:
+    transport: stdio
+    command: uvx
+    args:
+      - apple-notes-mcp
+support:
+  local_process: macos_only_candidate
+  docker_compose: not_supported_macos_app_dependency
+  kubernetes: not_supported_macos_app_dependency
+docker:
+  dockerfile: ""
+  build_target: ""
+  load_target: ""
+verification:
+  tested_on: ""
+  smoke_test: list_tools
+  expected_tools_contains:
+    - search
+    - note
+notes: Good personal-notes discovery target, but strongly platform-specific and privacy-sensitive.

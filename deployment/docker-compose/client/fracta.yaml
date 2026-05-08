@@ -1,0 +1,55 @@
+# ===========================================================================
+# fracta-docker-compose.yaml — Docker Compose Mode (Host-Side Thin Client)
+# ===========================================================================
+#
+# This config is used on the host machine to connect to a Docker Compose
+# control plane. The host is a pure thin client — all lifecycle authority
+# runs in containers.
+#
+# Architecture:
+#   Host (this config)          Docker Compose Stack
+#   ─────────────────           ──────────────────────────────
+#   fracta serve ──HTTP──────────→ controlplane container (:9090)
+#     (thin client)               ├─ Postgres container (state/queue)
+#                                 ├─ Workers (in-process)
+#                                 └─ LocalBackend (agent subprocesses)
+#                                gateway container (:8080)
+#                                 ├─ MCP proxy tools
+#                                 ├─ Strategy runner sidecar (shared socket)
+#                                 └─ Graph/ontology tools
+#                                falkordb container (:6379)
+#
+# Server-side configs live in deployment/docker-compose/configs/controlplane.yaml and
+# deployment/docker-compose/configs/gateway.yaml. The compose stack is defined in
+# deployment/docker-compose/docker-compose.yml.
+#
+# Compose uses DirectoryWorkspace (not GitWorkspace). The host project
+# directory is bind-mounted into the controlplane container at /workspace.
+# Merge/base-branch semantics are disabled. For git-based workflows,
+# use local daemon mode instead.
+#
+# Prerequisites:
+#   docker compose -f deployment/docker-compose/docker-compose.yml up
+#
+# Run with:
+#   fracta serve --config deployment/docker-compose/client/fracta.yaml
+# ===========================================================================
+
+
+# ---------------------------------------------------------------------------
+# Logging
+# ---------------------------------------------------------------------------
+
+logging:
+  level: info
+
+
+# ---------------------------------------------------------------------------
+# Control Plane API
+# ---------------------------------------------------------------------------
+# Points the thin client at the compose controlplane container.
+# When control_plane_api.url is set, the thin client connects directly
+# to that URL without auto-starting a local daemon.
+
+control_plane_api:
+  url: http://localhost:19090

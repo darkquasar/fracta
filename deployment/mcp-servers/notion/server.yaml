@@ -1,0 +1,46 @@
+id: notion
+name: Notion
+category: knowledge
+status: documented
+description: Official hosted MCP for Notion pages, databases, comments, search, and workspace updates.
+upstream:
+  type: official
+  url: https://developers.notion.com/guides/mcp/overview
+auth:
+  modes:
+    - oauth
+  notes: Hosted Notion MCP requires OAuth with PKCE. Static Notion integration tokens do not authenticate the hosted MCP endpoint.
+variants:
+  remote:
+    transport: streamable-http
+    url: https://mcp.notion.com/mcp
+    auth: oauth
+    fracta_native: blocked_until_gateway_oauth
+  remote_sse:
+    transport: sse
+    url: https://mcp.notion.com/sse
+    auth: oauth
+    fracta_native: blocked_until_gateway_oauth
+  local_proxy:
+    transport: stdio
+    command: npx
+    args:
+      - -y
+      - mcp-remote
+      - https://mcp.notion.com/mcp
+    auth: oauth_via_mcp_remote
+support:
+  local_process: supported_via_local_proxy
+  docker_compose: blocked_until_gateway_oauth_or_proxy_packaging
+  kubernetes: blocked_until_gateway_oauth_token_store
+docker:
+  dockerfile: ""
+  build_target: ""
+  load_target: ""
+verification:
+  tested_on: ""
+  smoke_test: list_tools
+  expected_tools_contains:
+    - search
+    - page
+notes: Best mainstream workspace-backed knowledge base target. Native remote support needs fracta OAuth.

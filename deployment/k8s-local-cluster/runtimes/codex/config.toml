@@ -1,0 +1,9 @@
+[mcp_servers.fracta]
+command = "bin/fracta"
+args = [
+  "serve",
+  "--config",
+  "deployment/k8s-local-cluster/client/fracta.yaml",
+]
+cwd = ".."
+required = true

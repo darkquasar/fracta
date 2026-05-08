@@ -1,0 +1,251 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fracta-controlplane-config
+  namespace: fracta
+  labels:
+    app: fracta
+    component: fracta-controlplane
+data:
+  fracta-k8s.yaml: |
+    # Control-plane config — full lifecycle authority
+    # This is mounted into the control-plane pod and used with --config flag
+    logging:
+      file: /workspace/logs/fracta-controlplane.log
+      level: info
+
+    connections:
+      falkordb:
+        type: redis
+        url: redis://falkordb.fracta.svc:6379
+        graph_name: fracta_knowledge
+
+    runtime:
+      backend: kubernetes
+      staging_dir: /workspace/staging
+      kubernetes:
+        namespace: fracta
+        image: fracta/agent:latest
+        image_pull_policy: Never
+        service_account: fracta-agent
+        pvc: fracta-workspace
+        pvc_mount_path: /workspace
+        labels:
+          app: fracta-agent
+        resources:
+          cpu_request: "500m"
+          cpu_limit: "2"
+          memory_request: "512Mi"
+          memory_limit: "2Gi"
+        job_ttl_seconds: 300
+      state:
+        driver: postgres
+        postgres:
+          dsn: "postgres://fracta:${POSTGRES_PASSWORD}@postgres.fracta.svc:5432/fracta?sslmode=disable"
+          max_conns: 20
+          min_conns: 2
+          max_conn_lifetime: "30m"
+          max_conn_idle_time: "5m"
+      queue:
+        backend: postgres
+        workers: 2
+        lease_timeout: "30m"
+
+    gateway:
+      url: http://fracta-gateway.fracta.svc:8080
+      listen: ":8080"
+
+    control_plane_api:
+      listen: ":9090"
+      url: http://fracta-controlplane.fracta.svc:9090
+
+    reaper:
+      interval: 30s
+      max_age: 4h
+
+    project:
+      default_base_branch: main
+      allowed_tools:
+        - "Bash(*)"
+        - "Read(*)"
+        - "Write(*)"
+        - "Edit(*)"
+        - "Glob(*)"
+        - "Grep(*)"
+
+    agents:
+      default_runtime: claude
+      default_mode: batch
+      agent_runtimes:
+        claude:
+          adapter: claude
+          model: global.anthropic.claude-sonnet-4-6
+          model_tiers:
+            heavy: global.anthropic.claude-opus-4-6-v1
+            medium: global.anthropic.claude-sonnet-4-6
+            light: global.anthropic.claude-haiku-4-5-20251001-v1:0
+          auth_profile: bedrock
+        codex:
+          adapter: codex
+          model: o4-mini
+          auth_profile: openai_secret
+        opencode:
+          adapter: opencode
+          model: amazon-bedrock/au.anthropic.claude-sonnet-4-6
+          model_tiers:
+            heavy: amazon-bedrock/au.anthropic.claude-opus-4-6-v1
+            medium: amazon-bedrock/au.anthropic.claude-sonnet-4-6
+            light: amazon-bedrock/au.anthropic.claude-haiku-4-5-20251001-v1:0
+          auth_profile: opencode_bedrock
+
+    auth:
+      credentials:
+        profiles:
+          bedrock:
+            auth_origins:
+              proxy:
+                type: http_header_token
+                scope: agent_runtime
+                request:
+                  method: HEAD
+                  url: https://ai-proxy.example.com
+                  headers:
+                    X-AWS-Region: "${AWS_REGION}"
+                extract:
+                  header: x-bedrock-token
+            runtime_auth_resolvers:
+              bedrock_helper:
+                type: command
+                command: /usr/local/bin/fetch-bedrock-token
+                ttl_ms: 60000
+                order: [proxy]
+            env:
+              CLAUDE_CODE_USE_BEDROCK: "1"
+              CLAUDE_CODE_SKIP_BEDROCK_AUTH: "1"
+              AWS_REGION: "ap-southeast-2"
+            assertions:
+              require_env: [AWS_REGION]
+              forbid_env: [CLAUDE_CODE_SIMPLE]
+            default_binding:
+              type: claude_api_key_helper
+              runtime_auth_resolver: bedrock_helper
+          openai_secret:
+            auth_origins:
+              api_key:
+                type: secret_env
+                scope: any
+                env_name: OPENAI_API_KEY
+                secret_ref:
+                  name: openai-api
+                  key: api-key
+            runtime_auth_resolvers: {}
+            default_binding:
+              type: bearer_env
+              auth_origin: api_key
+              env_name: OPENAI_API_KEY
+          opencode_bedrock:
+            auth_origins:
+              seeded_token:
+                type: secret_env
+                scope: any
+                env_name: AWS_BEARER_TOKEN_BEDROCK
+                secret_ref:
+                  name: fracta-auth
+                  key: bearer-token
+            env:
+              AWS_REGION: "ap-southeast-2"
+            default_binding:
+              type: bearer_env
+              auth_origin: seeded_token
+              env_name: AWS_BEARER_TOKEN_BEDROCK
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fracta-controlplane
+  namespace: fracta
+  labels:
+    app: fracta
+    component: fracta-controlplane
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fracta
+      component: fracta-controlplane
+  template:
+    metadata:
+      labels:
+        app: fracta
+        component: fracta-controlplane
+    spec:
+      serviceAccountName: fracta-agent
+      containers:
+        - name: fracta-controlplane
+          image: fracta/agent:latest
+          imagePullPolicy: Never
+          args:
+            - fracta
+            - serve
+            - --control-plane-api-only
+            - --config
+            - /etc/fracta/fracta-k8s.yaml
+          ports:
+            - containerPort: 9090
+              name: http
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secrets
+                  key: password
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "1"
+          volumeMounts:
+            - name: config
+              mountPath: /etc/fracta
+              readOnly: true
+            - name: workspace
+              mountPath: /workspace
+      volumes:
+        - name: config
+          configMap:
+            name: fracta-controlplane-config
+        - name: workspace
+          persistentVolumeClaim:
+            claimName: fracta-workspace
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fracta-controlplane
+  namespace: fracta
+  labels:
+    app: fracta
+    component: fracta-controlplane
+spec:
+  type: LoadBalancer
+  selector:
+    app: fracta
+    component: fracta-controlplane
+  ports:
+    - port: 9090
+      targetPort: http
+      name: http

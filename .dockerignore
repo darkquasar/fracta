@@ -1,0 +1,9 @@
+.git
+.fracta
+.claude
+bin
+.dev-log
+research
+tasks
+*.md
+!go.md

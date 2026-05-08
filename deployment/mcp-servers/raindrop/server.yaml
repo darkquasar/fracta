@@ -1,0 +1,50 @@
+id: raindrop
+name: Raindrop.io
+category: knowledge
+status: documented
+description: Official hosted MCP for bookmarks, collections, tags, highlights, and saved page content.
+upstream:
+  type: official
+  url: https://help.raindrop.io/integrations/mcp
+auth:
+  modes:
+    - oauth
+    - bearer_token
+  env_required_for_bearer:
+    - RAINDROP_TOKEN
+variants:
+  remote_oauth:
+    transport: streamable-http
+    url: https://api.raindrop.io/rest/v2/ai/mcp
+    auth: oauth
+    fracta_native: blocked_until_gateway_oauth
+  remote_bearer:
+    transport: streamable-http
+    url: https://api.raindrop.io/rest/v2/ai/mcp
+    auth: bearer_token
+    headers:
+      Authorization: Bearer ${RAINDROP_TOKEN}
+  local_proxy:
+    transport: stdio
+    command: npx
+    args:
+      - -y
+      - mcp-remote
+      - https://api.raindrop.io/rest/v2/ai/mcp
+    auth: oauth_via_mcp_remote
+support:
+  local_process: supported_with_bearer_or_local_proxy
+  docker_compose: supported_with_bearer_token
+  kubernetes: supported_with_bearer_token_secret
+docker:
+  dockerfile: ""
+  build_target: ""
+  load_target: ""
+verification:
+  tested_on: ""
+  smoke_test: list_tools
+  expected_tools_contains:
+    - find_bookmarks
+    - fetch_bookmark_content
+    - find_highlights
+notes: Strong bookmark-gardening target. It is usable before fracta OAuth if users provide a Raindrop API token as a bearer token.

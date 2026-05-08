@@ -1,0 +1,112 @@
+# ===========================================================================
+# gateway.yaml — Docker Compose Gateway (Server-Side)
+# ===========================================================================
+#
+# This config runs INSIDE the gateway container. The gateway owns the
+# agent-facing MCP tool surface:
+#   - Proxies backend MCP tools to agents via HTTP
+#   - Runs the strategy engine (via external sidecar socket)
+#   - Provides graph and ontology tools
+#   - Does NOT own agent lifecycle (that's the control plane)
+#
+# Agents connect to this container via GatewayURL:
+#   http://gateway:8080/agents/{task}/mcp
+#
+# The strategy runner runs as a separate container sharing a Unix socket
+# volume with this gateway container (mirrors the K8s sidecar pattern).
+#
+# This file is bind-mounted into the container at /etc/fracta/gateway.yaml
+# by deployment/docker-compose/docker-compose.yml.
+# ===========================================================================
+
+
+# ---------------------------------------------------------------------------
+# Logging
+# ---------------------------------------------------------------------------
+
+logging:
+  file: /workspace/logs/fracta-gateway.log
+  level: info
+
+
+# ---------------------------------------------------------------------------
+# External Connections
+# ---------------------------------------------------------------------------
+# Container-internal DNS names (resolved by Docker Compose networking).
+
+connections:
+  falkordb:
+    type: redis
+    url: redis://falkordb:6379
+    graph_name: fracta_knowledge
+
+
+# ---------------------------------------------------------------------------
+# Runtime
+# ---------------------------------------------------------------------------
+# The gateway needs Postgres access for reading agent state and mailbox,
+# but does NOT own lifecycle (no backend, no queue, no workers).
+
+runtime:
+  backend: local
+  staging_dir: /workspace/staging
+  state:
+    driver: postgres
+    postgres:
+      dsn: "postgres://fracta:fracta@postgres:5432/fracta?sslmode=disable"
+
+
+# ---------------------------------------------------------------------------
+# Gateway
+# ---------------------------------------------------------------------------
+# url: the externally-reachable gateway URL (used in agent WorkspaceConfig).
+# listen: the bind address for this gateway's HTTP server.
+
+gateway:
+  url: http://gateway:8080
+  listen: ":8080"
+
+
+# ---------------------------------------------------------------------------
+# Strategy
+# ---------------------------------------------------------------------------
+# The strategy runner is a separate container sharing /tmp via a socket
+# volume. The gateway connects to the runner's Unix socket using
+# --strategy-socket-mode external (set in deployment/docker-compose/docker-compose.yml).
+
+strategy:
+  dir: /opt/fracta/strategies
+  pool_size: 1
+
+
+# ---------------------------------------------------------------------------
+# Ontology
+# ---------------------------------------------------------------------------
+# Knowledge graph schema definitions. Loaded at startup to seed the graph
+# with universal layer types, relationships, and constraints.
+# Paths are relative to WORKDIR (/workspace), which is the bind-mounted repo root.
+
+ontology:
+  schemas:
+    - path: graph-schema/core
+    - path: graph-schema/threat-hunting
+    - path: graph-schema/fracta-mcp-gateway
+
+
+# ---------------------------------------------------------------------------
+# MCP Servers
+# ---------------------------------------------------------------------------
+# Backend MCP tool servers that this gateway proxies to agents.
+# These run as separate containers in the compose stack and are reached
+# via Docker Compose internal DNS.
+
+mcp_servers:
+  servers:
+    elastic:
+      remote:
+        url: http://elastic-mcp:8000/mcp
+        transport: streamable-http
+    vendor:
+      remote:
+        url: http://vendor-mcp:3000/sse
+        transport: sse

@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: fracta-workspace-pv
+  labels:
+    app: fracta
+spec:
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: fracta-local
+  hostPath:
+    path: ${HOME}/fracta-workspace
+    type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: fracta-workspace
+  namespace: fracta
+  labels:
+    app: fracta
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: fracta-local
+  resources:
+    requests:
+      storage: 5Gi

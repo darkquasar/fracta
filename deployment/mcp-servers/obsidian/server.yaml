@@ -1,0 +1,44 @@
+id: obsidian
+name: Obsidian
+category: knowledge
+status: candidate
+description: Community MCP for local Obsidian vault read/write/search via the Obsidian Local REST API plugin.
+upstream:
+  type: community
+  url: https://github.com/cyanheads/obsidian-mcp-server
+auth:
+  modes:
+    - env_token
+  env_required:
+    - OBSIDIAN_API_KEY
+    - OBSIDIAN_BASE_URL
+variants:
+  local:
+    transport: stdio
+    command: npx
+    args:
+      - -y
+      - obsidian-mcp-server
+    env:
+      required:
+        - OBSIDIAN_API_KEY
+        - OBSIDIAN_BASE_URL
+      optional:
+        - OBSIDIAN_VERIFY_SSL
+        - OBSIDIAN_ENABLE_CACHE
+support:
+  local_process: supported_candidate
+  docker_compose: not_recommended_local_desktop_dependency
+  kubernetes: not_supported_local_desktop_dependency
+docker:
+  dockerfile: ""
+  build_target: ""
+  load_target: ""
+verification:
+  tested_on: ""
+  smoke_test: list_tools
+  expected_tools_contains:
+    - obsidian_read_note
+    - obsidian_global_search
+    - obsidian_update_note
+notes: Highest-priority local-first knowledge garden. Requires Obsidian running locally with the Local REST API plugin enabled.
