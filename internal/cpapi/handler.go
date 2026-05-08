@@ -268,6 +268,11 @@ func (h *handler) handleIngestEvents(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid request body: %v", err)
 		return
 	}
+	if len(req.Events) == 0 {
+		writeJSON(w, http.StatusAccepted, &IngestEventsResponse{Accepted: 0, Dropped: 0})
+		return
+	}
+
 	resp, err := h.client.IngestEvents(r.Context(), req, task)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "%v", err)
