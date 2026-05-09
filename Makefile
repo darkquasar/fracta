@@ -57,7 +57,7 @@ compose-up:
 	docker compose -f $(COMPOSE_FILE) up -d
 
 compose-up-op:
-	op run --env-file .op-hunt-env -- docker compose -f $(COMPOSE_FILE) up -d
+	op run --env-file .op-env -- docker compose -f $(COMPOSE_FILE) up -d
 
 compose-down:
 	docker compose -f $(COMPOSE_FILE) down
@@ -112,7 +112,7 @@ k8s-secrets:
 	  --from-literal=password=fracta-dev-password \
 	  --dry-run=client -o yaml | kubectl apply -f -
 	@echo "Creating MCP secrets from 1Password..."
-	op run --env-file .op-hunt-env -- sh -c '\
+	op run --env-file .op-env -- sh -c '\
 	  kubectl create secret generic elastic-mcp-secrets \
 	    --namespace fracta \
 	    --from-literal=url="$$ELASTIC_URL" \

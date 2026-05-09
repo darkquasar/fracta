@@ -70,7 +70,7 @@ func parseNDJSONResponse(text string) ([]map[string]any, error) {
 	return items, nil
 }
 
-// parseTabularTextResponse parses vendor Query prose+row output.
+// parseTabularTextResponse parses prose-headed text-table responses.
 // Supports two formats:
 //
 // Format A (pipe-delimited):
