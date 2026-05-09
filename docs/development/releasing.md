@@ -85,7 +85,7 @@ A successful run takes ~5-8 minutes:
 
 - Build job: ~2-3 minutes per platform (parallel)
 - Docker job: ~3-5 minutes (multi-arch is slower due to QEMU emulation)
-- Release job: <1 minute (just attaches artifacts)
+- Release job: under a minute (just attaches artifacts)
 
 ### 5. Verify the release
 
@@ -121,7 +121,7 @@ Attached to the GitHub Release page:
 | `fracta-vX.Y.Z-darwin-amd64` | macOS Intel |
 | `fracta-vX.Y.Z-darwin-arm64` | macOS Apple Silicon |
 
-Each binary has a matching `<filename>.sha256` checksum file.
+Each binary has a matching `.sha256` checksum file.
 
 Build details (applied uniformly to all four binaries):
 
@@ -202,7 +202,7 @@ gh workflow run release.yml --ref v0.2.0
 For a critical bug in v0.2.0 that needs a v0.2.1 release while v0.3.0 work continues on main:
 
 1. Branch from the v0.2.0 tag: `git checkout -b release/v0.2 v0.2.0`
-2. Cherry-pick the fix from main: `git cherry-pick <fix-sha>`
+2. Cherry-pick the fix from main: `git cherry-pick FIX_SHA`
 3. Push the branch: `git push origin release/v0.2`
 4. Tag from the branch: `git tag -a v0.2.1 -m "v0.2.1 — fix X" && git push origin v0.2.1`
 

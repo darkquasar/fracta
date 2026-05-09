@@ -112,7 +112,7 @@ There's no separate `*_e2e_test.go` flavor — the K8s smoke test (`scripts/k8s-
 
 ## Test data conventions
 
-- **Goldens** live alongside the test in `testdata/<test-name>/<scenario>.golden.<ext>`. Update with `go test ./... -update` (where the test supports an `-update` flag — varies by package).
+- **Goldens** live alongside the test under `testdata/` (per-test subdirectory + scenario name + `.golden.json` or `.golden.txt`). Update with `go test ./... -update` (where the test supports an `-update` flag — varies by package).
 - **Fixtures** for MCP protocol tests live in `testdata/` directories. Read-only inputs.
 - **Temp directories** are created per-test via `t.TempDir()`. Auto-cleanup; never leaked.
 
