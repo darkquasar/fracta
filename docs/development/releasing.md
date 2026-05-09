@@ -208,6 +208,92 @@ For a critical bug in v0.2.0 that needs a v0.2.1 release while v0.3.0 work conti
 
 The CI workflow runs against the branch push; the release workflow runs against the tag.
 
+## Quick reference card
+
+The whole release flow boiled down to copy-pasteable commands. Useful when you've done it before and just need a refresher.
+
+### Cut a stable release
+
+```bash
+# 1. Verify CI is green on the most recent push to main
+gh run list --workflow=ci.yml --limit 5
+
+# 2. Tag and push (replace v0.1.0 with your version)
+git tag -a v0.1.0 -m "v0.1.0"
+git push origin v0.1.0
+
+# 3. Watch the release workflow run (~5–8 min)
+gh run watch
+
+# 4. Verify the GitHub Release
+gh release view v0.1.0
+
+# 5. Verify the Docker image
+docker pull ghcr.io/darkquasar/fracta:v0.1.0
+docker run --rm ghcr.io/darkquasar/fracta:v0.1.0 fracta --version
+```
+
+### Cut a pre-release
+
+Same flow, but use a pre-release tag (`-rc1`, `-beta.1`, etc.). Pre-releases skip the `latest` Docker tag.
+
+```bash
+git tag -a v0.2.0-rc1 -m "v0.2.0-rc1"
+git push origin v0.2.0-rc1
+gh run watch
+```
+
+### Inspect / debug
+
+```bash
+# List recent runs of the release workflow
+gh run list --workflow=release.yml --limit 5
+
+# View a specific run's full log
+gh run view <run-id> --log
+
+# View only the failed steps' logs
+gh run view <run-id> --log-failed
+
+# Re-run only the failed jobs (faster than full rerun)
+gh run rerun <run-id> --failed
+
+# Cancel a stuck run
+gh run cancel <run-id>
+```
+
+### Recover from a botched release
+
+```bash
+# Delete the local tag
+git tag -d v0.1.0
+
+# Delete the remote tag
+git push --delete origin v0.1.0
+
+# Delete the GitHub Release (if one was published)
+gh release delete v0.1.0 --yes
+
+# Once main has the fix, re-tag with the same version
+git tag -a v0.1.0 -m "v0.1.0"
+git push origin v0.1.0
+```
+
+### Download a published binary to test
+
+```bash
+# All artifacts for a release
+gh release download v0.1.0
+
+# Just one platform
+gh release download v0.1.0 -p 'fracta-*-darwin-arm64'
+
+# Verify the checksum
+shasum -a 256 -c fracta-v0.1.0-darwin-arm64.sha256
+```
+
+---
+
 ## Yanking a release
 
 GitHub Releases can be deleted, but tags persist in the repo's history and in any clones. To "yank" a release:
