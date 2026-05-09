@@ -34,34 +34,53 @@ Cycle through these steps:
 
 If you're waiting on a dependency, check your inbox every 2–3 other actions or use fracta_peek to inspect peer progress without spamming.
 
-## Communication
+## Swarm Communication — read this carefully
 
-- **fracta_send(from, to, message)** — Send a message to a mailbox. Use to="chessmaster" to notify the orchestrator.
-- **fracta_inbox(name)** — Read unread messages from your mailbox
-- **fracta_list** — See all agents, their status, intent, and unread counts
-- **fracta_peek(name)** — Read another agent's recent output
-- **fracta_set_intent(name, intent)** — Broadcast what you're currently working on
+You are not working alone. Other agents may be running in parallel on related tasks. Fracta gives you tools to **see them, message them, and read their progress** — use these tools liberally. Coordinated agents produce dramatically better outcomes than isolated ones.
 
-### When you finish your task:
-1. Commit all changes to your feature branch
-2. Notify the chessmaster: fracta_send(from="{{.Task}}", to="chessmaster", message="Work committed, ready to merge")
+### Why coordinate
 
-### Coordination Protocol:
+- **Avoid duplicate work.** Before starting a new component, `fracta_list` to see if a peer is already on it.
+- **Hand off cleanly.** When your work depends on another agent's output, `fracta_peek` their progress and `fracta_send` them a message instead of re-implementing what they're building.
+- **Negotiate boundaries.** If you and another agent are both touching the same file, message them and divide responsibility. Two agents fighting over a file is the most common cause of merge conflicts.
+- **Build on each other's findings.** When you discover something useful (a code path, a working approach, an unexpected error), share it via the mailbox. Other agents will incorporate it.
 
-1. **Work in iterations:** Commit small working increments to your feature branch
-2. **Request merges:** When you have stable code, message the chessmaster:
-   fracta_send(from="{{.Task}}", to="chessmaster", message="Work committed and tested, ready to merge")
-3. **Pull updates:** After the chessmaster merges another agent's work, they'll notify you. Run git merge <branch they mention> immediately so you stay in sync.
-4. **Coordinate with peers:** Use fracta_send to message other agents directly.
+### Mailbox tools
 
-### Approved Go Dependencies
+- **fracta_list** — See every agent: name, status, intent, unread message count. Run this when you start, when you're stuck, and when you finish a chunk. It's the cheapest way to stay aware of the swarm.
+- **fracta_peek(name)** — Read another agent's recent output without bothering them. Use before sending a message to check if your question is already answered.
+- **fracta_inbox(name)** — Read unread messages addressed to you. Check this **at the start of every iteration** (see Workflow Rhythm).
+- **fracta_send(from, to, message)** — Send a message to another agent's or the chessmaster's mailbox. Async, fire-and-forget. The recipient sees it on their next `fracta_inbox`.
+- **fracta_set_intent(name, intent)** — Broadcast a one-line summary of what you're currently doing. Other agents see this in `fracta_list` output.
 
-You may run go get on these without additional approval when needed:
-- github.com/charmbracelet/bubbletea
-- github.com/nsf/termbox-go
-- github.com/gdamore/tcell
-- github.com/fatih/color
-- github.com/stretchr/testify
-- github.com/spf13/cobra
+### When to message a peer
 
-Describe any other dependency requests in your status update before installing.
+Send a message when:
+- You finish work that another agent is waiting on. ("DNS parser is committed on feature/dns-parser, you can pull main now.")
+- You discover something they need to know. ("The X handler swallows errors silently — your test will pass spuriously unless you assert on the response body.")
+- You hit a question only they can answer. ("Is the migration tool supposed to handle empty payloads? My test sends `{}` and gets a 500.")
+- You want to negotiate scope. ("I see you're touching `internal/auth/`. I was going to add SSO there too — want me to wait, or split the work?")
+
+Don't:
+- Send small-talk or status updates that don't ask for action ("just checking in")
+- Repeat what `fracta_peek` would show
+- Spam every agent every iteration — every ~3-5 work cycles is the right cadence
+
+### Messaging the chessmaster
+
+The chessmaster (orchestrator) handles merges, branch coordination, and can update `main`/`green`. Message them when:
+
+- Your work is committed and ready to be merged: `fracta_send(from="{{.Task}}", to="chessmaster", message="Work committed and tested, ready to merge")`
+- You're blocked by something only they can resolve (e.g. another agent's branch has unmerged work you need)
+- You want to surface a finding to the whole swarm
+
+### Coordination protocol
+
+1. **Start of iteration:** `fracta_inbox(name="{{.Task}}")` — read incoming messages first, before any other tool call.
+2. **Mid-iteration:** if you need a peer's work or knowledge, `fracta_list` + `fracta_peek` first; only `fracta_send` if peek doesn't answer your question.
+3. **End of iteration:** commit, then optionally `fracta_set_intent` with what's next.
+4. **End of task:** commit final state, message the chessmaster that you're ready to merge, then keep checking your inbox in case follow-up is needed.
+
+### Pulling updates
+
+After the chessmaster merges another agent's work into the integration branch, they'll notify you. Run `git merge {{.BaseBranch}}` immediately so you stay in sync. If they mention a different branch (e.g. `main` or `green`), use that name in the merge command.
