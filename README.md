@@ -6,25 +6,35 @@ Multi-agent orchestration for Claude Code, Codex, and OpenCode. Spawn parallel A
 
 ## How It Works
 
-```
-Your AI CLI                               fracta server-side
-┌───────────────────┐                    ┌───────────────────────────┐
-│ Claude / Codex /  │       stdio        │ Control Plane (:9090)     │
-│ OpenCode          │   ┌────────┐  HTTP │   spawn / kill / queue    │
-│                   ├──>│ fracta   ├──────>│                           │
-│                   │   │ serve  │       │ Gateway (:8080)           │
-│ fracta spawn (CLI) ─┼──>│        │       │   MCP tools / graph /     │
-└───────────────────┘   └────────┘       │   strategies              │
-                                         └─────────────┬─────────────┘
-                                                       │ spawns
-                                                       v
-                                         ┌───────────────────────────┐
-                                         │ Agent (subprocess or pod) │
-                                         │   connects to gateway MCP │
-                                         └───────────────────────────┘
+```mermaid
+flowchart LR
+    subgraph user["Your machine"]
+        CLI["Claude / Codex / OpenCode"]
+        SERVE["fracta serve<br/>(thin MCP client)"]
+        SPAWN["fracta spawn / list / say (CLI)"]
+        CLI -->|stdio| SERVE
+    end
+
+    subgraph server["fracta server-side"]
+        CP["Control Plane :9090<br/>spawn · kill · queue · lifecycle"]
+        GW["MCP Gateway :8080<br/>tools · graph · strategies"]
+        SR["Strategy Runner<br/>(python sidecar)"]
+        SS[("State Store")]
+        KG[("Knowledge Graph<br/>FalkorDB")]
+        REG[("MCP Registry")]
+        CP --> SS
+        GW --> KG
+        GW --> REG
+        GW <--> SR
+    end
+
+    SERVE -->|HTTP| CP
+    SPAWN -->|HTTP| CP
+    CP -->|spawns| AGENT["Agent<br/>(subprocess or pod)"]
+    AGENT -->|MCP tools| GW
 ```
 
-The thin client (`fracta serve`) is always the same. Only the infrastructure behind the control plane changes.
+The thin client (`fracta serve`) is always the same. Only the infrastructure behind the control plane changes — see [Architecture](docs/introduction/architecture.md) for the full breakdown.
 
 ## Deployment Modes
 
