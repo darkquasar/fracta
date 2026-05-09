@@ -1,0 +1,124 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "Fracta",
+  "description": "Swarm Intelligence Orchestration",
+  "colors": {
+    "primary": "#5B6CFF",
+    "light": "#8BA0FF",
+    "dark": "#3A4ACC"
+  },
+  "navigation": {
+    "groups": [
+      {
+        "group": "Introduction",
+        "pages": [
+          "introduction/what-is-fracta",
+          "introduction/architecture",
+          "introduction/glossary"
+        ]
+      },
+      {
+        "group": "Getting Started",
+        "pages": [
+          "getting-started/installation",
+          "getting-started/first-agent",
+          "getting-started/core-concepts"
+        ]
+      },
+      {
+        "group": "Guides",
+        "pages": [
+          {
+            "group": "Deployment",
+            "pages": [
+              "guides/deployment/overview",
+              "guides/deployment/local-process",
+              "guides/deployment/docker-compose",
+              "guides/deployment/kubernetes",
+              "guides/deployment/kubernetes-runbook"
+            ]
+          },
+          {
+            "group": "Authentication",
+            "pages": [
+              "guides/authentication/credential-pipeline",
+              "guides/authentication/runtime-configuration",
+              "guides/authentication/mcp-server-auth"
+            ]
+          },
+          {
+            "group": "Strategies",
+            "pages": [
+              "guides/strategies/overview",
+              "guides/strategies/contracts",
+              "guides/strategies/bindings",
+              "guides/strategies/response-adapters"
+            ]
+          }
+        ]
+      },
+      {
+        "group": "Reference",
+        "pages": [
+          {
+            "group": "CLI",
+            "pages": [
+              "reference/cli/overview",
+              "reference/cli/init",
+              "reference/cli/spawn",
+              "reference/cli/list",
+              "reference/cli/peek",
+              "reference/cli/say",
+              "reference/cli/watch",
+              "reference/cli/merge",
+              "reference/cli/kill",
+              "reference/cli/serve",
+              "reference/cli/controlplane",
+              "reference/cli/worker",
+              "reference/cli/host-mcp",
+              "reference/cli/auth",
+              "reference/cli/mcp",
+              "reference/cli/registry",
+              "reference/cli/graph"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "reference/configuration/fracta-yaml",
+              "reference/configuration/mcp-servers-catalog",
+              "reference/configuration/logging"
+            ]
+          },
+          "reference/events"
+        ]
+      },
+      {
+        "group": "Operations",
+        "pages": ["operations/troubleshooting"]
+      },
+      {
+        "group": "Contributing",
+        "pages": [
+          "contributing/overview",
+          "contributing/adding-runtime",
+          "contributing/changelog"
+        ]
+      }
+    ]
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "GitHub",
+        "href": "https://github.com/darkquasar/fracta"
+      }
+    ]
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/darkquasar/fracta"
+    }
+  }
+}
