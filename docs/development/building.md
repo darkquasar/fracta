@@ -142,3 +142,4 @@ Tabs vs. spaces in the Makefile. The repo uses tabs; some editors silently conve
 
 **Slow `go test ./...`**
 The first run rebuilds all dependencies; subsequent runs are fast (Go caches packages). To force a clean rebuild: `go clean -testcache && go test ./...`. To bypass the cache for a single run: `go test ./... -count=1`.
+

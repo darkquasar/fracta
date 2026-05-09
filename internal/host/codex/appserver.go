@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/darkquasar/fracta/internal/host"
 	"nhooyr.io/websocket"
@@ -205,6 +206,13 @@ func NewAppServerSession(workdir, model, logPath string) (host.StreamSession, er
 }
 
 // bootstrapThread sends thread/start and waits for thread/started notification.
+//
+// Returns "app-server exited before thread/started" deterministically if the
+// subprocess dies before bootstrap completes — regardless of whether the death
+// happens before or after the stdin write. The race is resolved by checking
+// s.done when the write fails: a write failure on a dead subprocess is the
+// same condition as a clean exit before thread/started, and the caller
+// shouldn't have to distinguish them.
 func (s *AppServerSession) bootstrapThread() error {
 	req := jsonRPCRequest{
 		JSONRPC: "2.0",
@@ -214,7 +222,18 @@ func (s *AppServerSession) bootstrapThread() error {
 	}
 
 	if err := s.writeRequest(req); err != nil {
-		return fmt.Errorf("sending thread/start: %w", err)
+		// If the subprocess has already exited or is exiting, surface the
+		// canonical "exited before thread/started" error so callers and tests
+		// don't need to distinguish between two timing-equivalent failure
+		// modes. We wait briefly for s.done because the reader goroutine
+		// closes it via cmd.Wait(), which can lag the write failure by a
+		// few milliseconds even when the subprocess has already died.
+		select {
+		case <-s.done:
+			return fmt.Errorf("app-server exited before thread/started")
+		case <-time.After(500 * time.Millisecond):
+			return fmt.Errorf("sending thread/start: %w", err)
+		}
 	}
 
 	// Wait for thread/started notification.
