@@ -99,6 +99,15 @@
         "pages": ["operations/troubleshooting"]
       },
       {
+        "group": "Development",
+        "pages": [
+          "development/overview",
+          "development/building",
+          "development/ci-and-tests",
+          "development/releasing"
+        ]
+      },
+      {
         "group": "Contributing",
         "pages": [
           "contributing/overview",

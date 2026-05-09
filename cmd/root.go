@@ -49,6 +49,14 @@ func Execute() error {
 	return rootCmd.Execute()
 }
 
+// SetVersion attaches the binary version to the root command. Called from main.
+// The version string is set at build time via:
+//
+//	go build -ldflags "-X main.version=v1.2.3" .
+func SetVersion(v string) {
+	rootCmd.Version = v
+}
+
 // FindProjectRoot walks up from start looking for a .fracta directory.
 func FindProjectRoot(start string) (string, error) {
 	if start == "" {
