@@ -400,7 +400,9 @@ func buildK8sBackend(cfg *config.Config) (runtime.Backend, error) {
 			MemoryRequest: k8s.Resources.MemoryRequest,
 			MemoryLimit:   k8s.Resources.MemoryLimit,
 		},
-		JobTTLSeconds: int32(k8s.JobTTLSeconds),
+		JobTTLSeconds:     int32(k8s.JobTTLSeconds),
+		ExtraVolumes:      k8s.ExtraVolumes,
+		ExtraVolumeMounts: k8s.ExtraVolumeMounts,
 	}
 
 	return runtime.NewKubernetesBackend(clientset, ns, jobCfg), nil

@@ -11,6 +11,7 @@ import (
 
 	"github.com/darkquasar/fracta/internal/fractalog"
 	"gopkg.in/yaml.v3"
+	corev1 "k8s.io/api/core/v1"
 )
 
 var envVarPattern = regexp.MustCompile(`\$\{([A-Za-z_][A-Za-z0-9_]*)\}`)
@@ -42,19 +43,26 @@ type ResourceConfig struct {
 }
 
 // KubernetesConfig holds all K8s-specific runtime settings.
+//
+// Decoding is routed through sigs.k8s.io/yaml via a custom UnmarshalYAML
+// (see config_k8s.go) so the corev1 types in ExtraVolumes / ExtraVolumeMounts
+// honour their json tags. The yaml tags below are kept for documentation only;
+// the custom unmarshaler ignores them and uses the json tags on k8sConfigJSON.
 type KubernetesConfig struct {
-	Namespace       string            `yaml:"namespace"`
-	Image           string            `yaml:"image"`
-	ImagePullPolicy string            `yaml:"image_pull_policy"` // "Never", "IfNotPresent", "Always"
-	ServiceAccount  string            `yaml:"service_account"`
-	PVC             string            `yaml:"pvc"`
-	PVCMountPath    string            `yaml:"pvc_mount_path"` // pod-side PVC mount (default: "/workspace")
-	Labels          map[string]string `yaml:"labels"`
-	Annotations     map[string]string `yaml:"annotations"`
-	Tolerations     []string          `yaml:"tolerations"`
-	NodeSelector    map[string]string `yaml:"node_selector"`
-	Resources       ResourceConfig    `yaml:"resources"`
-	JobTTLSeconds   int               `yaml:"job_ttl_seconds"`
+	Namespace         string               `yaml:"namespace"`
+	Image             string               `yaml:"image"`
+	ImagePullPolicy   string               `yaml:"image_pull_policy"` // "Never", "IfNotPresent", "Always"
+	ServiceAccount    string               `yaml:"service_account"`
+	PVC               string               `yaml:"pvc"`
+	PVCMountPath      string               `yaml:"pvc_mount_path"` // pod-side PVC mount (default: "/workspace")
+	Labels            map[string]string    `yaml:"labels"`
+	Annotations       map[string]string    `yaml:"annotations"`
+	Tolerations       []string             `yaml:"tolerations"`
+	NodeSelector      map[string]string    `yaml:"node_selector"`
+	Resources         ResourceConfig       `yaml:"resources"`
+	JobTTLSeconds     int                  `yaml:"job_ttl_seconds"`
+	ExtraVolumes      []corev1.Volume      `yaml:"extra_volumes,omitempty"`
+	ExtraVolumeMounts []corev1.VolumeMount `yaml:"extra_volume_mounts,omitempty"`
 }
 
 // StateConfig controls where fracta persists agent/session state.
@@ -874,6 +882,9 @@ func ParseConfig(data []byte) (*Config, error) {
 func (c *Config) Validate() error {
 	if c.ResolvedProfile() == "kubernetes" && c.Runtime.StagingDir == "" {
 		return fmt.Errorf("runtime.staging_dir must be set when profile is kubernetes")
+	}
+	if err := c.Runtime.Kubernetes.Validate(); err != nil {
+		return err
 	}
 	for name, entry := range c.MCPServers.Servers {
 		remote, ok := entry.EffectiveRemote()

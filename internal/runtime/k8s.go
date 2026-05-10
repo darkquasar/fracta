@@ -50,6 +50,11 @@ type KubernetesJobConfig struct {
 	NodeSelector    map[string]string
 	Resources       ResourceRequirements
 	JobTTLSeconds   int32
+	// ExtraVolumes / ExtraVolumeMounts are appended to every spawned agent
+	// pod's volumes and main-container volumeMounts respectively. Init
+	// containers receive no extras (spec-42 §8). Empty slices = no effect.
+	ExtraVolumes      []corev1.Volume
+	ExtraVolumeMounts []corev1.VolumeMount
 }
 
 // KubernetesBackend submits agents as K8s Jobs via client-go.
@@ -318,6 +323,12 @@ func (b *KubernetesBackend) Spawn(ctx context.Context, opts SpawnOpts) (AgentHan
 		})
 	}
 
+	// Operator-supplied extra mounts (spec-42 §8). Appended last so user
+	// entries cannot accidentally shadow built-in mounts.
+	if len(b.config.ExtraVolumeMounts) > 0 {
+		volumeMounts = append(volumeMounts, b.config.ExtraVolumeMounts...)
+	}
+
 	container.VolumeMounts = volumeMounts
 
 	podSpec := corev1.PodSpec{
@@ -371,6 +382,11 @@ func (b *KubernetesBackend) Spawn(ctx context.Context, opts SpawnOpts) (AgentHan
 				},
 			},
 		})
+	}
+	// Operator-supplied extra volumes (spec-42 §8). Appended last so user
+	// entries cannot accidentally shadow built-in volumes.
+	if len(b.config.ExtraVolumes) > 0 {
+		volumes = append(volumes, b.config.ExtraVolumes...)
 	}
 	podSpec.Volumes = volumes
 
@@ -768,6 +784,16 @@ func (b *KubernetesBackend) SpawnStreamPod(ctx context.Context, opts StreamPodOp
 				Secret: &corev1.SecretVolumeSource{SecretName: authSecretName},
 			},
 		})
+	}
+
+	// Operator-supplied extras (spec-42 §8). Appended last so user entries
+	// cannot accidentally shadow built-in volumes/mounts. Init containers
+	// receive no extras — their mount set stays minimal by design.
+	if len(b.config.ExtraVolumeMounts) > 0 {
+		volumeMounts = append(volumeMounts, b.config.ExtraVolumeMounts...)
+	}
+	if len(b.config.ExtraVolumes) > 0 {
+		volumes = append(volumes, b.config.ExtraVolumes...)
 	}
 
 	container.VolumeMounts = volumeMounts

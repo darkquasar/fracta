@@ -12,7 +12,9 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	runtimeapi "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/fake"
+	ktesting "k8s.io/client-go/testing"
 )
 
 func TestKubernetesBackend_SpawnCreatesJob(t *testing.T) {
@@ -1842,4 +1844,175 @@ func TestKillStreamPod_PodGone_StillCleansUpResources(t *testing.T) {
 	if err == nil {
 		t.Error("Secret still exists — should have been cleaned up even though pod was missing")
 	}
+}
+
+// --- spec-42 §8: extra_volumes / extra_volume_mounts plumbing ---
+
+func makeAuthHelpersExtras() ([]corev1.Volume, []corev1.VolumeMount) {
+	mode := int32(0755)
+	vols := []corev1.Volume{
+		{
+			Name: "auth-helpers",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{Name: "fracta-auth-helpers"},
+					DefaultMode:          &mode,
+				},
+			},
+		},
+	}
+	mounts := []corev1.VolumeMount{
+		{Name: "auth-helpers", MountPath: "/opt/fracta/auth-helpers", ReadOnly: true},
+	}
+	return vols, mounts
+}
+
+// TestSpawn_WithExtraVolumes confirms operator-supplied extras land on the
+// spawned Job's pod spec: present in podSpec.Volumes and the main container's
+// VolumeMounts, absent from the workspace-init initContainer (spec-42 §8).
+func TestSpawn_WithExtraVolumes(t *testing.T) {
+	vols, mounts := makeAuthHelpersExtras()
+	client := fake.NewSimpleClientset()
+	b := NewKubernetesBackend(client, "test-ns", KubernetesJobConfig{
+		Image:             "fracta/agent:latest",
+		ExtraVolumes:      vols,
+		ExtraVolumeMounts: mounts,
+		// Force an initContainer path by injecting a workspace file.
+	})
+
+	ctx := context.Background()
+	_, err := b.Spawn(ctx, SpawnOpts{
+		ID: "ev-test",
+		WorkspaceFiles: []WorkspaceArtifact{
+			{ConfigMapKey: "f.txt", DestPath: "f.txt", Content: "x"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("Spawn: %v", err)
+	}
+
+	job, err := client.BatchV1().Jobs("test-ns").Get(ctx, "fracta-agent-ev-test", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("get job: %v", err)
+	}
+	podSpec := job.Spec.Template.Spec
+
+	// extras present on pod volumes
+	if !containsVolumeNamed(podSpec.Volumes, "auth-helpers") {
+		t.Errorf("pod volumes missing 'auth-helpers'; got: %v", volumeNames(podSpec.Volumes))
+	}
+	// extras present on main container mounts
+	if !containsMountNamed(podSpec.Containers[0].VolumeMounts, "auth-helpers") {
+		t.Errorf("main container mounts missing 'auth-helpers'; got: %v", mountNames(podSpec.Containers[0].VolumeMounts))
+	}
+	// extras absent from initContainer
+	if len(podSpec.InitContainers) == 0 {
+		t.Fatalf("expected an initContainer (workspace file injection)")
+	}
+	if containsMountNamed(podSpec.InitContainers[0].VolumeMounts, "auth-helpers") {
+		t.Errorf("initContainer mounts must NOT include 'auth-helpers'; got: %v", mountNames(podSpec.InitContainers[0].VolumeMounts))
+	}
+}
+
+// TestSpawn_ExtraVolumesNoEffectWhenEmpty confirms a Spawn without extras
+// produces a Job with no auth-helpers leakage.
+func TestSpawn_ExtraVolumesNoEffectWhenEmpty(t *testing.T) {
+	client := fake.NewSimpleClientset()
+	b := NewKubernetesBackend(client, "test-ns", KubernetesJobConfig{
+		Image: "fracta/agent:latest",
+	})
+	ctx := context.Background()
+	_, err := b.Spawn(ctx, SpawnOpts{ID: "no-extras"})
+	if err != nil {
+		t.Fatalf("Spawn: %v", err)
+	}
+	job, _ := client.BatchV1().Jobs("test-ns").Get(ctx, "fracta-agent-no-extras", metav1.GetOptions{})
+	podSpec := job.Spec.Template.Spec
+	if containsVolumeNamed(podSpec.Volumes, "auth-helpers") {
+		t.Error("pod volumes contain 'auth-helpers' but no extras were configured")
+	}
+	if containsMountNamed(podSpec.Containers[0].VolumeMounts, "auth-helpers") {
+		t.Error("container mounts contain 'auth-helpers' but no extras were configured")
+	}
+}
+
+// TestSpawnStreamPod_WithExtraVolumes confirms extras land on long-lived
+// stream pods too (parity with Spawn). The fake clientset never marks pods
+// Ready on its own — we install a Create reactor that pre-populates Ready
+// status so SpawnStreamPod's wait loop returns immediately.
+func TestSpawnStreamPod_WithExtraVolumes(t *testing.T) {
+	vols, mounts := makeAuthHelpersExtras()
+	client := fake.NewSimpleClientset()
+	client.PrependReactor("create", "pods", func(action ktesting.Action) (bool, runtimeapi.Object, error) {
+		ca := action.(ktesting.CreateAction)
+		pod := ca.GetObject().(*corev1.Pod)
+		pod.Status.Phase = corev1.PodRunning
+		pod.Status.PodIP = "10.0.0.42"
+		pod.Status.Conditions = []corev1.PodCondition{
+			{Type: corev1.PodReady, Status: corev1.ConditionTrue},
+		}
+		return false, pod, nil // false → let default tracker also store the object
+	})
+
+	b := NewKubernetesBackend(client, "test-ns", KubernetesJobConfig{
+		Image:             "fracta/agent:latest",
+		ExtraVolumes:      vols,
+		ExtraVolumeMounts: mounts,
+	})
+
+	ctx := context.Background()
+	_, err := b.SpawnStreamPod(ctx, StreamPodOpts{
+		SpawnOpts: SpawnOpts{ID: "stream-ev", Command: "claude"},
+		Port:      8080,
+	})
+	if err != nil {
+		t.Fatalf("SpawnStreamPod: %v", err)
+	}
+
+	pod, err := client.CoreV1().Pods("test-ns").Get(ctx, "fracta-stream-stream-ev", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("get pod: %v", err)
+	}
+	podSpec := pod.Spec
+
+	if !containsVolumeNamed(podSpec.Volumes, "auth-helpers") {
+		t.Errorf("stream pod volumes missing 'auth-helpers'; got: %v", volumeNames(podSpec.Volumes))
+	}
+	if !containsMountNamed(podSpec.Containers[0].VolumeMounts, "auth-helpers") {
+		t.Errorf("stream pod main mounts missing 'auth-helpers'; got: %v", mountNames(podSpec.Containers[0].VolumeMounts))
+	}
+}
+
+func containsVolumeNamed(vs []corev1.Volume, name string) bool {
+	for _, v := range vs {
+		if v.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
+func containsMountNamed(ms []corev1.VolumeMount, name string) bool {
+	for _, m := range ms {
+		if m.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
+func volumeNames(vs []corev1.Volume) []string {
+	out := make([]string, 0, len(vs))
+	for _, v := range vs {
+		out = append(out, v.Name)
+	}
+	return out
+}
+
+func mountNames(ms []corev1.VolumeMount) []string {
+	out := make([]string, 0, len(ms))
+	for _, m := range ms {
+		out = append(out, m.Name)
+	}
+	return out
 }
