@@ -1,0 +1,12 @@
+# 1Password secret-reference template for the fracta environment.
+#
+# Copy this file to `.op-env` (which is gitignored) and add op:// references
+# for the secrets your local setup needs. `op run` resolves the references
+# at runtime, so the resolved file never lands on disk.
+#
+# Usage: op run --env-file .op-env -- <command>
+# Requires: op CLI >= 2.33.0, 1Password desktop app integration enabled.
+#
+# Each line in your local .op-env should be of the form:
+#
+#   MY_VAR_NAME="op://<vault>/<item>/<field>"
