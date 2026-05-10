@@ -1,0 +1,62 @@
+project:
+  default_base_branch: main
+  allowed_tools:
+    - Read
+    - Edit
+    - Write
+    - Glob
+    - Grep
+    - "Bash(git *)"
+    - "Bash(git add * && git commit *)"
+    - "Bash(git add . && git commit -m *)"
+    - "Bash(git add *)"
+    - "Bash(git commit *)"
+    - "Bash(git merge green)"
+    - "Bash(git merge main)"
+    - "Bash(git merge *)"
+    - "Bash(git status)"
+    - "Bash(git status *)"
+    - "Bash(git diff *)"
+    - "Bash(git log *)"
+    - "Bash(git branch *)"
+    - "Bash(go *)"
+    - "Bash(make *)"
+    - "Bash(mkdir -p * && cd * && go mod init *)"
+    - "Bash(mkdir *)"
+    - "Bash(ls *)"
+    - "Bash(cat *)"
+    - "Bash(ls -a *)"
+    - "Bash(ls -l *)"
+    - "Bash(ls -la *)"
+    - "Bash(cp *)"
+    - "Bash(mv *)"
+    - "Bash(rm *)"
+    - "Bash(echo *)"
+    - "Bash(touch *)"
+    - "Bash(pwd)"
+    - "Bash(wc *)"
+    - "Bash(head *)"
+    - "Bash(tail *)"
+    - "Bash(diff *)"
+    - "Bash(which *)"
+    - "Bash(sort *)"
+    - "Bash(uniq *)"
+    - "Bash(tree *)"
+    - "Bash(find *)"
+    - "Bash(grep *)"
+    - "Bash(sed *)"
+    - "Bash(jq *)"
+
+agents:
+  default_runtime: claude
+  default_mode: batch
+  agent_runtimes:
+    claude:
+      adapter: claude
+      model_tiers:
+        heavy: opus
+        medium: global.anthropic.claude-sonnet-4-5-20250929-v1:0
+        light: haiku
+
+runtime:
+  backend: local

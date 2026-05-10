@@ -1,0 +1,74 @@
+# ===========================================================================
+# gateway.yaml — Docker Compose Gateway (Server-Side)
+# ===========================================================================
+#
+# This config runs INSIDE the gateway container. The gateway owns the
+# agent-facing MCP tool surface:
+#   - Proxies backend MCP tools to agents via HTTP
+#   - Runs the strategy engine (via external sidecar socket)
+#   - Provides graph and ontology tools
+#   - Does NOT own agent lifecycle (that's the control plane)
+#
+# Agents connect to this container via GatewayURL:
+#   http://gateway:8080/agents/{task}/mcp
+#
+# This file is bind-mounted into the container at /etc/fracta/gateway.yaml
+# by deployment/docker-compose.yml.
+# ===========================================================================
+
+
+logging:
+  file: /workspace/logs/fracta-gateway.log
+  level: info
+
+
+connections:
+  falkordb:
+    type: redis
+    url: redis://falkordb:6379
+    graph_name: fracta_knowledge
+
+
+runtime:
+  backend: local
+  staging_dir: /workspace/staging
+  state:
+    driver: postgres
+    postgres:
+      dsn: "postgres://fracta:fracta@postgres:5432/fracta?sslmode=disable"
+
+
+gateway:
+  url: http://gateway:8080
+  listen: ":8080"
+
+
+strategy:
+  dir: /opt/fracta/strategies
+  pool_size: 1
+
+
+ontology:
+  schemas:
+    - path: graph-schema/core
+    - path: graph-schema/threat-hunting
+    - path: graph-schema/fracta-mcp-gateway
+
+
+# ---------------------------------------------------------------------------
+# MCP Servers
+# ---------------------------------------------------------------------------
+# Backend MCP tool servers that this gateway proxies to agents. The scaffold
+# leaves this empty — spec-43-mcp-server-scaffolds will introduce a templated
+# pattern. For now, add MCP-server containers to deployment/docker-compose.yml and
+# reference them here, e.g.:
+#
+# mcp_servers:
+#   servers:
+#     elastic:
+#       remote:
+#         url: http://elastic-mcp:8000/mcp
+#         transport: streamable-http
+
+mcp_servers:
+  servers: {}

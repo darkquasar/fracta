@@ -1,0 +1,25 @@
+# Empty ConfigMap referenced by fracta-controlplane-config under
+# runtime.kubernetes.extra_volumes (spec-42 §6, §8).
+#
+# Operators populate this ConfigMap from ./deployment/auth-helpers/ via:
+#
+#   kubectl create configmap fracta-auth-helpers \
+#     --from-file=deployment/auth-helpers/ \
+#     -n fracta \
+#     --dry-run=client -o yaml | kubectl apply -f -
+#
+# Re-run that command after adding or modifying helpers, then restart the
+# controlplane: kubectl rollout restart deployment/fracta-controlplane -n fracta.
+#
+# This stub exists so `kubectl apply -k deployment/k8s/manifests/` succeeds before
+# any helpers are added — agents will simply have no auth helpers on PATH and
+# fail authoritatively at the first auth-bearing call (spec-42 R1).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fracta-auth-helpers
+  namespace: fracta
+  labels:
+    app: fracta
+    component: auth-helpers
+data: {}

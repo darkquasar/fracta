@@ -1,0 +1,151 @@
+# ===========================================================================
+# controlplane.yaml — Docker Compose Control Plane (Server-Side)
+# ===========================================================================
+#
+# This config runs INSIDE the controlplane container. It is the lifecycle
+# authority for the entire compose stack:
+#   - Spawns agents as local subprocesses (LocalBackend)
+#   - Persists state in Postgres (shared with gateway)
+#   - Runs mission queue workers in-process
+#   - Exposes HTTP API on :9090 for thin clients
+#
+# This file is bind-mounted into the container at /etc/fracta/controlplane.yaml
+# by deployment/docker-compose.yml.
+# ===========================================================================
+
+
+# ---------------------------------------------------------------------------
+# Logging
+# ---------------------------------------------------------------------------
+
+logging:
+  file: /workspace/logs/fracta-controlplane.log
+  level: info
+
+
+# ---------------------------------------------------------------------------
+# External Connections
+# ---------------------------------------------------------------------------
+
+connections:
+  falkordb:
+    type: redis
+    url: redis://falkordb:6379
+    graph_name: fracta_knowledge
+
+
+# ---------------------------------------------------------------------------
+# Runtime
+# ---------------------------------------------------------------------------
+# backend: "local" — agents run as subprocesses inside this container
+# (per spec-34 §4.10: compose is packaging, not architecture).
+
+runtime:
+  backend: local
+  state:
+    driver: postgres
+    postgres:
+      dsn: "postgres://fracta:fracta@postgres:5432/fracta?sslmode=disable"
+      max_conns: 10
+      min_conns: 2
+      max_conn_lifetime: "30m"
+      max_conn_idle_time: "5m"
+  queue:
+    backend: postgres
+    workers: 2
+    lease_timeout: "30m"
+
+
+# ---------------------------------------------------------------------------
+# Gateway
+# ---------------------------------------------------------------------------
+
+gateway:
+  url: http://gateway:8080
+
+
+# ---------------------------------------------------------------------------
+# Control Plane API
+# ---------------------------------------------------------------------------
+
+control_plane_api:
+  listen: ":9090"
+
+
+# ---------------------------------------------------------------------------
+# Reaper
+# ---------------------------------------------------------------------------
+
+reaper:
+  interval: 30s
+  max_age: 4h
+
+
+# ---------------------------------------------------------------------------
+# Project
+# ---------------------------------------------------------------------------
+
+project:
+  default_base_branch: main
+  allowed_tools:
+    - Read
+    - Edit
+    - Write
+    - Glob
+    - Grep
+    - "Bash(git *)"
+    - "Bash(go *)"
+    - "Bash(make *)"
+    - "Bash(ls *)"
+    - "Bash(cat *)"
+    - "Bash(find *)"
+    - "Bash(grep *)"
+
+
+# ---------------------------------------------------------------------------
+# Agents
+# ---------------------------------------------------------------------------
+
+agents:
+  default_runtime: claude
+  default_mode: batch
+  agent_runtimes:
+    # Default to Claude over the Anthropic API. For Bedrock prefix model IDs
+    # with `global.` (e.g. `global.anthropic.claude-sonnet-4-6`); for Vertex,
+    # set CLAUDE_CODE_USE_VERTEX=1 and use the vertex model IDs. The
+    # auth_profile below points at the example profile — see the auth section.
+    claude:
+      adapter: claude
+      model: claude-sonnet-4-6
+      model_tiers:
+        heavy: claude-opus-4-6
+        medium: claude-sonnet-4-6
+        light: claude-haiku-4-5
+      auth_profile: example
+
+
+# ---------------------------------------------------------------------------
+# Authentication & Credentials
+# ---------------------------------------------------------------------------
+# REPLACE this block with profiles for YOUR auth provider(s). Helpers
+# referenced by `command:` are resolved on PATH inside the container at
+# /opt/fracta/auth-helpers/<name> (spec-42 §6) — see deployment/auth-helpers/
+# for the script template.
+#
+# Below is a deliberately incomplete `example` profile — it points at the
+# fetch-token-example helper (which fails loudly until edited). Common
+# real-world profile shapes for Bedrock / Vertex / Anthropic are documented in
+# docs/guides/authentication/credential-pipeline.md.
+
+auth:
+  credentials:
+    profiles:
+      example:
+        runtime_auth_resolvers:
+          example_helper:
+            type: command
+            command: fetch-token-example   # rename to match your edited helper
+            ttl_ms: 60000
+        default_binding:
+          type: claude_api_key_helper
+          runtime_auth_resolver: example_helper

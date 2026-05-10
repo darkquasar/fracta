@@ -1,0 +1,18 @@
+# Thin-client config for the docker-compose stack.
+#
+# Per spec-34 §4.10, compose is packaging — not architecture. Agents run as
+# subprocesses inside the controlplane container via LocalBackend. The thin
+# client on the host talks to the in-container controlplane over HTTP.
+#
+# To start the stack:   docker compose -f deployment/docker-compose.yml up -d
+# To stop the stack:    docker compose -f deployment/docker-compose.yml down -v
+# To spawn an agent:    fracta spawn --task my-task
+
+control_plane_api:
+  url: http://localhost:19090
+
+runtime:
+  backend: local
+
+agents:
+  default_runtime: claude

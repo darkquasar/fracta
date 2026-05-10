@@ -1,0 +1,39 @@
+# Thin-client config for the kubernetes deployment.
+#
+# The host CLI talks to the in-cluster controlplane via the
+# fracta-controlplane Service (LoadBalancer in the scaffold; switch to
+# ClusterIP + port-forward for non-cloud clusters).
+#
+# Bring up the stack:
+#   kubectl apply -k deployment/k8s/manifests/
+#
+# Populate auth-helpers (see deployment/auth-helpers/README.md):
+#   kubectl create configmap fracta-auth-helpers \
+#     --from-file=deployment/auth-helpers/ \
+#     -n fracta --dry-run=client -o yaml | kubectl apply -f -
+#
+# Note: this file documents the *thin-client* config. The full server-side
+# config (with runtime.kubernetes.extra_volumes, agent runtimes, credential
+# profiles, etc.) lives in the fracta-controlplane-config ConfigMap inside
+# deployment/k8s/manifests/fracta-controlplane.yaml.
+
+control_plane_api:
+  url: http://localhost:9090   # adjust if using port-forward / different LB IP
+
+runtime:
+  backend: kubernetes
+  kubernetes:
+    namespace: fracta
+    image: ghcr.io/darkquasar/fracta:latest
+    extra_volumes:
+      - name: auth-helpers
+        configMap:
+          name: fracta-auth-helpers
+          defaultMode: 0755
+    extra_volume_mounts:
+      - name: auth-helpers
+        mountPath: /opt/fracta/auth-helpers
+        readOnly: true
+
+agents:
+  default_runtime: claude

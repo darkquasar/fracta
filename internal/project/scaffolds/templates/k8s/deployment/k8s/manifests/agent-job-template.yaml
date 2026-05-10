@@ -1,0 +1,55 @@
+# Template for agent Jobs created by KubernetesBackend.
+# Not applied directly — used as reference for the Go code that constructs Jobs.
+# Fields marked DYNAMIC are set per-agent at spawn time.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: fracta-agent-DYNAMIC    # set to agent name
+  namespace: fracta
+  labels:
+    app: fracta
+    component: agent
+    fracta.agent: DYNAMIC        # set to agent name
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 600
+  template:
+    metadata:
+      labels:
+        app: fracta
+        component: agent
+        fracta.agent: DYNAMIC    # set to agent name
+    spec:
+      restartPolicy: Never
+      serviceAccountName: fracta-agent
+      containers:
+        - name: agent
+          image: ghcr.io/darkquasar/fracta:latest   # overridden by config runtime.image
+          imagePullPolicy: IfNotPresent
+          args: []             # DYNAMIC: set to claude args
+          env:
+            - name: BEDROCK_BEARER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: fracta-auth
+                  key: bearer-token
+            - name: ANTHROPIC_MODEL
+              value: ""        # DYNAMIC: set from config
+            - name: AWS_REGION
+              value: "ap-southeast-2"
+            - name: FRACTA_STRATEGY_DIR
+              value: "/opt/fracta/strategies"
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "1Gi"
+              cpu: "1"
+          volumeMounts:
+            - name: workspace
+              mountPath: /workspace
+      volumes:
+        - name: workspace
+          persistentVolumeClaim:
+            claimName: fracta-workspace

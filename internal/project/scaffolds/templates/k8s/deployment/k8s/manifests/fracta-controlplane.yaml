@@ -1,0 +1,222 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fracta-controlplane-config
+  namespace: fracta
+  labels:
+    app: fracta
+    component: fracta-controlplane
+data:
+  fracta-k8s.yaml: |
+    # Control-plane config — full lifecycle authority
+    # This is mounted into the control-plane pod and used with --config flag
+    logging:
+      file: /workspace/logs/fracta-controlplane.log
+      level: info
+
+    connections:
+      falkordb:
+        type: redis
+        url: redis://falkordb.fracta.svc:6379
+        graph_name: fracta_knowledge
+
+    runtime:
+      backend: kubernetes
+      staging_dir: /workspace/staging
+      kubernetes:
+        namespace: fracta
+        image: ghcr.io/darkquasar/fracta:latest
+        image_pull_policy: IfNotPresent
+        service_account: fracta-agent
+        pvc: fracta-workspace
+        pvc_mount_path: /workspace
+        labels:
+          app: fracta-agent
+        resources:
+          cpu_request: "500m"
+          cpu_limit: "2"
+          memory_request: "512Mi"
+          memory_limit: "2Gi"
+        job_ttl_seconds: 300
+        # Auth helpers (spec-42 §6, §8) — operators populate the ConfigMap from
+        # ./deployment/auth-helpers/ via:
+        #   kubectl create configmap fracta-auth-helpers \
+        #     --from-file=deployment/auth-helpers/ \
+        #     -n fracta --dry-run=client -o yaml | kubectl apply -f -
+        extra_volumes:
+          - name: auth-helpers
+            configMap:
+              name: fracta-auth-helpers
+              defaultMode: 0755
+        extra_volume_mounts:
+          - name: auth-helpers
+            mountPath: /opt/fracta/auth-helpers
+            readOnly: true
+      state:
+        driver: postgres
+        postgres:
+          dsn: "postgres://fracta:${POSTGRES_PASSWORD}@postgres.fracta.svc:5432/fracta?sslmode=disable"
+          max_conns: 20
+          min_conns: 2
+          max_conn_lifetime: "30m"
+          max_conn_idle_time: "5m"
+      queue:
+        backend: postgres
+        workers: 2
+        lease_timeout: "30m"
+
+    gateway:
+      url: http://fracta-gateway.fracta.svc:8080
+      listen: ":8080"
+
+    control_plane_api:
+      listen: ":9090"
+      url: http://fracta-controlplane.fracta.svc:9090
+
+    reaper:
+      interval: 30s
+      max_age: 4h
+
+    project:
+      default_base_branch: main
+      allowed_tools:
+        - "Bash(*)"
+        - "Read(*)"
+        - "Write(*)"
+        - "Edit(*)"
+        - "Glob(*)"
+        - "Grep(*)"
+
+    agents:
+      default_runtime: claude
+      default_mode: batch
+      agent_runtimes:
+        # Default to Claude over the Anthropic API. For Bedrock prefix model IDs
+        # with `global.` (e.g. `global.anthropic.claude-sonnet-4-6`); for Vertex,
+        # set CLAUDE_CODE_USE_VERTEX=1 and use the vertex model IDs.
+        claude:
+          adapter: claude
+          model: claude-sonnet-4-6
+          model_tiers:
+            heavy: claude-opus-4-6
+            medium: claude-sonnet-4-6
+            light: claude-haiku-4-5
+          auth_profile: example
+
+    # REPLACE this block with profiles for YOUR auth provider(s). Helpers
+    # referenced by `command:` are resolved on PATH inside the container at
+    # /opt/fracta/auth-helpers/<name> (spec-42 §6) — see
+    # deployment/auth-helpers/ for the script template.
+    #
+    # Common real-world profile shapes for Bedrock / Vertex / Anthropic are
+    # documented in docs/guides/authentication/credential-pipeline.md.
+    auth:
+      credentials:
+        profiles:
+          example:
+            runtime_auth_resolvers:
+              example_helper:
+                type: command
+                command: fetch-token-example   # rename to match your edited helper
+                ttl_ms: 60000
+            default_binding:
+              type: claude_api_key_helper
+              runtime_auth_resolver: example_helper
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fracta-controlplane
+  namespace: fracta
+  labels:
+    app: fracta
+    component: fracta-controlplane
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fracta
+      component: fracta-controlplane
+  template:
+    metadata:
+      labels:
+        app: fracta
+        component: fracta-controlplane
+    spec:
+      serviceAccountName: fracta-agent
+      containers:
+        - name: fracta-controlplane
+          image: ghcr.io/darkquasar/fracta:latest
+          imagePullPolicy: IfNotPresent
+          args:
+            - fracta
+            - serve
+            - --control-plane-api-only
+            - --config
+            - /etc/fracta/fracta-k8s.yaml
+          ports:
+            - containerPort: 9090
+              name: http
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secrets
+                  key: password
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "1"
+          volumeMounts:
+            - name: config
+              mountPath: /etc/fracta
+              readOnly: true
+            - name: workspace
+              mountPath: /workspace
+            - name: auth-helpers
+              mountPath: /opt/fracta/auth-helpers
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: fracta-controlplane-config
+        - name: workspace
+          persistentVolumeClaim:
+            claimName: fracta-workspace
+        - name: auth-helpers
+          configMap:
+            name: fracta-auth-helpers
+            defaultMode: 0755
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fracta-controlplane
+  namespace: fracta
+  labels:
+    app: fracta
+    component: fracta-controlplane
+spec:
+  type: LoadBalancer
+  selector:
+    app: fracta
+    component: fracta-controlplane
+  ports:
+    - port: 9090
+      targetPort: http
+      name: http

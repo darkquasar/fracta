@@ -1,0 +1,43 @@
+#!/bin/sh
+# Auth helper template — REPLACE this script with one that fetches a token
+# for YOUR auth provider, then `chmod +x` it. Rename it to whatever PATH name
+# your fracta.yaml resolver `command:` field references (e.g.
+# `fetch-bedrock-token`, `fetch-vertex-token`, `fetch-anthropic-key`).
+#
+# Contract (spec-42 §6):
+#   - Print the token to stdout on success and exit 0.
+#   - Print diagnostics to stderr.
+#   - Exit non-zero on failure (stdout empty).
+#   - The orchestrator caches the result for `ttl_ms` per fracta.yaml.
+#
+# Reference from fracta.yaml (or the controlplane ConfigMap in k8s mode):
+#   runtime_auth_resolvers:
+#     my_helper:
+#       type: command
+#       command: fetch-token-example   # bare name, PATH-resolved
+#       ttl_ms: 60000
+#
+# ── Examples (pick ONE pattern, adapt to your auth source) ──────────────
+#
+# AWS Bedrock via STS (requires `aws` CLI + IAM credentials in the pod):
+#   exec aws bedrock get-bearer-token \
+#     --region "${AWS_REGION:-us-east-1}" \
+#     --query 'token' --output text
+#
+# Vertex AI (requires `gcloud` + workload identity):
+#   exec gcloud auth print-access-token \
+#     --impersonate-service-account="${VERTEX_SA:?VERTEX_SA must be set}"
+#
+# Anthropic API key from a secret-mounted file (recommended for static keys):
+#   exec cat "${ANTHROPIC_API_KEY_FILE:-/var/run/fracta-auth/anthropic-api-key}"
+#
+# Custom corporate token proxy (HEAD request, header extraction):
+#   curl -sf -I -m 3 \
+#     -H "X-AWS-Region: ${AWS_REGION:?}" \
+#     "${TOKEN_PROXY_URL:?TOKEN_PROXY_URL must be set}" \
+#     | grep -i '^X-My-Token:' | sed 's/[^:]*: //' | tr -d '\r\n'
+#
+# ────────────────────────────────────────────────────────────────────────
+
+echo "fetch-token-example is an unconfigured template — edit it before use" >&2
+exit 1
