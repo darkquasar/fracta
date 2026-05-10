@@ -5,7 +5,7 @@ description: Run fracta in a self-contained docker compose stack
 
 # Quickstart: Docker Compose Mode
 
-Docker Compose runs the full  fracta stack in containers: control plane, gateway, strategy runner, Postgres, FalkorDB, and optionally MCP backend servers (Elastic, Vendor). Your machine runs only a thin client.
+Docker Compose runs the full fracta stack in containers: control plane, gateway, strategy runner, Postgres, FalkorDB. Your machine runs only a thin client. MCP backend servers (Elastic, Vendor, your own) are added by extending the scaffolded compose file.
 
 ```
 Your machine                         Docker Compose stack
@@ -14,138 +14,148 @@ Your machine                         Docker Compose stack
 │ OpenCode         │                │ gateway         (:8080)  │
 │   └─ fracta serve ─┼──── HTTP ────>│ strategy-runner          │
 │                  │                │ postgres        (:5432)  │
-│ fracta spawn (CLI) │                │ falkordb       (:16379)  │
-│ fracta list  (CLI) │                │ elastic-mcp   (optional) │
-└──────────────────┘                │ vendor-mcp    (optional) │
-                                    └──────────────────────────┘
+│ fracta spawn (CLI)│                │ falkordb       (:16379)  │
+│ fracta list  (CLI)│                │ + your MCP backends      │
+└──────────────────┘                └──────────────────────────┘
 ```
 
 <hr />
 
 ## Prerequisites
 
-- **Go 1.25+** — `go version`
-- **Docker** with Compose V2 — `docker compose version`
-- **Optional**: `op` CLI (1Password) for MCP backend secrets
+- **fracta CLI** installed and on PATH (`fracta --help` works). See [installation](/getting-started/installation).
+- **Docker** with Compose V2 — `docker compose version`.
+- **A git repository** to scaffold into. `fracta init` runs in your own project root.
 
-You do **not** need runtime CLIs (claude, codex, opencode) installed on your host — they're bundled in the Docker image.
-
-<hr />
-
-## 1. Build
-
-Build the Go binary and Docker image:
-
-```bash
-make build          # Go binary → bin/fracta
-make docker-build   # Docker image → fracta/agent:latest
-```
+You do **not** need runtime CLIs (claude, codex, opencode) installed on your host — they're bundled in the fracta image.
 
 <hr />
 
-## 2. Start the stack
+## 1. Initialize fracta in your project
 
-**Without MCP backend secrets** (core services only):
+From the root of any git repository:
 
 ```bash
-make compose-up
+fracta init --scaffold docker-compose
 ```
 
-**With 1Password secrets** (full stack including Elastic and Generic MCP):
+You'll see:
+
+```
+Fracta initialized successfully.
+  scaffold: docker-compose
+  source:   embedded (fracta vX.Y.Z)
+  files:    N written, 0 skipped
+```
+
+This drops the docker-compose scaffold:
+
+```
+your-project/
+├── fracta.yaml                              # thin-client config
+├── .fracta/                                 # gitignored runtime state (logs)
+└── deployment/
+    ├── docker-compose.yml                   # full stack: falkordb, postgres, controlplane, gateway, strategy-runner
+    ├── configs/
+    │   ├── controlplane.yaml                # server-side config inside the controlplane container
+    │   └── gateway.yaml                     # gateway config
+    └── auth-helpers/
+        ├── README.md
+        └── fetch-token-example              # 0755 generic helper template; edit before use
+```
+
+`fracta.yaml` and everything under `deployment/` are yours to edit.
+
+<hr />
+
+## 2. Set up auth helpers
+
+The scaffolded `deployment/auth-helpers/fetch-token-example` is a deliberately non-functional template that fails loudly until you edit it. Open the file — its header comments include reference snippets for AWS Bedrock STS, Vertex AI via gcloud, mounted Anthropic API keys, and custom HTTP token proxies. Pick the one matching your provider.
+
+For example, for AWS Bedrock STS:
 
 ```bash
-make compose-up-op
+cat > deployment/auth-helpers/fetch-bedrock-token <<'EOF'
+#!/bin/sh
+exec aws bedrock get-bearer-token \
+  --region "${AWS_REGION:-us-east-1}" \
+  --query 'token' --output text
+EOF
+chmod +x deployment/auth-helpers/fetch-bedrock-token
+```
+
+Update `deployment/configs/controlplane.yaml` to reference your helper. The default scaffold ships an `example` profile pointing at `fetch-token-example`; replace it with a `bedrock` profile (or whatever name fits) pointing at your script. See the [credential pipeline guide](/guides/authentication/credential-pipeline) for the full profile schema.
+
+The compose file bind-mounts `./deployment/auth-helpers/` into every fracta service container at `/opt/fracta/auth-helpers/`, so resolver `command:` references find your helpers on PATH inside the container.
+
+<hr />
+
+## 3. Start the stack
+
+```bash
+docker compose -f deployment/docker-compose.yml up -d
 ```
 
 Verify all services are healthy:
 
 ```bash
-make compose-ps
+docker compose -f deployment/docker-compose.yml ps
 ```
 
-You should see 5-7 services running (falkordb, postgres, controlplane, gateway, strategy-runner, and optionally elastic-mcp, vendor-mcp).
+You should see five services running: falkordb, postgres, controlplane, gateway, strategy-runner.
+
+### Secret injection
+
+Compose interpolates `${VAR}` from your environment, so any secret manager that sets env vars works. For 1Password:
+
+```bash
+op run --env-file .op-env -- docker compose -f deployment/docker-compose.yml up -d
+```
+
+For Doppler:
+
+```bash
+doppler run -- docker compose -f deployment/docker-compose.yml up -d
+```
+
+Use this for any host-side secrets the compose stack needs (database passwords, API keys for MCP backends you add, etc.).
 
 <hr />
 
-## 3. Link your runtime config
+## 4. Wire fracta into your AI CLI
 
-Symlink the Docker Compose MCP config to your repo root:
+The scaffolded `fracta.yaml` points at `http://localhost:19090` — the host-mapped port for the compose controlplane container. Your AI CLI runs `fracta serve` from your project root, which reads `./fracta.yaml`.
 
-**Claude:**
+**Claude Code** (`.mcp.json` at the project root):
 
-```bash
-ln -sf deployment/docker-compose/runtimes/claude/.mcp.json .mcp.json
+```json
+{
+  "mcpServers": {
+    "fracta": {
+      "command": "fracta",
+      "args": ["serve"]
+    }
+  }
+}
 ```
 
-This config points `fracta serve` at `deployment/docker-compose/client/fracta.yaml`, which sets `control_plane_api.url: http://localhost:19090` — the host-mapped port for the compose controlplane container.
+**Codex** (`.codex/config.toml`):
 
-**Codex:**
-
-```bash
-mkdir -p .codex
-ln -sf ../deployment/docker-compose/runtimes/codex/config.toml .codex/config.toml
+```toml
+[mcp_servers.fracta]
+command = "fracta"
+args = ["serve"]
 ```
 
-<hr />
-
-## 4. Credentials setup
-
-### LLM runtime credentials
-
-In Docker Compose mode, LLM credentials are handled **inside the container**. The controlplane config (`deployment/docker-compose/configs/controlplane.yaml`) has the auth profiles baked in:
-
-- **Claude (Bedrock):** The `bedrock` profile uses `fetch-bedrock-token`, a script inside the container image that calls a corporate proxy to get a Bedrock bearer token. The agent container self-authenticates — no host-side LLM credential is needed.
-- **OpenCode (Bedrock):** Same corporate proxy mechanism via the `opencode_bedrock` profile.
-- **Codex (OpenAI):** Set `OPENAI_API_KEY` as a host env var before `docker compose up`. The compose file interpolates `${OPENAI_API_KEY}` into the controlplane container.
-
-If you're not on corporate network, edit `deployment/docker-compose/configs/controlplane.yaml` and replace the auth profiles with your own credentials.
-
-### MCP server API credentials
-
-These authenticate the Elastic and Generic MCP backend containers to their external APIs. They are injected via environment variables at `docker compose up` time.
-
-**With 1Password:**
-
-```bash
-make compose-up-op
-# Equivalent to:
-# op run --env-file .op-env -- docker compose -f deployment/docker-compose/docker-compose.yml up -d
-```
-
-`op run` resolves 1Password references in `.op-env` into real environment variables on the host. Docker Compose inherits them and interpolates `${VAR}` in the YAML to pass values into containers. No secrets touch disk.
-
-**Required variables** (defined in `.op-env`):
-
-| Variable | Used by | Source |
-|----------|---------|--------|
-| `ELASTIC_URL` | elastic-mcp | Plaintext URL |
-| `ELASTIC_API_KEY` | elastic-mcp | 1Password reference |
-| `VENDOR_MCP_CONSOLE_BASE_URL` | vendor-mcp | Plaintext URL |
-| `VENDOR_MCP_CONSOLE_TOKEN` | vendor-mcp | 1Password reference |
-
-**Without 1Password**, export the variables directly:
-
-```bash
-export ELASTIC_URL="https://your-cluster.elastic.co"
-export ELASTIC_API_KEY="your-api-key"
-export VENDOR_MCP_CONSOLE_BASE_URL="https://your-console.vendor.net"
-export VENDOR_MCP_CONSOLE_TOKEN="your-token"
-docker compose -f deployment/docker-compose/docker-compose.yml up -d
-```
-
-Any secret injector that sets env vars works: `doppler run --`, `vault exec --`, etc.
-
-**Without any secrets**, `make compose-up` starts core services. MCP backends won't connect, but agents will still have graph and strategy tools.
+If you need to inject secrets into the host-side `fracta serve`, wrap it the same way you wrap `docker compose up`.
 
 <hr />
 
 ## 5. Connect and verify
 
-Restart Claude Code or run `/mcp` to reconnect MCP servers.
+Restart Claude Code or run `/mcp` to reconnect MCP servers. The thin client connects to `localhost:19090`.
 
-The thin client connects to `localhost:19090` (compose maps the controlplane's internal `:9090` to host `:19090` to avoid conflicts with a local daemon on `:9090`).
-
-You should see  fracta tools: `fracta_spawn`, `fracta_list`, `graph_query`, etc. If MCP backends are running, you'll also see tools like `elastic.platform_core_search`, `vendor.list_alerts`, etc.
+You should see fracta tools: `fracta_spawn`, `fracta_list`, `graph_query`, etc. If you've added MCP backend services to `deployment/docker-compose.yml`, you'll also see their tools.
 
 <hr />
 
@@ -154,8 +164,7 @@ You should see  fracta tools: `fracta_spawn`, `fracta_list`, `graph_query`, etc.
 **From the CLI:**
 
 ```bash
-bin/fracta spawn \
-  --config deployment/docker-compose/client/fracta.yaml \
+fracta spawn \
   --task hello-compose \
   --contract "Say hello and list what MCP tools you can see"
 ```
@@ -169,8 +178,8 @@ fracta_spawn(task="hello-compose", contract="Say hello and list what MCP tools y
 **Check status and output:**
 
 ```bash
-bin/fracta list --config deployment/docker-compose/client/fracta.yaml
-bin/fracta peek --config deployment/docker-compose/client/fracta.yaml --name hello-compose
+fracta list
+fracta peek --name hello-compose
 ```
 
 Or via MCP: `fracta_list()` and `fracta_peek(name="hello-compose")`.
@@ -182,9 +191,9 @@ Note: Docker Compose uses `DirectoryWorkspace`, not git worktrees. Agents work i
 ## 7. View logs
 
 ```bash
-make compose-logs                    # tail all container logs
-docker compose -f deployment/docker-compose/docker-compose.yml logs controlplane  # specific service
-docker compose -f deployment/docker-compose/docker-compose.yml logs gateway
+docker compose -f deployment/docker-compose.yml logs                   # tail all
+docker compose -f deployment/docker-compose.yml logs controlplane      # specific service
+docker compose -f deployment/docker-compose.yml logs gateway
 ```
 
 <hr />
@@ -192,13 +201,48 @@ docker compose -f deployment/docker-compose/docker-compose.yml logs gateway
 ## 8. Stop and clean up
 
 ```bash
-make compose-down
+docker compose -f deployment/docker-compose.yml down
 ```
 
 To also remove persistent volumes (Postgres data, FalkorDB data):
 
 ```bash
-docker compose -f deployment/docker-compose/docker-compose.yml down -v
+docker compose -f deployment/docker-compose.yml down -v
+```
+
+<hr />
+
+## Adding MCP backend services
+
+The scaffolded `deployment/docker-compose.yml` ships only the fracta core. Add MCP backend services by editing the compose file. For example, to add Elasticsearch MCP:
+
+```yaml
+services:
+  # ...existing services...
+
+  elastic-mcp:
+    image: docker.elastic.co/mcp/elasticsearch:latest
+    command: ["http", "--address", "0.0.0.0:8000", "--sse"]
+    environment:
+      ES_URL: "${ELASTIC_URL}"
+      ES_API_KEY: "${ELASTIC_API_KEY}"
+```
+
+Then reference it from `deployment/configs/gateway.yaml`:
+
+```yaml
+mcp_servers:
+  servers:
+    elastic:
+      remote:
+        url: http://elastic-mcp:8000/mcp
+        transport: streamable-http
+```
+
+Restart the gateway container to pick up the change:
+
+```bash
+docker compose -f deployment/docker-compose.yml restart gateway
 ```
 
 <hr />
@@ -213,9 +257,9 @@ docker compose -f deployment/docker-compose/docker-compose.yml down -v
 | Queue | In-memory | Postgres |
 | Agents | Host subprocesses | Container subprocesses |
 | Workspace | Git worktrees | Directories (no git merge) |
-| MCP backends | Host subprocesses (podman, uvx) | Containers (HTTP) |
-| LLM auth | Host command (`bedrock-auth-helper`) | In-container script (corporate proxy) |
-| MCP creds | `op run` wraps `fracta serve` | `op run` wraps `docker compose up` |
+| MCP backends | Host subprocesses | Container HTTP |
+| LLM auth | Host command (resolved on host PATH) | Container command (resolved at `/opt/fracta/auth-helpers/`) |
+| Secret injection | Wraps `fracta serve` | Wraps `docker compose up` |
 
 The client attachment is identical: both use `RemoteControlPlaneClient` over HTTP.
 
@@ -223,7 +267,7 @@ The client attachment is identical: both use `RemoteControlPlaneClient` over HTT
 
 ## Next steps
 
-- **Docker Compose file reference**: [deployment/docker-compose/README.md](https://github.com/darkquasar/fracta/blob/main/deployment/docker-compose/README.md)
-- **Full architecture reference**: [deployment-modes.md](/guides/deployment/overview) (Section 2)
-- **Multi-runtime setup**: [runtime-configuration.md](/guides/authentication/runtime-configuration)
+- **Full architecture reference**: [deployment overview](/guides/deployment/overview) (Section 2)
+- **Multi-runtime setup**: [runtime configuration](/guides/authentication/runtime-configuration)
+- **Auth pipeline deep dive**: [credential pipeline](/guides/authentication/credential-pipeline)
 - **Ready for Kubernetes?** Try [Kubernetes Quickstart](/guides/deployment/kubernetes)

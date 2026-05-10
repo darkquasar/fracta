@@ -58,27 +58,30 @@ Each runtime reads its MCP server config from a specific file:
 
 All three point to the same command: `bin/fracta serve --config <path>`. The config path determines which deployment mode the thin client connects to.
 
-Each deployment mode ships pre-built runtime configs under:
+Each scaffold (`fracta init --scaffold <mode>`) materializes the deployment artifacts you'll edit (`fracta.yaml`, `deployment/`). The runtime CLI configuration that wires fracta into Claude / Codex / OpenCode lives at the project root (`.mcp.json` for Claude, `.codex/config.toml` for Codex, `opencode.json` for OpenCode). The simplest version of those configs runs `fracta serve` from the project root:
 
-```
-deployment/<mode>/runtimes/<runtime>/
-```
-
-To switch modes, symlink the right config to your repo root:
-
-```bash
-# Claude — pick one:
-ln -sf deployment/local-process/runtimes/claude/.mcp.json .mcp.json
-ln -sf deployment/docker-compose/runtimes/claude/.mcp.json .mcp.json
-ln -sf deployment/k8s-local-cluster/runtimes/claude/.mcp.json .mcp.json
-
-# Codex — pick one:
-mkdir -p .codex
-ln -sf ../deployment/local-process/runtimes/codex/config.toml .codex/config.toml
-ln -sf ../deployment/docker-compose/runtimes/codex/config.toml .codex/config.toml
+```json
+// .mcp.json (for Claude Code)
+{
+  "mcpServers": {
+    "fracta": {
+      "command": "fracta",
+      "args": ["serve"]
+    }
+  }
+}
 ```
 
-After symlinking, restart your AI CLI (or `/mcp` in Claude Code) to reconnect.
+```toml
+# .codex/config.toml
+[mcp_servers.fracta]
+command = "fracta"
+args = ["serve"]
+```
+
+`fracta serve` reads `./fracta.yaml` from your project root by default, so the same minimal runtime config works regardless of which scaffold you initialized. Wrap the command with your secret manager (`op run --`, `doppler run --`, etc.) if you need to inject host-side env vars.
+
+After editing, restart your AI CLI (or `/mcp` in Claude Code) to reconnect.
 
 <hr />
 

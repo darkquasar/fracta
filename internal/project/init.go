@@ -1,6 +1,7 @@
 package project
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -9,122 +10,80 @@ import (
 
 	"github.com/darkquasar/fracta/internal/model"
 	"github.com/darkquasar/fracta/internal/prereq"
+	"github.com/darkquasar/fracta/internal/project/scaffolds"
 	"github.com/darkquasar/fracta/internal/state/sqlitestore"
 )
 
-// defaultFractaYAML is the default fracta.yaml content written by fracta init.
-// Uses project/agents/runtime sections per spec-15.
-const defaultFractaYAML = `project:
-  default_base_branch: main
-  allowed_tools:
-    - Read
-    - Edit
-    - Write
-    - Glob
-    - Grep
-    - "Bash(git *)"
-    - "Bash(git add * && git commit *)"
-    - "Bash(git add . && git commit -m *)"
-    - "Bash(git add *)"
-    - "Bash(git commit *)"
-    - "Bash(git merge green)"
-    - "Bash(git merge main)"
-    - "Bash(git merge *)"
-    - "Bash(git status)"
-    - "Bash(git status *)"
-    - "Bash(git diff *)"
-    - "Bash(git log *)"
-    - "Bash(git branch *)"
-    - "Bash(go *)"
-    - "Bash(make *)"
-    - "Bash(mkdir -p * && cd * && go mod init *)"
-    - "Bash(mkdir *)"
-    - "Bash(ls *)"
-    - "Bash(cat *)"
-    - "Bash(ls -a *)"
-    - "Bash(ls -l *)"
-    - "Bash(ls -la *)"
-    - "Bash(cp *)"
-    - "Bash(mv *)"
-    - "Bash(rm *)"
-    - "Bash(echo *)"
-    - "Bash(touch *)"
-    - "Bash(pwd)"
-    - "Bash(wc *)"
-    - "Bash(head *)"
-    - "Bash(tail *)"
-    - "Bash(diff *)"
-    - "Bash(which *)"
-    - "Bash(sort *)"
-    - "Bash(uniq *)"
-    - "Bash(tree *)"
-    - "Bash(find *)"
-    - "Bash(grep *)"
-    - "Bash(sed *)"
-    - "Bash(jq *)"
+// InitOpts modifies how Init scaffolds the project.
+type InitOpts struct {
+	// Scaffold selects which template tree to materialize.
+	Scaffold scaffolds.Kind
+	// Source is the resolved template source. nil = use embedded.
+	Source scaffolds.Source
+	// OnConflict controls behavior for files that already exist at root.
+	OnConflict scaffolds.ConflictPolicy
+}
 
-agents:
-  default_runtime: claude
-  default_mode: batch
-  agent_runtimes:
-    claude:
-      adapter: claude
-      model_tiers:
-        heavy: opus
-        medium: global.anthropic.claude-sonnet-4-5-20250929-v1:0
-        light: haiku
-
-runtime:
-  backend: local
-`
-
-// Init initializes a fracta project at the given root directory.
-// It verifies the directory is a git repo, checks dependencies,
-// creates the .fracta directory structure, writes fracta.yaml defaults,
-// initializes the SQLite database, and updates .gitignore.
-func Init(root string) error {
-	// Verify this is a git repo
+// Init initializes a fracta project at root by materializing the requested
+// scaffold tree. It verifies the directory is a git repo, runs prereq
+// checks for the chosen scaffold, walks the source tree (honoring the
+// conflict policy), initializes a SQLite state.db for KindLocal, and ensures
+// .gitignore has the standard fracta entries.
+//
+// Caller is responsible for closing opts.Source.
+func Init(root string, opts InitOpts) (scaffolds.Result, error) {
+	// Verify this is a git repo.
 	gitCheck := exec.Command("git", "rev-parse", "--git-dir")
 	gitCheck.Dir = root
 	if err := gitCheck.Run(); err != nil {
-		return fmt.Errorf("current directory is not a git repository")
+		return scaffolds.Result{}, fmt.Errorf("current directory is not a git repository")
 	}
 
-	// Check dependencies
-	if err := prereq.EnsureDeps(); err != nil {
-		return err
+	// Check kind-specific dependencies.
+	if err := prereq.EnsureDepsFor(opts.Scaffold); err != nil {
+		return scaffolds.Result{}, err
 	}
 
-	fractaDir := filepath.Join(root, model.FractaDir)
-	logsDir := filepath.Join(fractaDir, model.LogsDir)
-
-	// Create directories
-	if err := os.MkdirAll(logsDir, 0755); err != nil {
-		return fmt.Errorf("creating directories: %w", err)
+	src := opts.Source
+	if src == nil {
+		src = scaffolds.EmbeddedSource(opts.Scaffold)
 	}
 
-	// Write fracta.yaml if it doesn't exist (do NOT write .fracta/config.json).
-	fractaYAMLPath := filepath.Join(root, "fracta.yaml")
-	if _, err := os.Stat(fractaYAMLPath); os.IsNotExist(err) {
-		if err := os.WriteFile(fractaYAMLPath, []byte(defaultFractaYAML), 0644); err != nil {
-			return fmt.Errorf("writing fracta.yaml: %w", err)
-		}
-	}
+	// Default conflict policy is SkipExisting so re-running init never
+	// silently clobbers operator edits (spec-42 §11 R6).
+	policy := opts.OnConflict
+	// Note: the zero value is ConflictFail; callers that want SkipExisting
+	// must set it explicitly. This keeps Init programmatically strict; the
+	// CLI layer (cmd/init.go) translates --force on/off into the right
+	// policy for end-user ergonomics.
 
-	// Initialize SQLite database
-	dbPath := filepath.Join(fractaDir, "state.db")
-	store, err := sqlitestore.New(dbPath)
+	res, err := scaffolds.Apply(context.Background(), src, root, scaffolds.ApplyOpts{
+		OnConflict: policy,
+	})
 	if err != nil {
-		return fmt.Errorf("initializing database: %w", err)
+		return res, fmt.Errorf("applying scaffold: %w", err)
 	}
-	store.Close()
 
-	// Update .gitignore
+	// SQLite is only meaningful for local mode — compose and k8s use
+	// postgres-backed state in their deployed services.
+	if opts.Scaffold == scaffolds.KindLocal {
+		fractaDir := filepath.Join(root, model.FractaDir)
+		if err := os.MkdirAll(filepath.Join(fractaDir, model.LogsDir), 0755); err != nil {
+			return res, fmt.Errorf("creating directories: %w", err)
+		}
+		dbPath := filepath.Join(fractaDir, "state.db")
+		store, err := sqlitestore.New(dbPath)
+		if err != nil {
+			return res, fmt.Errorf("initializing database: %w", err)
+		}
+		store.Close()
+	}
+
 	if err := ensureGitignore(root); err != nil {
-		return fmt.Errorf("updating .gitignore: %w", err)
+		return res, fmt.Errorf("updating .gitignore: %w", err)
 	}
 
-	return nil
+	return res, nil
 }
 
 func ensureGitignore(root string) error {

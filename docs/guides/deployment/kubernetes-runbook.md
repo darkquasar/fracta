@@ -23,63 +23,73 @@ kubectl get nodes
 
 ```
 Host (your machine)
-  └─ fracta serve --config deployment/k8s-local-cluster/client/fracta.yaml
+  └─ fracta serve         (reads ./fracta.yaml from your project root)
        └─ thin client (HTTP) ──▶ fracta-controlplane Service :9090 in-cluster
             (transport: kubectl port-forward / LoadBalancer / Ingress, depending on cluster)
 
 K8s Cluster (fracta namespace)
   ├─ fracta-controlplane Deployment  ← lifecycle authority, workers, K8s agent spawner
-  ├─ fracta-gateway     Deployment  ← HTTP MCP endpoint for agent pods
-  ├─ postgres          StatefulSet ← shared state (agents, events, missions)
-  ├─ falkordb          StatefulSet ← knowledge graph
-  ├─ elastic-mcp       Deployment  ← Elasticsearch MCP backend
-  ├─ vendor-mcp        Deployment  ← Vendor/VendorSecurity MCP backend
+  ├─ fracta-gateway      Deployment  ← HTTP MCP endpoint for agent pods
+  ├─ postgres            StatefulSet ← shared state (agents, events, missions)
+  ├─ falkordb            StatefulSet ← knowledge graph
   ├─ fracta-agent-*      Jobs        ← ephemeral batch agent pods (Claude/Codex/OpenCode)
   └─ fracta-stream-*     Pods        ← persistent stream agent pods (Codex/OpenCode)
 ```
 
-Agent pods connect to the gateway via HTTP MCP. The gateway proxies tools from elastic-mcp (5 tools) and vendor-mcp (22 tools), plus fracta's own agent/graph/strategy tools.
+Agent pods connect to the gateway via HTTP MCP. The gateway proxies fracta's own agent/graph/strategy tools, plus any MCP backend services you add to `deployment/k8s/manifests/`.
 
 ## Quick Start
 
-### 1. Full setup (first time)
+### 1. Initialize fracta in your project
+
+From the root of any git repository:
 
 ```bash
-make k8s-setup
+fracta init --scaffold k8s
 ```
 
-This runs: `docker-build` → `docker-load` → `vendor-mcp-build` → `vendor-mcp-load` → `k8s-deploy` → `k8s-deploy-mcp` → `k8s-deploy-gateway` → `k8s-deploy-controlplane` → `k8s-secrets`.
+This drops `fracta.yaml` and `deployment/k8s/manifests/` (namespace, RBAC, postgres, falkordb, controlplane, gateway, auth-helpers ConfigMap stub, agent job template).
 
-### 2. Verify pods are running
+### 2. Apply the manifests
 
 ```bash
-make k8s-status
+kubectl apply -f deployment/k8s/manifests/
+```
+
+### 3. Verify pods are running
+
+```bash
+kubectl get pods -n fracta
 ```
 
 All pods should show `1/1 Running`:
 - `postgres-0`
 - `falkordb-0`
-- `elastic-mcp-*`
-- `vendor-mcp-*`
+- `fracta-controlplane-*`
 - `fracta-gateway-*`
 
-### 3. Reach the control plane Service from your host
+### 4. Reach the control plane Service from your host
 
-The control plane is the `fracta-controlplane` Service on port 9090 inside the cluster. For local dev clusters the bundled helper port-forwards it:
+The control plane is the `fracta-controlplane` Service on port 9090 inside the cluster. For local dev clusters:
 
 ```bash
-scripts/k8s-port-forward.sh
+kubectl port-forward -n fracta svc/fracta-controlplane 9090:9090
 ```
 
-Runs in the foreground. Opens:
-- `localhost:9090` → fracta-controlplane Service
-- optional service ports for direct troubleshooting, depending on the script
+Runs in the foreground. Opens `localhost:9090` → fracta-controlplane Service.
 
-For non-dev clusters, expose the Service via a `LoadBalancer` (Docker Desktop) or an Ingress and point your thin-client config at that address instead — the rest of the flow is identical.
+For non-dev clusters, expose the Service via a `LoadBalancer` (Docker Desktop) or an Ingress and update `control_plane_api.url` in `fracta.yaml` to match. The rest of the flow is identical.
 
-### 4. Connect via MCP (golden path)
+### 5. Connect via MCP (golden path)
 
-`.mcp.json` points to `fracta serve --config deployment/k8s-local-cluster/client/fracta.yaml`. Once the host can reach the control plane Service:
+The scaffolded `fracta.yaml` is the host-side thin-client config. Configure your AI CLI to run `fracta serve` from your project root:
+
+```json
+// .mcp.json
+{ "mcpServers": { "fracta": { "command": "fracta", "args": ["serve"] } } }
+```
+
+Once the host can reach the control plane Service:
 
 ```bash
 # In Claude Code, reconnect MCP:
@@ -88,7 +98,7 @@ For non-dev clusters, expose the Service via a `LoadBalancer` (Docker Desktop) o
 
 Or run directly:
 ```bash
-bin/fracta serve --config deployment/k8s-local-cluster/client/fracta.yaml
+fracta serve
 ```
 
 ## Configuration
@@ -97,48 +107,50 @@ bin/fracta serve --config deployment/k8s-local-cluster/client/fracta.yaml
 
 | File | Purpose | Used by |
 |------|---------|---------|
-| `deployment/k8s-local-cluster/client/fracta.yaml` | Host-side thin-client config pointing at control plane API | `fracta serve` on your machine |
-| `deployment/k8s-local-cluster/manifests/fracta-gateway.yaml` | In-cluster config (ConfigMap with in-cluster DNS) | Gateway pod |
+| `fracta.yaml` (project root) | Host-side thin-client config pointing at control plane API | `fracta serve` on your machine |
+| `deployment/k8s/manifests/fracta-controlplane.yaml` | In-cluster controlplane config (ConfigMap) | Controlplane pod |
+| `deployment/k8s/manifests/fracta-gateway.yaml` | In-cluster gateway config (ConfigMap) | Gateway pod |
 
 ### Key differences
 
-| Setting | Host-side (`deployment/k8s-local-cluster/client/fracta.yaml`) | In-cluster (gateway ConfigMap) |
-|---------|----------------------------|-------------------------------|
+| Setting | Host-side (`fracta.yaml`) | In-cluster (controlplane / gateway ConfigMaps) |
+|---------|---------------------------|-------------------------------|
 | Control plane API | `http://localhost:9090` | Pod-local service access |
 | State/queue | Not configured in thin client | Postgres in cluster |
 | FalkorDB | Not configured in thin client | `falkordb.fracta.svc:6379` |
-| Runtime backend | Not configured in thin client | `kubernetes` |
+| Runtime backend | `kubernetes` (with `extra_volumes`) | `kubernetes` |
 
 ### MCP backend transports
 
-Each MCP backend in the gateway config needs an explicit transport:
+Each MCP backend in the gateway config needs an explicit transport. For example, if you've added an Elasticsearch MCP container as a Service in the cluster:
 
 ```yaml
 mcp_servers:
   servers:
-    elastic:
+    my-elastic:
       remote:
-        url: http://elastic-mcp.fracta.svc:3000/mcp
-        transport: streamable-http    # Elasticsearch MCP uses Streamable HTTP
-    vendor:
+        url: http://my-elastic-mcp.fracta.svc:3000/mcp
+        transport: streamable-http
+    my-other-backend:
       remote:
-        url: http://vendor-mcp.fracta.svc:3000/sse
-        transport: sse                # Generic MCP uses SSE
+        url: http://my-other.fracta.svc:3000/sse
+        transport: sse
 ```
 
 Supported transports: `streamable-http` (default if omitted), `sse`.
 
 ### Secrets
 
-Created by `make k8s-secrets` using 1Password:
-- `postgres-secrets` — password for postgres
-- `elastic-mcp-secrets` — Elasticsearch URL + API key
-- `vendor-mcp-secrets` — VendorSecurity console URL + token
+You'll need at minimum a postgres secret. Create it manually:
 
-Bedrock auth token (short-lived):
 ```bash
-make k8s-refresh-auth
+kubectl create secret generic postgres-secrets -n fracta \
+  --from-literal=password="$(openssl rand -base64 24)"
 ```
+
+For agent auth credentials, populate the `fracta-auth-helpers` ConfigMap from `deployment/auth-helpers/` — see the [auth helpers section of the K8s configuration docs](/configuration/kubernetes#mounting-operator-supplied-auth-helpers).
+
+For MCP backend services you add (Elasticsearch, internal services, etc.), create their secrets the same way and reference them via `secretKeyRef` in the corresponding Deployment manifest.
 
 ## How Agent Pods Work
 
@@ -208,34 +220,21 @@ The exact permission payload differs by runtime. See `docs/runtime-configuration
 
 ## Images
 
-Per-MCP image and launcher notes live under `deployment/mcp-servers/`.
-
-| Image | Source | Build command | Cluster handling |
-|-------|--------|---------------|------------------|
-| `fracta/agent:latest` | `Dockerfile` | `make docker-build` | Local image, loaded with `make docker-load` |
-| `fracta/vendor-mcp:latest` | `deployment/mcp-servers/vendor/Dockerfile` | `make vendor-mcp-build` | Local image, loaded with `make vendor-mcp-load` |
-| `docker.elastic.co/mcp/elasticsearch:latest` | Public registry, no local Dockerfile | None | Cluster pulls with `imagePullPolicy: IfNotPresent` |
-
-Repo-built local images use `imagePullPolicy: Never` and must be loaded into the local cluster runtime:
+The scaffolded manifests reference `ghcr.io/darkquasar/fracta:latest` (the published fracta image) with `imagePullPolicy: IfNotPresent`. For local clusters that can pull from public registries, no extra setup is needed. For air-gapped clusters or fracta-development workflows where you've built a local image, load the image into your cluster runtime and edit the `image:` and `imagePullPolicy:` fields in `deployment/k8s/manifests/fracta-controlplane.yaml` and `fracta-gateway.yaml` accordingly:
 
 ```bash
-make docker-load        # fracta/agent
-make vendor-mcp-load    # fracta/vendor-mcp
+# Examples — pick the one matching your cluster runtime.
+kind load docker-image ghcr.io/darkquasar/fracta:dev --name <cluster-name>
+minikube image load ghcr.io/darkquasar/fracta:dev --profile <profile>
+k3d image import  ghcr.io/darkquasar/fracta:dev --cluster <cluster-name>
 ```
 
-The Makefile does not prompt with a menu. Pick the loader explicitly when you are not using Docker Desktop:
+Then update `image:` and set `imagePullPolicy: Never` on the relevant Deployments.
+
+After image changes, restart the Deployments:
 
 ```bash
-K8S_IMAGE_LOADER=kind KIND_CLUSTER=<name> make docker-load vendor-mcp-load
-K8S_IMAGE_LOADER=minikube MINIKUBE_PROFILE=<profile> make docker-load vendor-mcp-load
-K8S_IMAGE_LOADER=k3d K3D_CLUSTER=<name> make docker-load vendor-mcp-load
-```
-
-Supported `K8S_IMAGE_LOADER` values are `docker-desktop`, `kind`, `minikube`, and `k3d`.
-
-After code changes, rebuild + reload + restart:
-```bash
-make build docker-build docker-load
+kubectl rollout restart deployment/fracta-controlplane -n fracta
 kubectl rollout restart deployment/fracta-gateway -n fracta
 ```
 
@@ -280,8 +279,8 @@ kubectl exec <pod> -n  fracta -- cat /var/log/fracta-strategy.log
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| `ErrImagePull` on repo-built pods | Image not loaded into the local cluster runtime | `make docker-load` / `make vendor-mcp-load`, with `K8S_IMAGE_LOADER=...` if not using Docker Desktop |
-| `ErrImagePull` on `elastic-mcp` | Cluster cannot pull `docker.elastic.co/mcp/elasticsearch:latest` | Check local cluster network and registry access |
+| `ErrImagePull` on locally-built pods | Image not loaded into the local cluster runtime | Load the image via your cluster's loader (`kind load docker-image`, `minikube image load`, `k3d image import`) and set `imagePullPolicy: Never` on the relevant manifests |
+| `ErrImagePull` on a public-image pod | Cluster cannot reach the registry | Check local cluster network and registry access; for air-gapped clusters, mirror the image |
 | `no MCP transport configured` | MCP server entry is missing both `remote.url` and `local.command` | Add a `remote` entry to the gateway ConfigMap |
 | MCP tools not discovered in agent | Runtime workspace config missing gateway endpoint or auth fields | Check generated `.mcp.json`, `.codex/config.toml`, or `opencode.json` |
 | OpenCode MCP tool call is auto-rejected | Concrete OpenCode MCP permission key missing, for example `fracta_list` | Ensure `opencode.json` expands fracta tool permissions |
@@ -299,7 +298,8 @@ kubectl exec <pod> -n  fracta -- cat /var/log/fracta-strategy.log
 ## Teardown
 
 ```bash
-make k8s-teardown
+kubectl delete -f deployment/k8s/manifests/
+kubectl delete namespace fracta
 ```
 
 Deletes the `fracta` namespace and persistent volumes.

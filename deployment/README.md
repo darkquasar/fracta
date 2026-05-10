@@ -1,5 +1,18 @@
 # Deployment
 
+> **Spec-42 status:** As of spec-42, the canonical home for production-ready
+> deployment templates is `internal/project/scaffolds/templates/`, materialized
+> into operator repositories by `fracta init --scaffold {local|docker-compose|k8s}`.
+> The YAML files in this directory are kept in sync with the scaffolded versions
+> via the C15 drift-prevention CI test. Both copies will exist until the
+> Makefile and docs that still reference these paths migrate to
+> `fracta init --scaffold` (tracked as a follow-up tombstone PR).
+>
+> **Spec-43 status:** MCP-server scaffolding (`elastic-mcp.yaml`,
+> `purple-mcp.yaml`, `runtimes/claude/.mcp.json`, etc.) is intentionally NOT
+> migrated by spec-42. Those files live here until spec-43-mcp-server-scaffolds
+> decides their shape.
+
 This directory is the canonical home for fracta deployment configuration.
 
 ## Modes

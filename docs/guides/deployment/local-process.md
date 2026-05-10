@@ -11,12 +11,12 @@ Everything runs on your machine: a control plane daemon, a gateway subprocess, a
 Your machine
 ┌──────────────────────────────────────────────────┐
 │ Claude / Codex / OpenCode                        │
-│   └─ fracta serve ──stdio──> :9090 (daemon)       │
+│   └─ fracta serve ──stdio──> :9090 (daemon)      │
 │                              ├─ gateway :8080    │
 │                              ├─ SQLite state     │
 │                              └─ FalkorDB :6379   │
 │                                                  │
-│ fracta spawn ──HTTP──> :9090 ──> subprocess agent  │
+│ fracta spawn ──HTTP──> :9090 ──> subprocess agent│
 │   agent connects to gateway for MCP tools        │
 └──────────────────────────────────────────────────┘
 ```
@@ -25,29 +25,47 @@ Your machine
 
 ## Prerequisites
 
-- **Go 1.25+** — `go version`
-- **Docker** — for running FalkorDB (the knowledge graph)
+- **fracta CLI** installed and on PATH (`fracta --help` works). See [installation](/getting-started/installation).
+- **Docker** — for running FalkorDB (the knowledge graph).
 - **A runtime CLI** — at least one of:
   - `claude` (Claude Code): `npm install -g @anthropic-ai/claude-code`
   - `codex` (OpenAI Codex): `npm install -g @openai/codex`
   - `opencode` (OpenCode): `npm install -g opencode-ai`
-- **Optional**: `op` CLI (1Password) for secret injection
+- **A git repository** to scaffold into. `fracta init` runs in your own project root, not in the fracta repo.
 
 <hr />
 
-## 1. Build fracta
+## 1. Initialize fracta in your project
+
+From the root of any git repository:
 
 ```bash
-make build
+fracta init --scaffold local
 ```
 
-Verify:
+You'll see:
 
-```bash
-bin/fracta --help
+```
+Fracta initialized successfully.
+  scaffold: local
+  source:   embedded (fracta vX.Y.Z)
+  files:    2 written, 0 skipped
 ```
 
-You should see the  fracta CLI help with subcommands like `serve`, `spawn`, `list`, etc.
+This drops a minimal scaffold:
+
+```
+your-project/
+├── fracta.yaml           # runtime.backend: local, agent runtimes, allowed_tools
+├── .fracta/              # gitignored runtime state
+│   ├── state.db          # SQLite
+│   └── logs/
+└── deployment/
+    └── auth-helpers/
+        └── README.md     # PATH conventions for agent auth helpers
+```
+
+`fracta.yaml` is yours to edit. The defaults work for getting started; later you'll tune `agents.agent_runtimes`, `auth.credentials.profiles`, and `project.allowed_tools`.
 
 <hr />
 
@@ -70,98 +88,99 @@ Without FalkorDB, the gateway starts in degraded mode after a 60-second timeout.
 
 <hr />
 
-## 3. Link your runtime config
+## 3. Wire fracta into your AI CLI
 
-Each deployment mode ships pre-built MCP configs. Symlink the local-process config to your repo root:
+Each runtime CLI has its own MCP-server config format. The simplest approach is to add a fracta entry that runs `fracta serve` from your project root.
 
-**Claude:**
-
-```bash
-ln -sf deployment/local-process/runtimes/claude/.mcp.json .mcp.json
-```
-
-**Codex:**
-
-```bash
-mkdir -p .codex
-ln -sf ../deployment/local-process/runtimes/codex/config.toml .codex/config.toml
-```
-
-### A note about `op` (1Password)
-
-The default local-process `.mcp.json` wraps the  fracta command with `op run --env-file .op-env --` to inject secrets from 1Password. If you don't use 1Password, create a simpler `.mcp.json` at the repo root:
+**Claude Code** (`.mcp.json` at the project root):
 
 ```json
 {
   "mcpServers": {
     "fracta": {
-      "command": "bin/fracta",
-      "args": [
-        "serve",
-        "--config", "deployment/local-process/fracta.yaml",
-        "--graph-addr", "localhost:6379",
-        "--strategy-dir", "strategies/"
-      ]
+      "command": "fracta",
+      "args": ["serve"]
     }
   }
 }
 ```
 
-Or set the required env vars directly and use the default symlinked config:
+`fracta serve` reads `./fracta.yaml` by default. To pass a different config or extra flags, add them to `args`.
 
-```bash
-export ELASTIC_URL="https://..."
-export ELASTIC_API_KEY="..."
-export FALKORDB_URL="redis://localhost:6379"
+**Codex** (`.codex/config.toml`):
+
+```toml
+[mcp_servers.fracta]
+command = "fracta"
+args = ["serve"]
 ```
+
+**OpenCode** — see the [OpenCode runtime guide](/guides/authentication/runtime-configuration) for `opencode.json` setup.
+
+### Secret injection (optional)
+
+If you use a secret manager, wrap the command. For 1Password:
+
+```json
+{
+  "mcpServers": {
+    "fracta": {
+      "command": "op",
+      "args": ["run", "--env-file", ".op-env", "--", "fracta", "serve"]
+    }
+  }
+}
+```
+
+For Doppler: `["run", "--", "fracta", "serve"]`. For plain env vars, set them in your shell before starting the AI CLI — fracta inherits the environment.
 
 <hr />
 
-## 4. Credentials setup
+## 4. Auth credentials
 
-### LLM runtime credentials
+Agents need credentials to talk to their LLM provider. The default scaffolded `fracta.yaml` ships an `example` auth profile that points at `deployment/auth-helpers/fetch-token-example` — a deliberately non-functional template that fails loudly until you edit it.
 
-These authenticate your spawned agents to their LLM provider.
-
-**Claude (Bedrock):** The local-process config uses `bedrock-auth-helper` as the auth resolver command. This is a corporate-internal tool. To use a different Bedrock auth mechanism, edit the `auth.credentials.profiles.bedrock` section in `deployment/local-process/fracta.yaml` and replace the `command` with your own token-fetching command.
-
-**Codex (OpenAI):** Set `OPENAI_API_KEY` as an environment variable before starting fracta:
+Add a real helper script for your provider. For example, for Anthropic API:
 
 ```bash
-export OPENAI_API_KEY="sk-..."
+cat > deployment/auth-helpers/fetch-anthropic-key <<'EOF'
+#!/bin/sh
+exec cat "${ANTHROPIC_API_KEY_FILE:-$HOME/.anthropic/api-key}"
+EOF
+chmod +x deployment/auth-helpers/fetch-anthropic-key
 ```
 
-The config interpolates `${OPENAI_API_KEY}` from the environment.
+Then update `fracta.yaml` to reference it:
 
-**OpenCode (Bedrock):** Uses `bedrock-auth-helper` via `command_output` auth origin. Same as Claude — replace the command if you're not on corporate network.
+```yaml
+auth:
+  credentials:
+    profiles:
+      anthropic:
+        runtime_auth_resolvers:
+          anthropic_helper:
+            type: command
+            command: fetch-anthropic-key
+            ttl_ms: 60000
+        default_binding:
+          type: claude_api_key_helper
+          runtime_auth_resolver: anthropic_helper
 
-### MCP server API credentials
-
-These authenticate backend tools (Elasticsearch, VendorSecurity) to their external APIs.
-
-With 1Password (the repo default):
-
-```bash
-op run --env-file .op-env -- bin/fracta serve --config deployment/local-process/fracta.yaml
+agents:
+  agent_runtimes:
+    claude:
+      auth_profile: anthropic
 ```
 
-Without 1Password, export the variables directly:
-
-```bash
-export ELASTIC_URL="https://your-cluster.elastic.co"
-export ELASTIC_API_KEY="your-api-key"
-# Then start  fracta normally — the config interpolates ${VAR}
-```
-
-Without any MCP creds, agents still get graph tools, strategy tools, and  fracta lifecycle tools. They just can't query Elasticsearch or VendorSecurity.
+For Bedrock STS, Vertex via gcloud, or custom HTTP token proxies, see the example snippets in `deployment/auth-helpers/fetch-token-example`. The full pipeline is documented in the [credential pipeline guide](/guides/authentication/credential-pipeline).
 
 <hr />
 
 ## 5. Connect from your AI CLI
 
-Restart Claude Code (or press `/mcp` to reconnect MCP servers).  Fracta auto-starts the control plane daemon when `fracta serve` runs and no daemon is detected.
+Restart Claude Code (or press `/mcp` to reconnect MCP servers). Fracta auto-starts the control plane daemon when `fracta serve` runs and no daemon is detected.
 
-You should see  fracta tools available — `fracta_spawn`, `fracta_list`, `graph_query`, etc.
+You should see fracta tools available — `fracta_spawn`, `fracta_list`, `graph_query`, etc.
 
 If using Codex, restart Codex. Same auto-start behavior applies.
 
@@ -172,8 +191,7 @@ If using Codex, restart Codex. Same auto-start behavior applies.
 **From the CLI:**
 
 ```bash
-bin/fracta spawn \
-  --config deployment/local-process/fracta.yaml \
+fracta spawn \
   --task hello-world \
   --contract "List the files in the repo root and say hello"
 ```
@@ -187,13 +205,13 @@ fracta_spawn(task="hello-world", contract="List the files in the repo root and s
 **Check status:**
 
 ```bash
-bin/fracta list --config deployment/local-process/fracta.yaml
+fracta list
 ```
 
 **Read agent output:**
 
 ```bash
-bin/fracta peek --config deployment/local-process/fracta.yaml --name hello-world
+fracta peek --name hello-world
 ```
 
 Or via MCP: `fracta_list()` and `fracta_peek(name="hello-world")`.
@@ -202,19 +220,19 @@ Or via MCP: `fracta_list()` and `fracta_peek(name="hello-world")`.
 
 ## What just happened
 
-1. The spawn request went to the control plane daemon via HTTP
-2. The control plane created a git worktree at `.fracta/worktrees/hello-world` on branch `feature/hello-world`
-3. It wrote runtime workspace files (`.mcp.json`, `.claude/settings.json`) into the worktree
-4. It launched a Claude subprocess pointed at the worktree
-5. The agent connected to the gateway at `:8080` for MCP tools
-6. The agent executed the task and completed
-7. The reaper will eventually clean up the worktree
+1. The spawn request went to the control plane daemon via HTTP.
+2. The control plane created a git worktree at `.fracta/worktrees/hello-world` on branch `feature/hello-world`.
+3. It wrote runtime workspace files (`.mcp.json`, `.claude/settings.json`) into the worktree.
+4. It launched a Claude subprocess pointed at the worktree.
+5. The agent connected to the gateway at `:8080` for MCP tools.
+6. The agent executed the task and completed.
+7. The reaper will eventually clean up the worktree.
 
 <hr />
 
 ## Next steps
 
-- **Full local-process reference**: [deployment-modes.md](/guides/deployment/overview) (Section 1)
-- **Multi-runtime configuration**: [runtime-configuration.md](/guides/authentication/runtime-configuration)
-- **Credential deep dive**: [credential-pipeline.md](/guides/authentication/credential-pipeline)
+- **Full local-process reference**: [deployment overview](/guides/deployment/overview) (Section 1)
+- **Multi-runtime configuration**: [runtime configuration](/guides/authentication/runtime-configuration)
+- **Credential deep dive**: [credential pipeline](/guides/authentication/credential-pipeline)
 - **Ready for the full stack?** Try [Docker Compose Quickstart](/guides/deployment/docker-compose)

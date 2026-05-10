@@ -56,7 +56,19 @@ cp bin/fracta /usr/local/bin/
 fracta --help
 ```
 
-You should see the list of subcommands (`spawn`, `list`, `peek`, `say`, `kill`, etc.).
+You should see the list of subcommands (`spawn`, `list`, `peek`, `say`, `kill`, `init`, etc.).
+
+## Initialize a project
+
+From the root of your own git repository, scaffold a fracta project:
+
+```bash
+fracta init --scaffold local             # single-machine development
+fracta init --scaffold docker-compose    # containerized stack
+fracta init --scaffold k8s               # Kubernetes deployment
+```
+
+This drops a complete deployment tree (`fracta.yaml`, `deployment/`, `.fracta/`) into your project. See the [`fracta init` reference](/reference/cli/init) for all flags, and the per-mode quickstarts below.
 
 ## What's next
 

@@ -61,9 +61,33 @@ jobs:
           path: dist/*
           retention-days: 14
 
+  package-scaffolds:
+    name: Package scaffolds
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Build scaffold tarballs
+        run: |
+          VERSION="${GITHUB_REF_NAME}"
+          mkdir -p dist
+          for kind in local docker-compose k8s; do
+            tar -C internal/project/scaffolds/templates -czf "dist/scaffold-${kind}-${VERSION}.tar.gz" "${kind}"
+            (cd dist && sha256sum "scaffold-${kind}-${VERSION}.tar.gz" > "scaffold-${kind}-${VERSION}.tar.gz.sha256")
+          done
+          ls -la dist/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: scaffolds-${{ github.ref_name }}
+          path: dist/scaffold-*
+          retention-days: 14
+
   release:
     name: Publish release
-    needs: build
+    needs: [build, package-scaffolds]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -93,6 +117,12 @@ jobs:
             dist/fracta-*-darwin-amd64.sha256
             dist/fracta-*-darwin-arm64
             dist/fracta-*-darwin-arm64.sha256
+            dist/scaffold-local-*.tar.gz
+            dist/scaffold-local-*.tar.gz.sha256
+            dist/scaffold-docker-compose-*.tar.gz
+            dist/scaffold-docker-compose-*.tar.gz.sha256
+            dist/scaffold-k8s-*.tar.gz
+            dist/scaffold-k8s-*.tar.gz.sha256
 
   docker:
     name: Build and push Docker image

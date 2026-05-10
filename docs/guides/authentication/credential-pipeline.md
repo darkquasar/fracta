@@ -596,12 +596,15 @@ All credential operations emit structured logs via `fractalog.Component("credent
 
 ## Config File Locations
 
+After `fracta init --scaffold <mode>`, the per-mode config files live under your project root:
+
 | File | Mode | Description |
 |------|------|-------------|
-| `deployment/local-process/fracta.yaml` | Local | Host-local agents, `bedrock-auth-helper` available |
-| `deployment/docker-compose/client/fracta.yaml` | Docker Compose | Thin client, CP in compose stack |
-| `deployment/k8s-local-cluster/client/fracta.yaml` | Local K8s | Thin client, CP in cluster |
-| `deployment/k8s-local-cluster/manifests/fracta-controlplane.yaml` | K8s In-Cluster | Controlplane ConfigMap + Deployment |
+| `fracta.yaml` (project root) | All modes | Operator-edited config; `runtime.backend` distinguishes modes |
+| `deployment/configs/controlplane.yaml` | Docker Compose | Server-side controlplane config (mounted into the controlplane container) |
+| `deployment/configs/gateway.yaml` | Docker Compose | Server-side gateway config |
+| `deployment/k8s/manifests/fracta-controlplane.yaml` | Kubernetes | Controlplane ConfigMap + Deployment |
+| `deployment/k8s/manifests/fracta-gateway.yaml` | Kubernetes | Gateway ConfigMap + Deployment |
 
 ## Known Limitations
 

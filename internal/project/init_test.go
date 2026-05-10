@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/darkquasar/fracta/internal/project/scaffolds"
 	"gopkg.in/yaml.v3"
 )
 
@@ -25,7 +26,7 @@ func setupGitRepo(t *testing.T) string {
 func TestInit_WritesFractaYAML(t *testing.T) {
 	root := setupGitRepo(t)
 
-	if err := Init(root); err != nil {
+	if _, err := Init(root, InitOpts{Scaffold: scaffolds.KindLocal}); err != nil {
 		t.Fatalf("Init failed: %v", err)
 	}
 
@@ -69,7 +70,7 @@ func TestInit_WritesFractaYAML(t *testing.T) {
 		t.Error(".fracta/config.json should NOT be created by fracta init")
 	}
 
-	// .fracta/state.db should exist.
+	// .fracta/state.db should exist (KindLocal only).
 	dbPath := filepath.Join(root, ".fracta", "state.db")
 	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
 		t.Error(".fracta/state.db should be created")
@@ -95,7 +96,11 @@ func TestInit_PreservesExistingFractaYAML(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := Init(root); err != nil {
+	// SkipExisting policy must leave the existing file alone.
+	if _, err := Init(root, InitOpts{
+		Scaffold:   scaffolds.KindLocal,
+		OnConflict: scaffolds.ConflictSkipExisting,
+	}); err != nil {
 		t.Fatalf("Init failed: %v", err)
 	}
 
@@ -112,7 +117,7 @@ func TestInit_PreservesExistingFractaYAML(t *testing.T) {
 func TestInit_FractaYAMLHasProjectDefaults(t *testing.T) {
 	root := setupGitRepo(t)
 
-	if err := Init(root); err != nil {
+	if _, err := Init(root, InitOpts{Scaffold: scaffolds.KindLocal}); err != nil {
 		t.Fatalf("Init failed: %v", err)
 	}
 
@@ -140,5 +145,110 @@ func TestInit_FractaYAMLHasProjectDefaults(t *testing.T) {
 		if !strings.Contains(content, c.substr) {
 			t.Errorf("fracta.yaml missing %s (%q)", c.name, c.substr)
 		}
+	}
+}
+
+// TestInit_ForceOverwrites: with ConflictOverwrite, an existing fracta.yaml
+// is replaced by the scaffold version.
+func TestInit_ForceOverwrites(t *testing.T) {
+	root := setupGitRepo(t)
+	yamlPath := filepath.Join(root, "fracta.yaml")
+	if err := os.WriteFile(yamlPath, []byte("# stale\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Init(root, InitOpts{
+		Scaffold:   scaffolds.KindLocal,
+		OnConflict: scaffolds.ConflictOverwrite,
+	}); err != nil {
+		t.Fatalf("Init failed: %v", err)
+	}
+	data, _ := os.ReadFile(yamlPath)
+	if strings.TrimSpace(string(data)) == "# stale" {
+		t.Errorf("fracta.yaml was not overwritten by --force; got: %s", data)
+	}
+	if !strings.Contains(string(data), "default_base_branch") {
+		t.Errorf("fracta.yaml after --force missing scaffold content; got: %s", data)
+	}
+}
+
+// TestInit_DockerComposeStructure: kind=docker-compose materializes the
+// expected tree (no SQLite, has fracta/docker-compose.yml).
+func TestInit_DockerComposeStructure(t *testing.T) {
+	if _, err := exec.LookPath("docker"); err != nil {
+		t.Skip("docker not installed; skipping docker-compose scaffold test")
+	}
+	// Also skip if `docker compose version` fails (e.g. daemon unavailable
+	// in CI). The prereq check is part of Init for docker-compose; this
+	// test exercises file structure only, not prereqs.
+	if err := exec.Command("docker", "compose", "version").Run(); err != nil {
+		t.Skip("`docker compose` plugin/daemon unavailable; skipping")
+	}
+	root := setupGitRepo(t)
+	if _, err := Init(root, InitOpts{Scaffold: scaffolds.KindDockerCompose}); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+
+	for _, want := range []string{
+		"fracta.yaml",
+		"deployment/docker-compose.yml",
+		"deployment/configs/controlplane.yaml",
+		"deployment/configs/gateway.yaml",
+		"deployment/auth-helpers/README.md",
+		"deployment/auth-helpers/fetch-token-example",
+	} {
+		if _, err := os.Stat(filepath.Join(root, want)); err != nil {
+			t.Errorf("missing scaffolded file %q: %v", want, err)
+		}
+	}
+
+	// Compose mode must NOT create a SQLite db (state lives in postgres).
+	if _, err := os.Stat(filepath.Join(root, ".fracta", "state.db")); !os.IsNotExist(err) {
+		t.Error(".fracta/state.db should NOT exist for docker-compose scaffold")
+	}
+
+	// fetch-token-example must be executable (spec-42 §6).
+	info, err := os.Stat(filepath.Join(root, "deployment/auth-helpers/fetch-token-example"))
+	if err == nil {
+		if mode := info.Mode().Perm(); mode != 0o755 {
+			t.Errorf("fetch-token-example mode = %#o, want 0755", mode)
+		}
+	}
+}
+
+// TestInit_K8sStructure: kind=k8s materializes manifests + auth-helpers
+// ConfigMap + sets runtime.backend=kubernetes.
+func TestInit_K8sStructure(t *testing.T) {
+	if _, err := exec.LookPath("kubectl"); err != nil {
+		t.Skip("kubectl not installed; skipping k8s scaffold test")
+	}
+	root := setupGitRepo(t)
+	if _, err := Init(root, InitOpts{Scaffold: scaffolds.KindK8s}); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+
+	for _, want := range []string{
+		"fracta.yaml",
+		"deployment/k8s/manifests/namespace.yaml",
+		"deployment/k8s/manifests/fracta-controlplane.yaml",
+		"deployment/k8s/manifests/fracta-gateway.yaml",
+		"deployment/k8s/manifests/auth-helpers-configmap.yaml",
+		"deployment/auth-helpers/README.md",
+		"deployment/auth-helpers/fetch-token-example",
+	} {
+		if _, err := os.Stat(filepath.Join(root, want)); err != nil {
+			t.Errorf("missing scaffolded file %q: %v", want, err)
+		}
+	}
+
+	// fracta.yaml must declare runtime.backend: kubernetes.
+	data, err := os.ReadFile(filepath.Join(root, "fracta.yaml"))
+	if err != nil {
+		t.Fatalf("read fracta.yaml: %v", err)
+	}
+	if !strings.Contains(string(data), "backend: kubernetes") {
+		t.Errorf("k8s fracta.yaml missing 'backend: kubernetes'")
+	}
+	if !strings.Contains(string(data), "extra_volumes") {
+		t.Errorf("k8s fracta.yaml missing 'extra_volumes' block")
 	}
 }

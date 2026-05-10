@@ -261,7 +261,7 @@ agents:
 All three runtimes work as K8s Jobs out of the box. The controlplane config needs the runtime entries in the ConfigMap:
 
 ```yaml
-# In the controlplane ConfigMap (deployment/k8s-local-cluster/manifests/fracta-controlplane.yaml)
+# In the controlplane ConfigMap (deployment/k8s/manifests/fracta-controlplane.yaml)
 agents:
   agent_runtimes:
     claude:

@@ -57,18 +57,18 @@ make install
 Most development happens against the **local-process** deployment mode (no Docker, no K8s). The fastest loop:
 
 ```bash
-# 1. Build
+# 1. Build the fracta binary you're working on
 make build
 
-# 2. Symlink the local-process Claude config to the repo root
-ln -sf deployment/local-process/runtimes/claude/.mcp.json .mcp.json
+# 2. From a separate test project (any git repo), scaffold fracta with your dev binary
+mkdir -p /tmp/fracta-dev-project && cd /tmp/fracta-dev-project
+git init -q
+/path/to/fracta/bin/fracta init --scaffold local
 
-# 3. From a separate fracta-managed directory, run `bin/fracta init` to bootstrap state
-cd /path/to/your/fracta-workspace
-/path/to/fracta/bin/fracta init
-
-# 4. Use Claude Code (or `bin/fracta spawn`) to drive the orchestrator
+# 3. Use Claude Code (or bin/fracta spawn) to drive the orchestrator from that project
 ```
+
+The scaffold materializes `fracta.yaml`, `.fracta/state.db`, and `deployment/auth-helpers/`. Edit `fracta.yaml` to point at your dev FalkorDB / config / etc.
 
 For full end-to-end setup, see the [Local Process Quickstart](/guides/deployment/local-process).
 

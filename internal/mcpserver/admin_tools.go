@@ -8,6 +8,7 @@ import (
 
 	"github.com/darkquasar/fracta/internal/cpapi"
 	"github.com/darkquasar/fracta/internal/project"
+	"github.com/darkquasar/fracta/internal/project/scaffolds"
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
@@ -102,7 +103,10 @@ func (s *Server) handleInit(_ context.Context, request mcp.CallToolRequest) (*mc
 		}
 	}
 
-	if err := project.Init(path); err != nil {
+	if _, err := project.Init(path, project.InitOpts{
+		Scaffold:   scaffolds.KindLocal,
+		OnConflict: scaffolds.ConflictSkipExisting,
+	}); err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("init failed: %v", err)), nil
 	}
 

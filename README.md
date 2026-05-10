@@ -128,3 +128,4 @@ make docker-build   # Docker image (for Compose/K8s)
 | [Credential Pipeline](docs/credential-pipeline.md) | Authentication deep dive |
 | [Strategies](docs/strategies.md) | Python DAG pipelines for investigations |
 | [Local K8s Guide](docs/local-k8s.md) | Complete K8s runbook with troubleshooting |
+| [Kubernetes Configuration](docs/configuration/kubernetes.md) | `extra_volumes`, auth-helpers ConfigMap, `/opt/fracta/auth-helpers/` PATH convention |
