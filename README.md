@@ -1,14 +1,18 @@
 # Fracta
 
-Fracta is a **swarm intelligence engine** that builds a model of your world in a graph database, then runs **deterministic strategies** against that model. Parallel AI agents explore the world — logs, alerts, code, infrastructure — and capture what they find as nodes and edges in FalkorDB. Once the world is mapped, strategies — versioned Python pipelines — execute analytics, correlations, and detections directly against the graph and staged data. No LLM in the loop, no sampling drift, no token burn for work that's just SQL and joins.
+Fracta is a **swarm intelligence engine** for AI agents — the system materialization of the explore/exploit pattern. **Agents handle exploration**: parallel reasoning, open-ended investigation, deciding what to look at next. **Strategies handle exploitation**: deterministic Python pipelines that encode reproducible analytics on top of what the swarm has discovered. The graph in the middle is more than a shared world model — it carries **ontologies**: nodes and edges that declare which entity types exist, which relationships are valid, and which dynamics are allowed. Ontologies are seeded upfront and extended at runtime as agents discover new shapes; strategies can rely on those guarantees when they query.
 
-The swarm uses Claude Code, Codex, or OpenCode as the agent runtime — same CLI you already use. Fracta is the layer that spawns them in parallel git worktrees, routes their MCP tool calls through a shared gateway, persists what they discover, and lets you run reproducible workflows on top of it all.
+That split is the headline. Reasoning loops are non-deterministic by design — sampling, context, model version all drift. Strategies are how you encode the *deterministic* parts of an investigation (counts, joins, correlations, sliding windows, map-reduce, automation logic, detection rules, composable analytics, etc.) so they run reproducibly, in milliseconds, without the LLM in the loop and without burning tokens on work that's just SQL.
+
+Fracta runs the agent swarm in parallel isolated workspaces, captures what they discover as typed nodes and edges in FalkorDB, and exposes the strategy framework that operates on top. The agent runtime is whatever AI CLI you already use — Claude Code, Codex, OpenCode today; the architecture has nothing coding-specific about it. Use it for security investigations, ops triage, data exploration, code refactors, anything where you want many agents reasoning in parallel and deterministic logic running on top of what they find.
 
 **[Getting Started Guide](docs/getting-started.md)** — start here.
 
 ## How It Works
 
-Your machine runs the AI CLI you already use. Everything else — the control plane, the MCP gateway, the strategy runner, the knowledge graph, and the agents themselves — runs server-side, whether "server" means a local process, a Docker Compose stack, or a Kubernetes cluster. The diagram below maps to the three stages: the AI CLI drives the swarm; the control plane spawns and supervises agents; the MCP gateway routes their tool calls and feeds discoveries into the knowledge graph; the strategy runner executes deterministic Python pipelines on top of the captured world.
+Your machine runs the AI CLI you already use. Everything else — the control plane, the MCP gateway, the strategy runner, the knowledge graph, and the agents themselves — runs server-side, whether "server" means a local process, a Docker Compose stack, or a Kubernetes cluster.
+
+Reading the diagram in explore/exploit terms: the agents on the right are the **explore** loop, reasoning over MCP tools and writing what they find into the knowledge graph. The strategy runner is the **exploit** loop, reading the graph and staged data and returning deterministic results that the agents (or you) can act on without re-reasoning.
 
 ```mermaid
 flowchart LR
