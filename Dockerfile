@@ -36,9 +36,9 @@ RUN cd /opt/fracta/strategies && uv sync --frozen --no-dev
 # Strategy source (changes more often than deps)
 COPY strategies/ /opt/fracta/strategies/
 
-# Token helper for in-pod Bedrock auth refresh via the credentials proxy
-COPY scripts/fetch-bedrock-token /usr/local/bin/fetch-bedrock-token
-RUN chmod +x /usr/local/bin/fetch-bedrock-token
+# Auth-helpers directory: operators mount their own helpers here via volumes
+# / configmaps (see spec-42 §6). Empty by default — the image is auth-agnostic.
+RUN mkdir -p /opt/fracta/auth-helpers
 
 # Generic entrypoint — copies orchestrator-prepared auth, starts sidecar
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh

@@ -1,28 +1,18 @@
 #!/bin/sh
 set -e
 
-# Install host-specific user settings.
-# Priority: orchestrator-prepared file > auto-generated from fetch-bedrock-token
+# Auth helpers — workspace-local first (per-agent overrides), then image-baked.
+# Left-most dir on PATH wins; workspace shadows image (spec-42 §6, Rule 3).
+export PATH="${PWD}/.fracta/auth-helpers:/opt/fracta/auth-helpers:${PATH}"
+
+# Install host-specific user settings. The orchestrator is the SOLE source of
+# settings.json — no in-pod fallbacks (spec-42 Rule 2). Pods without an
+# orchestrator-prepared file run unauthenticated; the agent's first auth-bearing
+# call fails authoritatively.
 FRACTA_USER_SETTINGS="${PWD}/.fracta/user-settings.json"
 if [ -f "$FRACTA_USER_SETTINGS" ]; then
   mkdir -p ~/.claude
   cp "$FRACTA_USER_SETTINGS" ~/.claude/settings.json
-elif command -v fetch-bedrock-token >/dev/null 2>&1; then
-  # No orchestrator-prepared settings (standalone spike / direct Job mode).
-  # Generate minimal auth settings using the in-pod token helper.
-  mkdir -p ~/.claude
-  cat > ~/.claude/settings.json <<SETTINGS
-{
-  "apiKeyHelper": "/usr/local/bin/fetch-bedrock-token",
-  "env": {
-    "CLAUDE_CODE_USE_BEDROCK": "1",
-    "CLAUDE_CODE_SKIP_BEDROCK_AUTH": "1",
-    "CLAUDE_CODE_API_KEY_HELPER_TTL_MS": "60000",
-    "AWS_REGION": "${AWS_REGION:-ap-southeast-2}",
-    "ANTHROPIC_MODEL": "${ANTHROPIC_MODEL:-global.anthropic.claude-sonnet-4-6}"
-  }
-}
-SETTINGS
 fi
 
 # Start the Python strategy sidecar if the runner exists AND we're not in
@@ -39,5 +29,15 @@ if [ -f "$RUNNER" ] && [ -z "$FRACTA_STRATEGY_EXTERNAL" ]; then
     sleep 0.5
   done
 fi
+
+# Diagnostic line: tells the operator at a glance whether the orchestrator
+# handed off settings and which auth helpers are visible (R1 mitigation).
+present=false
+[ -f "$FRACTA_USER_SETTINGS" ] && present=true
+helpers=""
+[ -d "${PWD}/.fracta/auth-helpers" ] && helpers=$(ls "${PWD}/.fracta/auth-helpers" 2>/dev/null)
+[ -d /opt/fracta/auth-helpers ] && helpers="${helpers}${helpers:+ }$(ls /opt/fracta/auth-helpers 2>/dev/null)"
+helpers=$(printf '%s\n' "$helpers" | tr ' ' '\n' | sort -u | paste -sd, -)
+echo "fracta: user-settings.json present=${present}; auth-helpers=[${helpers:-none}]" >&2
 
 exec "$@"
