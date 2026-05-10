@@ -1,11 +1,13 @@
 ---
 title: What is Fracta?
-description: Swarm intelligence orchestration for AI coding agents
+description: "A swarm intelligence engine: parallel agents explore, a graph captures what they find, deterministic strategies run on top."
 ---
 
 # What is Fracta?
 
-Fracta lets you spawn parallel AI coding agents from a single CLI — Claude, Codex, OpenCode — each working on its own task, in its own git worktree, coordinating through a shared control plane.
+Fracta is a **swarm intelligence engine** that builds a model of your world in a graph database, then runs **deterministic strategies** against that model. Parallel AI agents explore the world — logs, alerts, code, infrastructure — and capture what they find as nodes and edges in FalkorDB. Once the world is mapped, strategies — versioned Python pipelines — execute analytics, correlations, and detections directly against the graph and staged data. No LLM in the loop, no sampling drift, no token burn for work that's just SQL and joins.
+
+The swarm uses Claude Code, Codex, or OpenCode as the agent runtime — same CLI you already use. Fracta is the layer that spawns them in parallel git worktrees, routes their MCP tool calls through a shared gateway, persists what they discover, and lets you run reproducible workflows on top of it all.
 
 ## The problem
 
@@ -19,6 +21,18 @@ Four concrete frictions:
 - **No visibility into long-running work.** When an agent is mid-investigation or running a long refactor, you either babysit the terminal or come back later and read scrollback. There's no live status, no "what is it doing right now," no way to peek without disrupting.
 - **No shared knowledge between runs.** Agent A discovers something useful — a flaky test, a hidden dependency, an undocumented API. Agent B starts cold and has to discover it again.
 - **Burning tokens on deterministic work.** Counting rows, joining tables, deduplicating, computing percentiles, correlating events across sources — none of this needs a language model. But when you ask an agent to "find anomalies in this dataset," the LLM ends up doing arithmetic in-context, slowly and expensively, with the answer changing run to run because of sampling.
+
+## The three-stage arc
+
+Fracta is built around a deliberate sequence:
+
+1. **Explore (swarm).** Parallel agents run investigations against your data sources — logs, alerts, code, cloud APIs. Each agent works in its own worktree with its own context, coordinating through a mailbox and a shared MCP gateway. This is where the LLM earns its keep: open-ended reasoning, deciding what to look at next, integrating signals across sources.
+
+2. **Capture (graph).** Everything the agents discover lands in FalkorDB as typed nodes and edges — systems, identities, IPs, events, findings, hunts, and the data sources behind them. The graph is the persistent memory. Two agents on the same investigation see the same world; an agent run tomorrow inherits everything yesterday's run learned. The graph-update protocol makes this non-optional, not a side effect.
+
+3. **Execute (strategies).** Once the world is captured, deterministic Python pipelines run against the graph and staged Parquet tables. A strategy that joins two tables and correlates events runs in milliseconds, returns the same answer byte-for-byte every time, and burns zero LLM tokens. Strategies are versioned, composable, and portable across environments — you publish `contract.yaml` + `strategy.py`, your environment supplies the `binding.yaml`.
+
+The sections below map each friction onto the stage that solves it.
 
 ## How fracta solves it
 
@@ -60,7 +74,7 @@ This matters because:
 
 Typical use: an agent investigates a security event, calls `strategy_run(name="event_correlation", params={...})`, gets back a structured table of related events from the past 24 hours, and reasons about *that* — instead of asking the LLM to manually correlate raw logs.
 
-The strategy framework supports hunt, detection, enrichment, correlation, and traversal categories out of the box. See the [Strategies guide](/guides/strategies/overview) for authoring details.
+The strategy framework supports hunt, detection, enrichment, correlation, and traversal categories out of the box. See the [Strategies section](/strategies/overview) for authoring details.
 
 ## Who is fracta for
 

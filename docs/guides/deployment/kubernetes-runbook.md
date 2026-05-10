@@ -24,7 +24,8 @@ kubectl get nodes
 ```
 Host (your machine)
   └─ fracta serve --config deployment/k8s-local-cluster/client/fracta.yaml
-       └─ thin client → fracta-controlplane (:9090 via port-forward or LoadBalancer)
+       └─ thin client (HTTP) ──▶ fracta-controlplane Service :9090 in-cluster
+            (transport: kubectl port-forward / LoadBalancer / Ingress, depending on cluster)
 
 K8s Cluster (fracta namespace)
   ├─ fracta-controlplane Deployment  ← lifecycle authority, workers, K8s agent spawner
@@ -62,19 +63,23 @@ All pods should show `1/1 Running`:
 - `vendor-mcp-*`
 - `fracta-gateway-*`
 
-### 3. Start port-forwards
+### 3. Reach the control plane Service from your host
+
+The control plane is the `fracta-controlplane` Service on port 9090 inside the cluster. For local dev clusters the bundled helper port-forwards it:
 
 ```bash
 scripts/k8s-port-forward.sh
 ```
 
 Runs in the foreground. Opens:
-- `localhost:9090` → fracta-controlplane
+- `localhost:9090` → fracta-controlplane Service
 - optional service ports for direct troubleshooting, depending on the script
 
-### 4. Connect via MCP
+For non-dev clusters, expose the Service via a `LoadBalancer` (Docker Desktop) or an Ingress and point your thin-client config at that address instead — the rest of the flow is identical.
 
-`.mcp.json` points to `fracta serve --config deployment/k8s-local-cluster/client/fracta.yaml`. With port-forwards running:
+### 4. Connect via MCP (golden path)
+
+`.mcp.json` points to `fracta serve --config deployment/k8s-local-cluster/client/fracta.yaml`. Once the host can reach the control plane Service:
 
 ```bash
 # In Claude Code, reconnect MCP:

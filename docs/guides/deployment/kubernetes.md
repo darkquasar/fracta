@@ -5,7 +5,9 @@ description: Run fracta against a local kubernetes cluster
 
 # Quickstart: Kubernetes Mode
 
-Fracta deploys to a local Kubernetes cluster. The control plane and gateway run as Deployments, agents spawn as K8s Jobs, and the host is a thin client connected via port-forward.
+Fracta deploys to a Kubernetes cluster. The control plane and gateway run as Deployments, agents spawn as K8s Jobs, and the control plane is exposed to the host as a Kubernetes Service. On the host, the thin client connects to that Service — the **golden path** is to run `fracta serve` as an MCP server in your AI CLI's config so your CLI talks MCP to it and it talks HTTP to the in-cluster control plane. The same thin client is also usable from the command line (`fracta spawn`, `fracta list`, …) when you want operator-style access without going through an AI CLI.
+
+How the host reaches the in-cluster Service depends on the cluster: `kubectl port-forward` for a quick dev loop, a `LoadBalancer` service on Docker Desktop, an Ingress for a real cluster. None of those choices change the architecture — they're just transports.
 
 This quickstart covers the golden path. For the complete guide with troubleshooting, images, observability, and teardown, see [local-k8s.md](/guides/deployment/kubernetes-runbook).
 
@@ -43,23 +45,31 @@ make k8s-status
 
 <hr />
 
-## 2. Start port-forwards
+## 2. Reach the control plane Service from your host
+
+The control plane is exposed inside the cluster as the `fracta-controlplane` Service on `:9090`. The host needs a route to it. For local dev clusters the simplest option is `kubectl port-forward`; for Docker Desktop a `LoadBalancer` service may already publish it on `localhost:9090`; for real clusters use an Ingress.
+
+For local dev, the bundled helper script port-forwards in the foreground:
 
 ```bash
 scripts/k8s-port-forward.sh
 ```
 
-This runs in the foreground and opens `localhost:9090` → fracta-controlplane.
+This opens `localhost:9090` → `fracta-controlplane`. Your thin client (next step) talks to that local endpoint.
 
 <hr />
 
-## 3. Link your runtime config (in another terminal)
+## 3. Wire the thin client into your AI CLI as MCP (golden path)
+
+Symlink the bundled `.mcp.json` so your AI CLI launches `fracta serve` as an MCP server:
 
 ```bash
 ln -sf deployment/k8s-local-cluster/runtimes/claude/.mcp.json .mcp.json
 ```
 
-Restart Claude Code or `/mcp` to reconnect.
+Restart Claude Code (or run `/mcp` to reconnect). From now on your CLI talks MCP to `fracta serve`, and `fracta serve` talks HTTP to the in-cluster control plane via the route from step 2. This is the recommended setup — your AI CLI gains the `fracta_*` tools (spawn, list, peek, say, kill, send, inbox) and uses them like any other MCP tool.
+
+If you'd rather drive things from the command line instead of through an AI CLI, you can skip this step and use `bin/fracta spawn`, `list`, etc. directly (see step 5). Both paths target the same control plane.
 
 <hr />
 

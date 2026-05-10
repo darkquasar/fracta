@@ -25,19 +25,7 @@ flowchart LR
 
 ## Control Plane
 
-The control plane is the orchestrator. It listens on port 9090 and exposes an HTTP API plus an MCP server. Its responsibilities:
-
-- **Spawning agents**: creates a worktree, materializes credential profiles, and launches the runtime CLI as a subprocess (or k8s Job, depending on the deployment mode).
-- **Admission control**: enforces concurrency limits and queue eligibility.
-- **Lifecycle**: tracks state transitions (queued → running → completed / failed / stopped).
-- **Reaping**: cleans up dead worktrees and expired sessions.
-
-**Source:**
-- CLI entry: [`cmd/controlplane.go`](https://github.com/darkquasar/fracta/blob/main/cmd/controlplane.go)
-- Implementation: [`internal/controlplane/`](https://github.com/darkquasar/fracta/blob/main/internal/controlplane)
-- HTTP API handlers: [`internal/cpapi/`](https://github.com/darkquasar/fracta/blob/main/internal/cpapi)
-- Orchestrator core: [`internal/orchestrator/orchestrator.go`](https://github.com/darkquasar/fracta/blob/main/internal/orchestrator/orchestrator.go)
-- Admission and reaping: [`internal/admission/`](https://github.com/darkquasar/fracta/blob/main/internal/admission), [`internal/agentlifecycle/`](https://github.com/darkquasar/fracta/blob/main/internal/agentlifecycle)
+The control plane is the orchestrator. It listens on port 9090, exposes an HTTP API and an MCP server, and is responsible for spawning agents, admission control, lifecycle tracking, and reaping. See [Swarm → Control Plane](/swarm/control-plane) for the full breakdown.
 
 ## MCP Gateway
 
@@ -93,69 +81,12 @@ DAG categories shipped today: `hunt`, `detection`, `enrichment`, `correlation`, 
 - SDK: [`strategies/fracta_strategies/`](https://github.com/darkquasar/fracta/blob/main/strategies/fracta_strategies)
 - Strategy engine in fracta: [`internal/strategy/`](https://github.com/darkquasar/fracta/blob/main/internal/strategy)
 
-## Agent Workspaces
+## Agent Workspaces and Coordination
 
-Each agent runs in its own per-agent workspace. The shape of that workspace depends on the deployment mode:
+Each agent runs in its own per-agent workspace — a git worktree in local-process mode, a per-agent directory in containerized modes — and coordinates with peers through a shared mailbox, declared intent, and non-disruptive peeks. The full treatment lives under the Swarm section:
 
-| Mode | Workspace type | Path | Git semantics |
-|---|---|---|---|
-| Local-process | `GitWorkspace` (git worktree) | `.fracta/worktrees/<task>` on the host | Full — feature branch per agent, shared `.git` object store, `fracta merge` works |
-| Docker Compose | `DirectoryWorkspace` | `/workspace/agents/<task>` inside the container, bind-mounted from host | None — no per-agent branches, no `fracta merge` |
-| Kubernetes | `DirectoryWorkspace` on a PVC | `/workspace/agents/<task>` in the agent pod | None — branches and merge are not available |
-
-The shared interface — same MCP tool surface, same lifecycle, same mailbox — is what makes agents portable across modes. The git-specific capabilities only light up when the workspace is a real git worktree.
-
-### Local-process: git worktrees
-
-In local-process mode each agent gets a full git worktree:
-
-- Shares the main repo's `.git` object store, so commits in any worktree are visible to all others.
-- Runs on a feature branch named after the task.
-- Is isolated — agents don't see each other's uncommitted files until something is merged.
-- N agents can work simultaneously on the same repo without stepping on each other.
-
-This is the only mode where `fracta merge` is meaningful.
-
-### Merging back (local-process only)
-
-When an agent's work is good, the chessmaster (the developer or another agent) merges its feature branch:
-
-```bash
-fracta merge <task>
-```
-
-This is **non-destructive** — the agent stays alive and can keep working. The current branch picks up the agent's commits via `git merge feature/<task>`. Merging back into the integration branch never happens from inside a worktree (it causes conflicts); only the chessmaster does it.
-
-In Docker Compose and Kubernetes modes, `fracta merge` is not available. For git-based workflows in those modes you commit and push from the agent workspace explicitly, or fall back to local-process mode.
-
-### Cleaning up
-
-To remove an agent (any mode):
-
-```bash
-fracta kill <task>
-```
-
-In local-process mode this removes the worktree and deletes the feature branch. In Docker Compose / Kubernetes modes it removes the agent's directory and state entry.
-
-### Inter-agent messaging
-
-Agents have a per-agent **mailbox**. Two MCP tools drive it:
-
-- `fracta_send(from, to, message)` — push a message into another agent's inbox
-- `fracta_inbox(name)` — read unread messages from your own inbox
-
-Agents also expose their **intent** — a one-line description of what they're currently working on:
-
-- `fracta_set_intent(name, intent)` — set your own intent
-- `fracta_list` — see every agent's status and intent at a glance
-- `fracta_peek(name)` — read another agent's recent semantic output without disturbing them
-
-**Source:**
-- Mailbox: [`internal/mailbox/`](https://github.com/darkquasar/fracta/blob/main/internal/mailbox)
-- Worker pool: [`internal/worker/`](https://github.com/darkquasar/fracta/blob/main/internal/worker)
-- Lifecycle writer: [`internal/agentlifecycle/`](https://github.com/darkquasar/fracta/blob/main/internal/agentlifecycle)
-- Spawn / merge / kill / say flows: [`internal/orchestrator/spawn.go`](https://github.com/darkquasar/fracta/blob/main/internal/orchestrator/spawn.go), [`internal/orchestrator/merge.go`](https://github.com/darkquasar/fracta/blob/main/internal/orchestrator/merge.go), [`internal/orchestrator/kill.go`](https://github.com/darkquasar/fracta/blob/main/internal/orchestrator/kill.go), [`internal/orchestrator/say.go`](https://github.com/darkquasar/fracta/blob/main/internal/orchestrator/say.go)
+- [Workspaces](/swarm/workspaces) — git worktrees vs directory workspaces, and which capabilities (notably `fracta merge`) light up in which mode
+- [Coordination](/swarm/coordination) — mailbox, intent, peek, the inbox rhythm, and how dependent work is handed off
 
 ## State, Registry, and Knowledge Graph
 
@@ -169,10 +100,18 @@ All three are switchable per deployment mode. Local-process mode uses SQLite + e
 
 ## What's next
 
-<Card title="Glossary" href="/introduction/glossary">
-  The vocabulary you'll see throughout the docs.
+<Card title="Swarm" href="/swarm/overview">
+  How agents are spawned, where they live, and how they coordinate.
+</Card>
+
+<Card title="Strategies" href="/strategies/overview">
+  Deterministic Python pipelines that run against staged data and the graph.
 </Card>
 
 <Card title="Deployment Modes" href="/guides/deployment/overview">
   Choose how fracta runs: local, docker-compose, or kubernetes.
+</Card>
+
+<Card title="Glossary" href="/introduction/glossary">
+  The vocabulary you'll see throughout the docs.
 </Card>

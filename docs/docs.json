@@ -2,7 +2,7 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
   "name": "Fracta",
-  "description": "Swarm Intelligence Orchestration",
+  "description": "Swarm intelligence engine: parallel agents explore, a graph captures, deterministic strategies execute.",
   "colors": {
     "primary": "#5B6CFF",
     "light": "#8BA0FF",
@@ -27,6 +27,32 @@
         ]
       },
       {
+        "group": "Swarm",
+        "pages": [
+          "swarm/overview",
+          "swarm/spawning-agents",
+          "swarm/workspaces",
+          "swarm/coordination",
+          "swarm/control-plane"
+        ]
+      },
+      {
+        "group": "Strategies",
+        "pages": [
+          "strategies/overview",
+          "strategies/quickstart",
+          "strategies/portability",
+          "strategies/contracts",
+          "strategies/bindings",
+          "strategies/response-adapters",
+          "strategies/lifecycle",
+          {
+            "group": "Catalogue",
+            "pages": []
+          }
+        ]
+      },
+      {
         "group": "Guides",
         "pages": [
           {
@@ -45,15 +71,6 @@
               "guides/authentication/credential-pipeline",
               "guides/authentication/runtime-configuration",
               "guides/authentication/mcp-server-auth"
-            ]
-          },
-          {
-            "group": "Strategies",
-            "pages": [
-              "guides/strategies/overview",
-              "guides/strategies/contracts",
-              "guides/strategies/bindings",
-              "guides/strategies/response-adapters"
             ]
           }
         ]
@@ -96,7 +113,9 @@
       },
       {
         "group": "Operations",
-        "pages": ["operations/troubleshooting"]
+        "pages": [
+          "operations/troubleshooting"
+        ]
       },
       {
         "group": "Development",

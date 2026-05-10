@@ -12,7 +12,7 @@ A contract (`contract.yaml`) declares what a strategy needs to run: its paramete
 Contracts live alongside strategy code:
 
 ```
-strategies/hunt/my_hunt/
+strategies/security/hunt/my_hunt/
   contract.yaml
   binding.yaml      # optional — see docs/bindings.md
   strategy.py

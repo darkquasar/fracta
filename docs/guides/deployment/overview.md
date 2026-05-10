@@ -17,7 +17,7 @@ Fracta runs in three deployment modes. All modes share the same thin-client arch
 | Gateway | Subprocess managed by CP daemon (:8080) | Separate container (:8080) | Separate deployment (:8080) |
 | State backend | SQLite | Postgres | Postgres |
 | Queue | In-process | Postgres | Postgres |
-| Client attachment | `RemoteControlPlaneClient` -> localhost:9090 | `RemoteControlPlaneClient` -> localhost:9090 | `RemoteControlPlaneClient` -> port-forward :9090 |
+| Client attachment | `RemoteControlPlaneClient` -> localhost:9090 | `RemoteControlPlaneClient` -> localhost:9090 | `RemoteControlPlaneClient` -> in-cluster Service :9090 (via port-forward / LoadBalancer / Ingress) |
 | MCP backends | Local stdio (podman/uvx) | Container stdio or HTTP | In-cluster HTTP services |
 
 ## Thin-Client Architecture
@@ -238,14 +238,16 @@ Compose uses `DirectoryWorkspace` (not `GitWorkspace`). The host project directo
 
 ## 3. Kubernetes Mode
 
-The orchestrator runs as an in-cluster deployment. Agents run as K8s Jobs. The host is a thin client that port-forwards to the control plane.
+The orchestrator runs as an in-cluster Deployment. Agents run as K8s Jobs. The control plane is exposed as a Kubernetes Service on `:9090`; the host's thin client talks HTTP to that Service. The **golden path** is to run `fracta serve` on the host as an MCP server in your AI CLI's config — your CLI talks MCP to it, it talks HTTP to the in-cluster control plane Service. The same thin client also works from the command line (`fracta spawn`, `fracta list`, …).
 
 ### Architecture
 
 ```
 Host
-  fracta serve
-    '- RemoteControlPlaneClient -> localhost:9090 (port-forward)
+  fracta serve  (MCP server in AI CLI config — golden path)
+  fracta CLI    (commandline — same thin client)
+    '- RemoteControlPlaneClient -> fracta-controlplane Service :9090 in-cluster
+       (transport: kubectl port-forward / LoadBalancer / Ingress, depending on cluster)
 
 K8s Cluster (fracta namespace)
   fracta-controlplane  Deployment   <- orchestrator + workers + reaper + CP API (:9090)
@@ -268,14 +270,16 @@ control_plane_api:
 
 The in-cluster control plane and gateway configs are in ConfigMaps defined in `deployment/k8s-local-cluster/manifests/fracta-controlplane.yaml` and `deployment/k8s-local-cluster/manifests/fracta-gateway.yaml`.
 
-### Port-forwards
+### Reaching the control plane Service from the host
 
-Only the control plane needs a port-forward:
+The host needs to reach the in-cluster `fracta-controlplane` Service on `:9090`. The transport depends on your cluster:
+
 ```bash
-kubectl port-forward -n  fracta svc/fracta-controlplane 9090:9090
+# Local dev: port-forward
+kubectl port-forward -n fracta svc/fracta-controlplane 9090:9090
 ```
 
-On Docker Desktop with `type: LoadBalancer`, the service may be directly accessible at `localhost:9090` without port-forwarding.
+On Docker Desktop with `type: LoadBalancer`, the Service may already be directly accessible at `localhost:9090`. For real clusters, expose the Service via an Ingress and point the host's thin-client config at that address. None of these change the architecture — they're just transports for the same `host → Service :9090` hop.
 
 ### Deploy
 

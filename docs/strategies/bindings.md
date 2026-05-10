@@ -12,7 +12,7 @@ A binding (`binding.yaml`) maps a contract's abstract tables to concrete data so
 Bindings are optional. Without one, the resolver attempts automatic resolution via the knowledge graph using semantic column tags. With a binding, you get explicit control over data sourcing.
 
 ```
-strategies/hunt/my_hunt/
+strategies/security/hunt/my_hunt/
   contract.yaml     # what data is needed
   binding.yaml      # how to fetch it
   strategy.py
@@ -104,7 +104,7 @@ When using `fetch_mode: mcp_client`, the response parsing is controlled by `resp
 
 ### Tool-specific adapters (`response_adapter`)
 
-For tools that return non-standard output, use a named adapter instead of a format. See [docs/response-adapters.md](/guides/strategies/response-adapters) for the full adapter reference.
+For tools that return non-standard output, use a named adapter instead of a format. See [Response Adapters](/strategies/response-adapters) for the full adapter reference.
 
 ```yaml
 # Example: vendor Query returns prose+table output

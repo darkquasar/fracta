@@ -5,68 +5,20 @@ description: DAG-based investigation pipelines run by the python sidecar
 
 # Strategy Developer Guide
 
-Strategies are reusable Python DAG pipelines that run inside a sidecar process. They receive data as Parquet tables (staged from MCP backends), execute steps in dependency order using DuckDB, and return structured results.
+Strategies are reusable Python DAG pipelines that run inside a sidecar process. **DuckDB is the engine.** Data staged from MCP backends lands as Parquet, gets loaded into a per-run DuckDB instance, and every `@step` reads through `ctx.duckdb`. Joins, aggregations, and correlations happen at native speed in columnar storage — no LLM, no per-row Python loops. Strategies return structured results.
 
-## Quick Start
+A strategy lives as three files: `contract.yaml` (what data it needs), `strategy.py` (the DAG of steps), and an optional `binding.yaml` (how to fetch the data in your environment). The first two are publishable and portable; the binding plugs the strategy into your specific stack.
 
-Create a strategy that counts documents in an Elasticsearch index:
+## In this section
 
-```
-strategies/
-  enrichment/
-    my_strategy/
-      contract.yaml
-      strategy.py
-```
+- [Quick Start](/strategies/quickstart) — build a minimal end-to-end strategy with all three files
+- [Portability](/strategies/portability) — why `contract.yaml` + `strategy.py` are separate from `binding.yaml`
+- [Contracts](/strategies/contracts) — full `contract.yaml` schema reference
+- [Bindings](/strategies/bindings) — full `binding.yaml` schema, fetch modes, pagination
+- [Response Adapters](/strategies/response-adapters) — parsing non-JSON tool responses
+- [Lifecycle](/strategies/lifecycle) — discovery, hot reload, governance status
 
-**contract.yaml**:
-```yaml
-name: "my-strategy"
-version: "1.0.0"
-description: "Count documents in a staged table."
-tags: [enrichment, example]
-params:
-  limit:
-    type: int
-    required: false
-    default: 100
-    description: "Max rows to scan"
-requires:
-  graph: false
-  tables:
-    my_data:
-      description: "Input data from Elasticsearch"
-      optional: false
-      columns:
-        _id:
-          type: VARCHAR
-        message:
-          type: VARCHAR
-```
-
-**strategy.py**:
-```python
-from fracta_strategies import Strategy, step
-
-class MyStrategy(Strategy):
-
-    @step("Load data")
-    def load_data(self, ctx):
-        rows = ctx.duckdb.execute(
-            "SELECT _id, message FROM my_data LIMIT ?",
-            [ctx.params.get("limit", 100)]
-        ).fetchall()
-        return [{"id": r[0], "message": r[1]} for r in rows]
-
-    @step("Summarize")
-    def summarize(self, ctx, load_data):
-        return {
-            "count": len(load_data),
-            "sample": load_data[:3],
-        }
-```
-
-Run it: an agent calls `strategy_run(name="my-strategy")`. The gateway auto-resolves data from the binding, stages it as Parquet, and the sidecar executes the steps.
+The rest of this page is the framework reference — authoring paths, directory layout, the contract and binding schemas at a glance, the Python step framework, data flow, and the MCP tools agents use to interact with strategies.
 
 <hr />
 
@@ -74,7 +26,7 @@ Run it: an agent calls `strategy_run(name="my-strategy")`. The gateway auto-reso
 
 There are two supported ways to create strategies:
 
-1. **Manual filesystem authoring** — create `contract.yaml`, `strategy.py`, and optional `binding.yaml` under `strategies/<category>/<slug>/`.
+1. **Manual filesystem authoring** — create `contract.yaml`, `strategy.py`, and optional `binding.yaml` under `strategies/<domain>/<category>/<slug>/` (e.g. `strategies/security/enrichment/elastic_field_survey/`).
 2. **MCP-driven creation** — call `strategy_create` with Python code plus either:
    - `contract` (preferred, YAML string for `contract.yaml`)
    - `metadata` (legacy JSON path)
@@ -89,20 +41,17 @@ Use manual authoring when iterating locally in the repo. Use `strategy_create` w
 
 ```
 strategies/
-  <category>/
-    <strategy_slug>/
-      contract.yaml      # Required: metadata, params, data requirements
-      strategy.py         # Required: Strategy subclass with @step methods
-      binding.yaml        # Optional: maps tables to concrete MCP data sources
+  <domain>/                # e.g. security, infra, finance — your top-level grouping
+    <category>/            # e.g. enrichment, hunt, detection, correlation, traversal
+      <strategy_slug>/
+        contract.yaml      # Required: metadata, params, data requirements
+        strategy.py        # Required: Strategy subclass with @step methods
+        binding.yaml       # Optional: maps tables to concrete MCP data sources
 ```
 
-**Discovery rules**:
-- The runner walks `strategies/` recursively looking for directories containing both `contract.yaml` AND `strategy.py`
-- Directories starting with `.` or `_` are skipped (`.venv`, `__pycache__`, etc.)
-- `contract.yaml` must contain a `name` field
-- Discovery is fresh on every call (list, describe, run) — no caching
+The runner walks `strategies/` recursively on every call and picks up any directory with both `contract.yaml` and `strategy.py`. Nesting depth is up to you — the runner uses `os.walk`, so `strategies/security/enrichment/elastic_field_survey/` works the same as a flatter `strategies/enrichment/elastic_field_survey/`. See [Lifecycle](/strategies/lifecycle) for the full discovery and hot-reload rules.
 
-**Categories** are conventional directory names: `enrichment/`, `hunt/`, `detection/`, `correlation/`, `traversal/`.
+The convention is **domain first, then category**. `<domain>` is your top-level grouping (e.g. `security`, `infra`, `finance`); `<category>` is the strategy type within that domain. The directory layout is purely organizational — a strategy's identity is the `name` field in its `contract.yaml`, not its path.
 
 <hr />
 
@@ -334,32 +283,69 @@ def find_systems(self, ctx):
 
 ## Data Flow
 
-```
-Agent calls strategy_run(name="my-strategy", params={...})
-       |
-       v
-Gateway reads contract.yaml + binding.yaml
-       |
-       v
-Auto-resolve: matches tables to MCP backends
-       |
-       +--> fracta_mcp_gateway: Go fetches via MCP pool → Parquet
-       +--> mcp: returns "pending", agent stages data
-       +--> native: strategy populates at runtime
-       |
-       v
-Runner loads Parquet into DuckDB tables
-       |
-       v
-Strategy steps execute in DAG order
-       |
-       v
-Result returned to agent
+### DuckDB is the engine
+
+DuckDB is a core construct of the strategies framework, not an implementation detail. Every strategy run gets a fresh in-process DuckDB instance (400 MB memory, spill-to-disk enabled). All staged data lands in that DuckDB as tables. Every `@step` reads through `ctx.duckdb`. The Python in `strategy.py` is essentially orchestration around DuckDB queries — joins, aggregations, window functions, and CTEs run at native speed against columnar storage, not as Python loops over dicts.
+
+This is what makes strategies cheap and deterministic. A correlation across two ten-million-row tables is a SQL join in DuckDB — milliseconds, no LLM, identical answer every time.
+
+### How data gets into DuckDB
+
+The fetch mode declared in `binding.yaml` decides who pulls the data. The choice has direct cost implications:
+
+```mermaid
+flowchart TB
+    AGENT["Agent (LLM)<br/>strategy_run(name, params)"]
+    GW["fracta-gateway (Go)"]
+    SR["strategy-runner (Python sidecar)"]
+    DDB[("DuckDB<br/>per-run, 400MB")]
+    PQ[("Parquet<br/>{run_id}/{table}.parquet")]
+
+    subgraph backends["MCP backends"]
+        ES[("Elasticsearch")]
+        VS[("Vendor APIs")]
+        SF[("Snowflake")]
+    end
+
+    KG[("Knowledge Graph<br/>FalkorDB")]
+
+    AGENT -->|"strategy_run"| GW
+    GW -->|"reads"| SR
+
+    GW -.->|"① fracta_mcp_gateway:<br/>Go fetches directly,<br/>LLM never sees the rows<br/><b>(saves tokens)</b>"| backends
+    AGENT -.->|"② mcp:<br/>agent calls the tool,<br/>then strategy_stage's the result"| backends
+    SR -.->|"③ native:<br/>strategy populates tables<br/>itself at runtime"| KG
+
+    backends --> PQ
+    PQ --> DDB
+    KG --> DDB
+    DDB --> SR
+    SR -->|"@step results"| GW
+    GW -->|"result"| AGENT
 ```
 
-**Staging path**: `{staging_dir}/{run_id}/{table_name}.parquet`
+The three fetch modes:
 
-Each run gets a unique 8-character hex ID. Parquet files are cleaned up after execution.
+| Mode | Who fetches | LLM in the loop? | When to use |
+|---|---|---|---|
+| **`fracta_mcp_gateway`** | Go gateway, via the MCP client pool | **No** — the gateway pulls bytes straight into Parquet | Default for any backend reachable through the gateway. **This is the token-saver:** the agent calls `strategy_run` once, the gateway does the work, and the LLM only ever sees the strategy's structured result. |
+| **`mcp`** | The agent itself, via MCP tools | **Yes** — the agent calls the tool, gets the response, and stages it via `strategy_stage` | When the fetch needs LLM judgement: multi-step queries, conditional follow-ups, or backends only accessible through the agent's MCP routing. |
+| **`native`** | The strategy's Python code at runtime | **No** | Graph-only strategies, or strategies that compute their own tables (e.g. cross-joins of other staged tables, synthetic enrichments). |
+
+The cost story is exactly the column "LLM in the loop": if the LLM doesn't see the rows, you don't pay for them. A strategy that pulls a million events through `fracta_mcp_gateway` and joins them in DuckDB costs the same in tokens whether it returns ten rows or zero — because the LLM only ever sees the final summary.
+
+### The runtime sequence
+
+```
+strategy_run → gateway loads contract.yaml + binding.yaml
+            → resolver picks fetch mode per table (binding or auto-resolve)
+            → data lands as Parquet at {staging_dir}/{run_id}/{table}.parquet
+            → runner loads Parquet into a fresh DuckDB (one per run)
+            → @step methods execute in DAG order, reading via ctx.duckdb
+            → result returned to the agent; Parquet cleaned up
+```
+
+Each run gets a unique 8-character hex ID. Parquet files are cleaned up after execution. Two concurrent runs of the same strategy never share DuckDB or Parquet state.
 
 <hr />
 
@@ -379,14 +365,7 @@ Agents interact with strategies through these MCP tools:
 | `strategy_match` | Find strategies matching an investigation intent (scored) |
 | `strategy_promote` | Advance a strategy from validated to promoted status |
 
-### strategy_list Filtering
-
-`strategy_list` does **not** currently default to `validated,promoted`. By default it returns all discovered strategies and, when the graph is connected, enriches them with governance status.
-
-Use the optional `status` parameter to filter explicitly:
-- `status="validated,promoted"`
-- `status="exploratory"`
-- `status="all"`
+`strategy_list` does not filter by status by default; pass `status="validated,promoted"` (or `"exploratory"`, `"all"`) to filter. See [Lifecycle](/strategies/lifecycle#governance-status) for the governance-status model.
 
 ### strategy_run Response States
 
@@ -453,33 +432,4 @@ Strategies are baked into the Docker image at `/opt/fracta/strategies/`. The `Do
 COPY strategies/ /opt/fracta/strategies/
 ```
 
-### Hot Reload
-
-The runner re-discovers strategies on every call (list, describe, run). To deploy a new strategy without rebuilding:
-
-```bash
-# Copy runtime files to the strategy-runner container
-GWPOD=$(kubectl get pod -n  fracta -l component=fracta-gateway -o jsonpath='{.items[0].metadata.name}')
-
-kubectl exec -n  fracta $GWPOD -c strategy-runner -- mkdir -p /opt/fracta/strategies/<category>/<slug>
-kubectl cp contract.yaml fracta/$GWPOD:/opt/fracta/strategies/<category>/<slug>/contract.yaml -c strategy-runner
-kubectl cp strategy.py   fracta/$GWPOD:/opt/fracta/strategies/<category>/<slug>/strategy.py   -c strategy-runner
-
-# Copy binding overrides to the gateway container
-kubectl exec -n  fracta $GWPOD -c fracta-gateway -- mkdir -p /opt/fracta/strategies/<category>/<slug>
-kubectl cp binding.yaml  fracta/$GWPOD:/opt/fracta/strategies/<category>/<slug>/binding.yaml  -c fracta-gateway
-```
-
-No restart needed — the strategy is available on the next `strategy_list` or `strategy_run` call.
-
-### Dual-Container Requirement
-
-In K8s mode, the gateway pod has two containers:
-- **fracta-gateway** (Go): Reads `binding.yaml` for per-strategy binding overrides and uses `strategy_describe` metadata from the sidecar for resolution
-- **strategy-runner** (Python): Reads `contract.yaml` and `strategy.py` for discovery and execution
-
-In practice:
-- `strategy-runner` needs `contract.yaml` and `strategy.py`
-- `fracta-gateway` needs `binding.yaml`
-
-Copying `contract.yaml` to the gateway container is harmless, but it is not the critical file for per-strategy resolution. The important split is runtime code + contract in the runner, binding overrides in the gateway.
+For hot reload (deploying a new or updated strategy to a running cluster without rebuilding) and the dual-container split between `strategy-runner` and `fracta-gateway`, see [Lifecycle](/strategies/lifecycle).

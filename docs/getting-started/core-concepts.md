@@ -232,8 +232,8 @@ Once you're up and running, these references cover the full depth:
 | [Deployment Modes](/guides/deployment/overview) | Architecture, config, and comparison for all three modes |
 | [Runtime Configuration](/guides/authentication/runtime-configuration) | Claude, Codex, OpenCode adapter setup and K8s deployment |
 | [Credential Pipeline](/guides/authentication/credential-pipeline) | Auth profiles, resolvers, bindings, and the three-layer model |
-| [Strategies](/guides/strategies/overview) | Python DAG pipelines for reusable investigation techniques |
-| [Contracts & Bindings](/guides/strategies/contracts) | Strategy data requirements and MCP data source mapping |
+| [Strategies](/strategies/overview) | Python DAG pipelines for reusable investigation techniques |
+| [Contracts & Bindings](/strategies/contracts) | Strategy data requirements and MCP data source mapping |
 | [Local K8s Guide](/guides/deployment/kubernetes-runbook) | Complete K8s runbook with troubleshooting |
 | [Event Bus](/reference/events) | Internal event architecture |
 | [Logging](/reference/configuration/logging) | Structured JSON logging via fractalog |
