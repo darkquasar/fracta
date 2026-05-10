@@ -7,9 +7,9 @@ description: "Swarm intelligence orchestration and strategy building for AI agen
 
 Fracta is a **swarm intelligence engine** for AI agents — the system materialization of the explore/exploit pattern. **Agents handle exploration**: parallel reasoning, open-ended investigation, deciding what to look at next. **Strategies handle exploitation**: deterministic Python pipelines that encode reproducible analytics on top of what the swarm has discovered. The graph in the middle is more than a shared world model — it carries **ontologies**: nodes and edges that declare which entity types exist, which relationships are valid, and which dynamics are allowed. Ontologies are seeded upfront and extended at runtime as agents discover new shapes; strategies can rely on those guarantees when they query.
 
-That split is the headline. Reasoning loops are non-deterministic by design — sampling, context, model version all drift. Strategies are how you encode the *deterministic* parts of an investigation (counts, joins, correlations, sliding windows, map-reduce, automation logic, detection rules, composable analytics, etc.) so they run reproducibly, in milliseconds, without the LLM in the loop and without burning tokens on work that's just SQL.
+That split is the headline. Reasoning loops are non-deterministic by design — sampling, context, model version all drift. Strategies are how you encode the *deterministic* parts of an investigation (counts, joins, correlations, sliding windows, map-reduce, automation logic, detection rules, composable analytics, etc.) so they run reproducibly, in milliseconds. The mechanism that makes this possible is the **MCP gateway**: a native MCP server that exposes the same tool catalog to *two client modes* — agents driving it through an LLM, and strategies driving it through deterministic Python. Same tools, same trust boundary, no LLM in the loop on the strategy side.
 
-Fracta runs the agent swarm in parallel isolated workspaces, captures what they discover as typed nodes and edges in FalkorDB, and exposes the strategy framework that operates on top. The agent runtime is whatever AI CLI you already use — Claude Code, Codex, OpenCode today; the architecture has nothing coding-specific about it. Use it for security investigations, ops triage, data exploration, code refactors, anything where you want many agents reasoning in parallel and deterministic logic running on top of what they find.
+Four pillars: the **agent swarm** (explore), the **MCP gateway** (the dual-client tool layer that enrols new MCP servers and accepts parallel concurrent connections, unattended), the **knowledge graph** (capture, with ontologies governing what shapes are valid), and the **strategy framework** (exploit). The agent runtime is whatever AI CLI you already use — Claude Code, Codex, OpenCode today; the architecture has nothing coding-specific about it. Use it for security investigations, ops triage, data exploration, code refactors, anything where you want many agents reasoning in parallel and deterministic logic running on top of what they find.
 
 ## The problem
 
@@ -30,9 +30,20 @@ The headline above is the framing — explore (agents) and exploit (strategies) 
 
 ### Explore — the agent swarm
 
-Each agent gets its own git worktree, its own state, and its own access to a shared MCP gateway that routes tool calls to backend data sources. Agents see each other's intent via `fracta_list`, can read each other's recent output via `fracta_peek`, and hand off work through mailbox messages (`fracta_send` / `fracta_inbox`). The control plane orchestrates spawning, admission, and lifecycle.
+Each agent gets its own git worktree, its own state, and its own session against a shared MCP gateway (next section). Agents see each other's intent via `fracta_list`, can read each other's recent output via `fracta_peek`, and hand off work through mailbox messages (`fracta_send` / `fracta_inbox`). The control plane orchestrates spawning, admission, and lifecycle.
 
 This is where the LLM earns its keep: open-ended reasoning, deciding what to look at next, integrating signals across sources.
+
+### Gate — the MCP gateway
+
+The gateway is a **native MCP server** that sits between the swarm and every backend tool. It does four things that earn it its own beat in the architecture:
+
+- **Enrols MCP servers**, on-demand or from a catalog. Each registered backend's tools become callable as `<server>.<tool>` (`elastic.search`, `vendor.list_alerts`, `notion.get_page`, …) — namespaced, allow-listable, and discoverable through the graph's tool-discovery ontology.
+- **Exposes two client modes** against the same tool catalog. Agents drive the gateway through an LLM, choosing tools and arguments via reasoning. Strategies drive the same gateway through deterministic Python: they declare a binding, the gateway pulls the rows directly into Parquet, the LLM never sees them. Same trust boundary, same auditing, same allow-lists — different driver.
+- **Accepts parallel concurrent connections** and runs unattended. Many agents and many strategy runs can hit the gateway simultaneously without coordinating with each other; the gateway pools backend MCP clients and fans out work.
+- **Acts as a trust boundary.** Credentials, secret material, allow-lists, and connection config live at the gateway, not at every caller. An agent or strategy that doesn't need a credential never holds it; revoking access is a gateway-level operation, not a fleet-wide rotation.
+
+The agent-bypass property — strategies fetching data without burning tokens — is a *consequence* of the dual-client design, not a separate feature. The gateway doesn't care who's calling; the only difference between an agent's tool call and a strategy's is whether an LLM picked the arguments.
 
 ### Capture — the knowledge graph
 
@@ -44,7 +55,7 @@ Fracta ships with one default ontology — a **tool-discovery ontology** that le
 
 ### Exploit — the strategy framework
 
-Deterministic Python pipelines run against the graph and staged Parquet tables. A strategy that joins two tables and correlates events runs in milliseconds, returns the same answer byte-for-byte every time, and burns zero LLM tokens. Strategies are versioned, composable, and portable across environments — you publish `contract.yaml` + `strategy.py`, and your environment supplies the `binding.yaml` that maps the contract's abstract tables to concrete data sources.
+Deterministic Python pipelines run against the graph and staged Parquet tables. The staging itself happens through the **gateway in its strategy client mode**: when a strategy runs, the gateway pulls rows directly from each declared MCP backend into Parquet, and DuckDB picks up from there. A strategy that joins two tables and correlates events runs in milliseconds, returns the same answer byte-for-byte every time, and burns zero LLM tokens. Strategies are versioned, composable, and portable across environments — you publish `contract.yaml` + `strategy.py`, and your environment supplies the `binding.yaml` that maps the contract's abstract tables to concrete data sources.
 
 ## Core capabilities
 
