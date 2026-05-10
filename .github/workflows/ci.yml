@@ -36,6 +36,22 @@ jobs:
 
       - name: Test
         run: go test ./... -count=1 -timeout 5m
+
+      # Catalogue drift check: PRs that change strategies must commit the
+      # regenerated catalogue too. The generator runs read-only here (no
+      # commit) — it only diffs what *would* be generated against what's
+      # committed. Fails the PR if they disagree, so we don't merge a state
+      # the post-merge workflow would then immediately overwrite.
+      - name: Set up Python (for catalogue drift check)
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b
+        with:
+          python-version: '3.12'
+
+      - name: Install catalogue generator deps
+        run: python -m pip install 'PyYAML==6.0.2'
+
+      - name: Catalogue drift check
+        run: python scripts/gen-strategy-catalogue.py --check
         # Note: -race is intentionally disabled in CI for now. There are two
         # known data races: (1) a real race in internal/host/codex/appserver_test.go
         # (fracta-owned, fixable), and (2) a race in the go-keyring v0.2.8 mock

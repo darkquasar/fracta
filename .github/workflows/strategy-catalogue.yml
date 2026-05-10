@@ -1,0 +1,116 @@
+# Regenerates the strategy catalogue under docs/strategies/catalogue/ when
+# strategies change, and commits the result back to main.
+#
+# ── Security posture (do not relax without review) ────────────────────────────
+#
+# 1. ON push:main ONLY. We deliberately do not use `pull_request` or
+#    `pull_request_target`. The latter is a known footgun: it would run with
+#    the base repo's secrets and a write-token while checking out fork code,
+#    which is the canonical "pwn-request" vulnerability. By only running
+#    post-merge, the generator only ever sees code a maintainer has reviewed.
+#
+# 2. PATH FILTER on `strategies/**` and the generator itself. This means the
+#    bot's own commit to `docs/strategies/catalogue/**` does NOT re-trigger
+#    this workflow — no infinite loop, no [skip ci] hack needed.
+#
+# 3. PERMISSIONS declared minimally. Default `contents: read`; the commit job
+#    elevates to `contents: write` and asks for nothing else (no
+#    pull-requests, no issues, no actions, no packages).
+#
+# 4. THIRD-PARTY ACTIONS PINNED TO A SHA, not a tag. Tags can be re-pointed by
+#    a compromised maintainer; a SHA cannot.
+#
+# 5. NO SECRETS used. The generator reads files on disk and writes Markdown.
+#    `${{ secrets.* }}` does not appear anywhere in this file. Even with full
+#    code execution inside the generator, there's nothing to exfiltrate.
+#
+# 6. THE GENERATOR IS RUN FROM A FIXED PATH (`scripts/gen-strategy-catalogue.py`).
+#    A malicious contributor cannot redirect us to a different generator by
+#    dropping a file with the same name elsewhere in the tree.
+
+name: strategy-catalogue
+
+on:
+  push:
+    branches: [main]
+    paths:
+      # Trigger only when the source-of-truth changes:
+      - 'strategies/**'
+      - 'scripts/gen-strategy-catalogue.py'
+      - '.github/workflows/strategy-catalogue.yml'
+      # NOT docs/strategies/catalogue/**  — that's the generated output;
+      # excluding it is what breaks the loop (see control #2 above).
+
+# Default for the workflow: read-only. Each job can elevate explicitly.
+permissions:
+  contents: read
+
+concurrency:
+  # Coalesce rapid pushes — only the most recent commit's regen actually runs.
+  group: strategy-catalogue
+  cancel-in-progress: true
+
+jobs:
+  regenerate:
+    name: Regenerate catalogue
+    runs-on: ubuntu-latest
+
+    # Job-level elevation: this job needs to commit the regenerated tree.
+    # Nothing else.
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repo
+        # actions/checkout@v4.2.2 (pinned to SHA per control #4).
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          # We need the full history so the generator's commit lands cleanly
+          # on top of `main` (and so we can detect "no changes").
+          fetch-depth: 0
+          # Use the workflow's GITHUB_TOKEN for the commit below. This is the
+          # default; named here so it's explicit.
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        # actions/setup-python@v5.3.0
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b
+        with:
+          python-version: '3.12'
+
+      - name: Install generator deps
+        # PyYAML is the only runtime dep. Pin to a current version.
+        run: python -m pip install 'PyYAML==6.0.2'
+
+      - name: Generate catalogue
+        # Run from a fixed path (control #6). Generator writes only inside
+        # docs/strategies/catalogue/ — no other paths touched.
+        run: python scripts/gen-strategy-catalogue.py
+
+      - name: Commit regenerated catalogue
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          # Identity: the synthetic github-actions[bot] account. No human
+          # account exists; GitHub assigns this automatically.
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+          # Stage only the catalogue tree and the Catalogue subgroup of
+          # docs.json. If the generator modified anything else, we don't want
+          # to commit it — that would indicate a bug in the generator's
+          # blast radius. (`git add -A` would be wrong here for that reason.)
+          git add docs/strategies/catalogue/ docs/docs.json
+
+          if git diff --staged --quiet; then
+            echo 'no catalogue changes — exiting cleanly.'
+            exit 0
+          fi
+
+          git commit -m 'docs: regenerate strategy catalogue'
+
+          # Push back to main. Branch protection on main (configured at the
+          # repo level, not here) is what prevents a leaked GITHUB_TOKEN from
+          # force-pushing or bypassing review on other branches.
+          git push origin HEAD:main
