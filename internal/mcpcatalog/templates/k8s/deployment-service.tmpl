@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{.ServiceName}}
+  namespace: {{.Namespace}}
+  labels:
+    app: fracta
+    component: {{.ServiceName}}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fracta
+      component: {{.ServiceName}}
+  template:
+    metadata:
+      labels:
+        app: fracta
+        component: {{.ServiceName}}
+    spec:
+      containers:
+        - name: {{.ServiceName}}
+{{- if .ImageComment}}
+          # {{.ImageComment}}
+{{- end}}
+          image: {{.Image}}
+          imagePullPolicy: {{.ImagePullPolicy}}
+{{- if .ContainerArgs}}
+          args: [{{range $i, $a := .ContainerArgs}}{{if $i}}, {{end}}"{{$a}}"{{end}}]
+{{- end}}
+          ports:
+            - containerPort: {{.ContainerPort}}
+              name: mcp
+{{- if .EnvBindings}}
+          env:
+{{- range .EnvBindings}}
+            - name: {{.Name}}
+              valueFrom:
+                secretKeyRef:
+                  name: {{.SecretName}}
+                  key: {{.SecretKey}}
+{{- end}}
+{{- end}}
+          resources:
+            requests:
+              memory: "{{.Resources.Requests.Memory}}"
+              cpu: "{{.Resources.Requests.CPU}}"
+            limits:
+              memory: "{{.Resources.Limits.Memory}}"
+              cpu: "{{.Resources.Limits.CPU}}"
+          readinessProbe:
+            tcpSocket:
+              port: mcp
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{.ServiceName}}
+  namespace: {{.Namespace}}
+  labels:
+    app: fracta
+    component: {{.ServiceName}}
+spec:
+  selector:
+    app: fracta
+    component: {{.ServiceName}}
+  ports:
+    - port: {{.ServicePort}}
+      targetPort: mcp{{if .TargetPortComment}}    # {{.TargetPortComment}}{{end}}
+      name: mcp

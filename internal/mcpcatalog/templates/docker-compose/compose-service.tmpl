@@ -1,0 +1,19 @@
+{{.ServiceName}}:
+    image: {{.Image}}
+{{- if .ContainerArgs}}
+    command: [{{range $i, $a := .ContainerArgs}}{{if $i}}, {{end}}"{{$a}}"{{end}}]
+{{- end}}
+{{- if .EnvComposePairs}}
+    environment:
+{{- range .EnvComposePairs}}
+      {{.Name}}: "{{.Value}}"
+{{- end}}
+{{- end}}
+{{- if .Healthcheck}}
+    healthcheck:
+      test: [{{range $i, $a := .Healthcheck.Test}}{{if $i}}, {{end}}{{quoteHealthcheck $a}}{{end}}]
+      interval: {{.Healthcheck.Interval}}
+      timeout: {{.Healthcheck.Timeout}}
+      retries: {{.Healthcheck.Retries}}
+      start_period: {{.Healthcheck.StartPeriod}}
+{{- end}}
