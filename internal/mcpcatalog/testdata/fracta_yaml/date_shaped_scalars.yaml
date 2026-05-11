@@ -1,0 +1,9 @@
+project:
+  name: my-fracta-deploy
+  created: 2026-05-10
+  release: 1.4
+  feature_flag: yes
+runtime:
+  backend: kubernetes
+mcp_servers:
+  servers: {}

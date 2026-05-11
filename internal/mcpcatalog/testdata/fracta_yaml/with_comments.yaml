@@ -1,0 +1,12 @@
+# fracta.yaml — operator config
+# Edited by hand; preserve these comments.
+project:
+  name: my-fracta-deploy
+  # The catalog version is set by 'fracta config mcp fetch'.
+  catalog_version: "v2"
+runtime:
+  backend: kubernetes # one of: local, kubernetes
+  namespace: fracta
+mcp_servers:
+  # MCP servers are inserted/removed by 'fracta config mcp add/remove'.
+  servers: {}
