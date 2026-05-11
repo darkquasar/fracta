@@ -4,37 +4,6 @@ Fracta is the system materialization of the explore/exploit pattern for AI agent
 
 Reasoning loops are inherently non-deterministic, as sampling, context, and model versions naturally drift. Fracta bridges the gap between open-ended AI reasoning and rigid, reproducible analytics by splitting the workload into exploration (agents discovering context) and exploitation (strategies running deterministic logic on those discoveries).
 
-## Core Architecture
-
-Fracta is built on four main pillars that operate over a shared trust boundary:
-
-- **🎛️ Control Plane & The Chessmaster (Swarm Orchestration)**
-  Manages the lifecycle and orchestration of the agent swarm. At its core is the Chessmaster, the central orchestrator that spawns agent workers and assigns each a specific mission (an explicit objective they need to achieve). It facilitates parallel reasoning, concurrent execution, and unattended operations across the entire system.
-
-- **🤖 The "Explore" Phase: Agents**
-  Agents act as the workers handling open-ended investigation, contextual reasoning, and deciding what to explore next to fulfill their missions. To collaborate effectively, agents communicate with each other and the Chessmaster via a robust internal mailbox system, utilizing inbox (direct messaging), intention (signaling planned actions), and broadcast (swarm-wide updates) mechanics. Fracta is agnostic to the agent runtime (you can use whatever AI CLI you already rely on, such as Claude Code, Codex, or OpenCode).
-
-- **⚙️ The "Exploit" Phase: Strategies (Deterministic Execution)**
-  Strategies are deterministic Python pipelines that encode reproducible analytics on top of what the swarm has discovered. Crucially, these strategies are created directly based on the results of the exploration phase. At this point, humans need to intentionally create and refine these strategies iteratively based on exploration results, using their agentic coding CLI of choice. In the future, Fracta workers will be able to automatically suggest or derive strategies directly from recurring exploration patterns. This is how you run fast, millisecond-level operations (counts, joins, correlations, sliding windows, map-reduce, detection rules) with zero LLM in the loop.
-
-- **🔌 MCP Gateway (Tool Registration & Concurrency)**
-  A native Model Context Protocol (MCP) server that manages tool registration and natively handles high-concurrency connections. It exposes the exact same tool catalog across two distinct client modes:
-  - **Agentic Calling**: Agents driving tools via an LLM.
-  - **Non-Agentic Calling**: Strategies driving tools through deterministic Python.
-  - **Unified Concurrency**: Parallelism is persistent and native. The gateway seamlessly manages concurrent execution, whether that is a swarm of agents exploring independently, five deterministic strategies executing at the exact same time, or multiple client modes operating simultaneously (all securely sharing the same tools and trust boundary).
-
-- **🗺️ Knowledge Graph & Ontologies**
-  The shared world model capturing the swarm's state. It goes beyond simple memory by carrying strict ontologies, which define valid entity types, relationships, and dynamics. Ontologies are seeded upfront and extended at runtime as agents discover new shapes, providing concrete structural guarantees that Strategies can reliably query against.
-
-## Use Cases
-
-Because the architecture makes no assumptions about coding-specific tasks, it acts as a universal engine for any workflow requiring parallel agentic reasoning backed by deterministic logic. Use it for:
-
-- Security investigations and active defense
-- Operations triage and root cause analysis
-- Large-scale data exploration
-- Complex code refactoring
-
 ## How It Works
 
 Your machine runs the AI CLI you already use. Everything else — the control plane, the MCP gateway, the strategy runner, the knowledge graph, and the agents themselves — runs server-side, whether "server" means a local process, a Docker Compose stack, or a Kubernetes cluster.
@@ -79,9 +48,31 @@ flowchart LR
 
 The thin client (`fracta serve`) is always the same. Only the infrastructure behind the control plane changes — see [Architecture](docs/introduction/architecture.md) for the full breakdown.
 
+## Core Architecture
+
+Fracta is built on four main pillars that operate over a shared trust boundary:
+
+- **🎛️ Control Plane & The Chessmaster (Swarm Orchestration)**
+  Manages the lifecycle and orchestration of the agent swarm. At its core is the Chessmaster, the central orchestrator that spawns agent workers and assigns each a specific mission (an explicit objective they need to achieve). It facilitates parallel reasoning, concurrent execution, and unattended operations across the entire system.
+
+- **🤖 The "Explore" Phase: Agents**
+  Agents act as the workers handling open-ended investigation, contextual reasoning, and deciding what to explore next to fulfill their missions. To collaborate effectively, agents communicate with each other and the Chessmaster via a robust internal mailbox system, utilizing inbox (direct messaging), intention (signaling planned actions), and broadcast (swarm-wide updates) mechanics. Fracta is agnostic to the agent runtime (you can use whatever AI CLI you already rely on, such as Claude Code, Codex, or OpenCode).
+
+- **⚙️ The "Exploit" Phase: Strategies (Deterministic Execution)**
+  Strategies are deterministic Python pipelines that encode reproducible analytics on top of what the swarm has discovered. Crucially, these strategies are created directly based on the results of the exploration phase. At this point, humans need to intentionally create and refine these strategies iteratively based on exploration results, using their agentic coding CLI of choice. In the future, Fracta workers will be able to automatically suggest or derive strategies directly from recurring exploration patterns. This is how you run fast, millisecond-level operations (counts, joins, correlations, sliding windows, map-reduce, detection rules) with zero LLM in the loop.
+
+- **🔌 MCP Gateway (Tool Registration & Concurrency)**
+  A native Model Context Protocol (MCP) server that manages tool registration and natively handles high-concurrency connections. It exposes the exact same tool catalog across two distinct client modes:
+  - **Agentic Calling**: Agents driving tools via an LLM.
+  - **Non-Agentic Calling**: Strategies driving tools through deterministic Python.
+  - **Unified Concurrency**: Parallelism is persistent and native. The gateway seamlessly manages concurrent execution, whether that is a swarm of agents exploring independently, five deterministic strategies executing at the exact same time, or multiple client modes operating simultaneously (all securely sharing the same tools and trust boundary).
+
+- **🗺️ Knowledge Graph & Ontologies**
+  The shared world model capturing the swarm's state. It goes beyond simple memory by carrying strict ontologies, which define valid entity types, relationships, and dynamics. Ontologies are seeded upfront and extended at runtime as agents discover new shapes, providing concrete structural guarantees that Strategies can reliably query against.
+
 ### Example: a 3-agent swarm
 
-The flowchart above shows the system at rest. Here's an interaction trace of three agents running a `recon → enrich → report` pipeline against the swarm — spawned in parallel, each calling MCP tools through the gateway, coordinating peer-to-peer via inbox/broadcast messages, reporting status back to the control plane, and reaped together when the mission completes:
+The pillars above describe the system at rest. Here's an interaction trace of three agents running a `recon → enrich → report` pipeline against the swarm — spawned in parallel, each calling MCP tools through the gateway, coordinating peer-to-peer via inbox/broadcast messages, reporting status back to the control plane, and reaped together when the mission completes:
 
 ```mermaid
 sequenceDiagram
@@ -126,6 +117,15 @@ sequenceDiagram
 ```
 
 Scaling from 3 to 30 agents changes nothing about this trace structure — the control plane fans out spawns and reaps, agents talk to the gateway in parallel, and peer messages flow between any two agents that need to coordinate.
+
+## Use Cases
+
+Because the architecture makes no assumptions about coding-specific tasks, it acts as a universal engine for any workflow requiring parallel agentic reasoning backed by deterministic logic. Use it for:
+
+- Security investigations and active defense
+- Operations triage and root cause analysis
+- Large-scale data exploration
+- Complex code refactoring
 
 ## Why Fracta? The Problem We Are Solving
 
