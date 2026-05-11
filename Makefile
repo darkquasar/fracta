@@ -1,10 +1,9 @@
 .PHONY: build build-all test install clean \
        spike-build spike-load spike-test \
        docker-build docker-load \
-       compose-up compose-up-op compose-down compose-logs compose-ps \
        vendor-mcp-build vendor-mcp-load \
-       k8s-deploy k8s-deploy-mcp k8s-deploy-gateway k8s-deploy-controlplane k8s-teardown \
-       k8s-secrets k8s-refresh-auth k8s-setup k8s-status k8s-smoke \
+       k8s-teardown \
+       k8s-secrets k8s-refresh-auth k8s-status k8s-smoke \
        k8s-ensure-image \
        docs-gen docs-gen-check
 
@@ -27,7 +26,6 @@ clean:
 
 DOCKER_IMAGE ?= fracta/agent
 DOCKER_TAG ?= latest
-COMPOSE_FILE ?= deployment/docker-compose/docker-compose.yml
 K8S_IMAGE_LOADER ?= docker-desktop
 KIND_CLUSTER ?= kind
 MINIKUBE_PROFILE ?= minikube
@@ -54,21 +52,6 @@ docker-build:
 docker-load:
 	$(call load_k8s_image,$(DOCKER_IMAGE):$(DOCKER_TAG))
 
-compose-up:
-	docker compose -f $(COMPOSE_FILE) up -d
-
-compose-up-op:
-	op run --env-file .op-env -- docker compose -f $(COMPOSE_FILE) up -d
-
-compose-down:
-	docker compose -f $(COMPOSE_FILE) down
-
-compose-logs:
-	docker compose -f $(COMPOSE_FILE) logs -f
-
-compose-ps:
-	docker compose -f $(COMPOSE_FILE) ps
-
 VENDOR_MCP_IMAGE ?= fracta/vendor-mcp
 VENDOR_MCP_TAG ?= latest
 
@@ -79,28 +62,6 @@ vendor-mcp-load:
 	$(call load_k8s_image,$(VENDOR_MCP_IMAGE):$(VENDOR_MCP_TAG))
 
 # --- K8s targets ---
-
-k8s-deploy:
-	kubectl apply -f deployment/k8s-local-cluster/manifests/namespace.yaml
-	kubectl apply -f deployment/k8s-local-cluster/manifests/workspace-pvc.yaml
-	kubectl apply -f deployment/k8s-local-cluster/manifests/rbac.yaml
-	kubectl apply -f deployment/k8s-local-cluster/manifests/falkordb.yaml
-	kubectl apply -f deployment/k8s-local-cluster/manifests/postgres.yaml
-
-k8s-deploy-mcp:
-	kubectl apply -f deployment/k8s-local-cluster/manifests/namespace.yaml
-	kubectl apply -f deployment/k8s-local-cluster/manifests/elastic-mcp.yaml
-	kubectl apply -f deployment/k8s-local-cluster/manifests/vendor-mcp.yaml
-
-k8s-deploy-gateway:
-	kubectl apply -f deployment/k8s-local-cluster/manifests/namespace.yaml
-	kubectl apply -f deployment/k8s-local-cluster/manifests/postgres.yaml
-	kubectl apply -f deployment/k8s-local-cluster/manifests/fracta-gateway.yaml
-
-k8s-deploy-controlplane:
-	kubectl apply -f deployment/k8s-local-cluster/manifests/namespace.yaml
-	kubectl apply -f deployment/k8s-local-cluster/manifests/postgres.yaml
-	kubectl apply -f deployment/k8s-local-cluster/manifests/fracta-controlplane.yaml
 
 k8s-teardown:
 	kubectl delete namespace fracta --ignore-not-found
@@ -130,9 +91,6 @@ k8s-refresh-auth:
 	  --namespace fracta \
 	  --from-literal=bearer-token="$$(bedrock-auth-helper)" \
 	  --dry-run=client -o yaml | kubectl apply -f -
-
-k8s-setup: docker-build docker-load vendor-mcp-build vendor-mcp-load k8s-deploy k8s-deploy-mcp k8s-deploy-gateway k8s-deploy-controlplane k8s-secrets
-	@echo "Full K8s local setup complete"
 
 k8s-status:
 	@echo "=== Pods ==="
