@@ -83,7 +83,7 @@ type fractaYAMLLocalData struct {
 func (e *Entry) RenderFractaYAMLBlock(mode scaffolds.Kind, opts RenderOpts) ([]byte, error) {
 	if !e.SupportsMode(mode) {
 		return nil, fmt.Errorf("mcpcatalog: server %q does not support mode %s (support.%s=%q)",
-			e.ID, mode, modeKey(mode), e.SupportNote(mode))
+			e.ID, mode, supportKey(mode), e.SupportNote(mode))
 	}
 	variant, ok := e.resolveVariant(mode, opts.Variant)
 	if !ok {
@@ -307,8 +307,8 @@ func renderTemplate(path string, data any) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// modeKey returns the catalog support.<key> name for a kind.
-func modeKey(k scaffolds.Kind) string {
+// supportKey returns the catalog support.<key> name for a kind.
+func supportKey(k scaffolds.Kind) string {
 	switch k {
 	case scaffolds.KindLocal:
 		return "local_process"
