@@ -43,21 +43,28 @@ Reading the diagram in explore/exploit terms: the agents on the right are the **
 
 ```mermaid
 flowchart LR
+    classDef client fill:#475569,stroke:#1e293b,color:#fff,stroke-width:1.5px
+    classDef cp fill:#3A4ACC,stroke:#1e2b8a,color:#fff,stroke-width:2px
+    classDef gw fill:#5B6CFF,stroke:#3A4ACC,color:#fff,stroke-width:2px
+    classDef sidecar fill:#8BA0FF,stroke:#5B6CFF,color:#0b1437,stroke-width:1.5px
+    classDef store fill:#b45309,stroke:#7c2d12,color:#fff,stroke-width:1.5px
+    classDef agent fill:#059669,stroke:#065f46,color:#fff,stroke-width:1.5px
+
     subgraph user["Your machine"]
-        CLI["Claude / Codex / OpenCode"]
-        SERVE["fracta serve<br/>(thin MCP client)"]
-        SPAWN["fracta spawn / list / say (CLI)"]
+        CLI["Claude / Codex / OpenCode"]:::client
+        SERVE["fracta serve<br/>(thin MCP client)"]:::client
+        SPAWN["fracta spawn / list / say (CLI)"]:::client
         CLI -->|stdio| SERVE
     end
 
     subgraph server["fracta server-side (local · docker-compose · k8s)"]
-        CP["Control Plane :9090<br/>spawn · kill · queue · lifecycle"]
-        GW["MCP Gateway :8080<br/>tools · graph · strategies"]
-        SR["Strategy Runner<br/>(python sidecar)"]
-        SS[("State Store")]
-        KG[("Knowledge Graph<br/>FalkorDB")]
-        REG[("MCP Registry")]
-        AGENT["Agent<br/>(subprocess or pod)"]
+        CP["Control Plane :9090<br/>spawn · kill · queue · lifecycle"]:::cp
+        GW["MCP Gateway :8080<br/>tools · graph · strategies"]:::gw
+        SR["Strategy Runner<br/>(python sidecar)"]:::sidecar
+        SS[("State Store")]:::store
+        KG[("Knowledge Graph<br/>FalkorDB")]:::store
+        REG[("MCP Registry")]:::store
+        AGENT["Agent<br/>(subprocess or pod)"]:::agent
         CP --> SS
         GW --> KG
         GW --> REG
@@ -94,17 +101,18 @@ sequenceDiagram
         CP->>+A3: spawn (report)
     end
 
-    A1->>GW: MCP tool call
-    GW->>KG: write findings
+    A1->>GW: graph.update (write findings)
+    GW->>KG: Cypher write
     A1-->>A2: broadcast (recon findings)
     A1->>CP: status: recon complete
 
-    A2->>GW: MCP tool call
-    GW->>KG: write enrichments
+    A2->>GW: graph.update (write enrichments)
+    GW->>KG: Cypher write
     A2-->>A3: inbox (enriched candidates)
     A2->>CP: status: enrich complete
 
-    A3->>GW: MCP tool call
+    A3->>GW: graph.query (read enriched set)
+    GW->>KG: Cypher read
     A3->>CP: status: report ready
 
     par Reap swarm
