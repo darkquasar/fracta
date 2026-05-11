@@ -9,8 +9,6 @@ servers:
     path: fracta/server.yaml
   - id: elastic
     path: elastic/server.yaml
-  - id: vendor
-    path: vendor/server.yaml
   - id: readwise
     path: readwise/server.yaml
   - id: notion

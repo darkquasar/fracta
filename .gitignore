@@ -14,5 +14,6 @@ __pycache__/
 *.pyc
 .venv/
 *.egg-info/
-fracta
+/fracta
+/bin/fracta
 go.work.sum

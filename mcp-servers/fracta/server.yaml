@@ -1,0 +1,36 @@
+id: fracta
+name: Fracta MCP
+category: first-party
+status: tested
+description: First-party fracta MCP surface for agents, gateway, and thin clients.
+upstream:
+  type: first_party
+  url: https://github.com/darkquasar/fracta
+auth:
+  modes:
+    - fracta_gateway_token
+variants:
+  local:
+    transport: stdio
+    command: fracta
+    args:
+      - serve
+      - --config
+      - "<mode-config>"
+  container:
+    image: fracta/agent:latest
+    image_owner: fracta
+    transport: streamable-http
+    service_url: http://fracta-gateway.fracta.svc:8080/agents/<task>/mcp
+support:
+  local_process: supported
+  docker_compose: supported
+  kubernetes: supported
+docker:
+  dockerfile: ../../Dockerfile
+  build_target: docker-build
+  load_target: docker-load
+verification:
+  tested_on: "2026-04-30"
+  smoke_test: list_tools
+notes: This is fracta's platform MCP surface, not an external backend dependency.
