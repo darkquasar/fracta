@@ -8,7 +8,8 @@ upstream:
   url: https://github.com/darkquasar/fracta
 auth:
   modes:
-    - fracta_gateway_token
+    - none
+  notes: Trust boundary is the network (loopback in local/compose mode, cluster-internal service in k8s). Per-agent identification is by URL path segment (/agents/<task>/mcp), not by a token — the orchestrator is the only thing that can mint task IDs and write them into agent .mcp.json files.
 variants:
   local:
     transport: stdio

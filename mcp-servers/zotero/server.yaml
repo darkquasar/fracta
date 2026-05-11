@@ -9,11 +9,12 @@ upstream:
 auth:
   modes:
     - env_token
-    - local_library
+    - none
   env_optional:
     - ZOTERO_API_KEY
     - ZOTERO_LIBRARY_ID
     - ZOTERO_LOCAL
+  notes: env_token (ZOTERO_API_KEY) talks to the cloud library. Setting ZOTERO_LOCAL=true switches to the local Zotero desktop instead — no token needed; fracta inherits the desktop app's trust by running on the same machine.
 variants:
   local:
     transport: stdio

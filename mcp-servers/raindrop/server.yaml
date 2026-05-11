@@ -9,7 +9,7 @@ upstream:
 auth:
   modes:
     - oauth
-    - bearer_token
+    - bearer
   env_required_for_bearer:
     - RAINDROP_TOKEN
 variants:
@@ -21,7 +21,7 @@ variants:
   remote_bearer:
     transport: streamable-http
     url: https://api.raindrop.io/rest/v2/ai/mcp
-    auth: bearer_token
+    auth: bearer
     headers:
       Authorization: Bearer ${RAINDROP_TOKEN}
   local_proxy:

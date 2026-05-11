@@ -8,16 +8,17 @@ upstream:
   url: https://tana.inc/docs/local-api-mcp
 auth:
   modes:
-    - local_app
+    - none
     - env_token
   env_optional:
     - TANA_API_TOKEN
     - TANA_DEFAULT_TARGET
+  notes: The 'local_api' variant requires Tana Desktop running on localhost — no token; fracta inherits the desktop app's trust by being on the same machine. The 'input_api' variant uses env_token (TANA_API_TOKEN).
 variants:
   local_api:
     transport: streamable-http
     url: http://localhost:8262/mcp
-    auth: local_app
+    auth: none
   input_api:
     transport: stdio
     command: npx

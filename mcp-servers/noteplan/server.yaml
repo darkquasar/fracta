@@ -8,8 +8,8 @@ upstream:
   url: https://help.noteplan.co/article/277-how-to-install-the-noteplan-mcp-server
 auth:
   modes:
-    - local_app_permissions
-  notes: Requires NotePlan installed and running on macOS.
+    - none
+  notes: Requires NotePlan installed and running on macOS. Auth is whatever the desktop app has already negotiated (calendar, reminders, files permissions granted via macOS system dialogs); fracta inherits that trust by running on the same machine.
 variants:
   local:
     transport: stdio

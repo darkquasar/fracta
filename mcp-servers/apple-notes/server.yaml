@@ -8,8 +8,8 @@ upstream:
   url: https://github.com/sirmews/apple-notes-mcp
 auth:
   modes:
-    - macos_local_permissions
-  notes: Requires macOS permissions such as Full Disk Access or Automation depending on the chosen server.
+    - none
+  notes: Auth is whatever macOS has already granted via system permission dialogs (Full Disk Access, Automation, etc., depending on the chosen server). Fracta inherits that trust by running on the same machine.
 variants:
   local:
     transport: stdio
