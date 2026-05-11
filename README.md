@@ -72,6 +72,53 @@ flowchart LR
 
 The thin client (`fracta serve`) is always the same. Only the infrastructure behind the control plane changes — see [Architecture](docs/introduction/architecture.md) for the full breakdown.
 
+### Example: a 3-agent swarm
+
+The flowchart above shows the system at rest. Here's an interaction trace of three agents running a `recon → enrich → report` pipeline against the swarm — spawned in parallel, each calling MCP tools through the gateway, coordinating peer-to-peer via inbox/broadcast messages, reporting status back to the control plane, and reaped together when the mission completes:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant CP as Control Plane
+    participant A1 as Agent 1 (recon)
+    participant A2 as Agent 2 (enrich)
+    participant A3 as Agent 3 (report)
+    participant GW as MCP Gateway
+    participant KG as Knowledge Graph
+
+    Note over CP: Operator submits mission
+
+    par Spawn swarm
+        CP->>+A1: spawn (recon)
+        CP->>+A2: spawn (enrich)
+        CP->>+A3: spawn (report)
+    end
+
+    A1->>GW: MCP tool call
+    GW->>KG: write findings
+    A1-->>A2: broadcast (recon findings)
+    A1->>CP: status: recon complete
+
+    A2->>GW: MCP tool call
+    GW->>KG: write enrichments
+    A2-->>A3: inbox (enriched candidates)
+    A2->>CP: status: enrich complete
+
+    A3->>GW: MCP tool call
+    A3->>CP: status: report ready
+
+    par Reap swarm
+        CP->>A1: reap
+        deactivate A1
+        CP->>A2: reap
+        deactivate A2
+        CP->>A3: reap
+        deactivate A3
+    end
+```
+
+Scaling from 3 to 30 agents changes nothing about this trace structure — the control plane fans out spawns and reaps, agents talk to the gateway in parallel, and peer messages flow between any two agents that need to coordinate.
+
 ## Why Fracta? The Problem We Are Solving
 
 AI agents excel at open-ended exploration, but they struggle with efficiency and reproducibility once a task becomes routine. Fracta was built to solve the friction of transitioning from "agentic discovery" to "production-grade automation."
