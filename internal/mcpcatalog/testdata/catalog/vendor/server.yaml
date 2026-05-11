@@ -1,0 +1,32 @@
+id: vendor
+name: Vendor MCP
+category: security
+status: tested
+description: Repo-owned vendor MCP server.
+upstream:
+  type: first-party
+  url: https://github.com/darkquasar/fracta
+auth:
+  modes:
+    - env_token
+  env_required:
+    - VENDOR_MCP_CONSOLE_BASE_URL
+    - VENDOR_MCP_CONSOLE_TOKEN
+variants:
+  container:
+    image: fracta/vendor-mcp:latest
+    image_owner: fracta
+    transport: streamable-http
+    service_url: http://vendor-mcp.fracta.svc:3000/mcp
+support:
+  local_process: not_supported
+  docker_compose: supported
+  kubernetes: supported
+docker:
+  dockerfile: mcp-servers/vendor/Dockerfile
+  build_target: fracta/vendor-mcp:latest
+  load_target: fracta/vendor-mcp:latest
+  image_owner: fracta
+verification:
+  tested_on: "2026-04-30"
+  smoke_test: list_tools
