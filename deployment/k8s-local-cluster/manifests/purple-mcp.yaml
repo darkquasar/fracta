@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
         - name: vendor-mcp
-          # Repo-owned image. Dockerfile: deployment/mcp-servers/vendor/Dockerfile.
+          # Repo-owned image. Dockerfile: mcp-servers/vendor/Dockerfile.
           image: fracta/vendor-mcp:latest
           imagePullPolicy: Never
           ports:

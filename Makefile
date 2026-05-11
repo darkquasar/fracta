@@ -73,7 +73,7 @@ VENDOR_MCP_IMAGE ?= fracta/vendor-mcp
 VENDOR_MCP_TAG ?= latest
 
 vendor-mcp-build:
-	docker build -f deployment/mcp-servers/vendor/Dockerfile -t $(VENDOR_MCP_IMAGE):$(VENDOR_MCP_TAG) .
+	docker build -f mcp-servers/vendor/Dockerfile -t $(VENDOR_MCP_IMAGE):$(VENDOR_MCP_TAG) .
 
 vendor-mcp-load:
 	$(call load_k8s_image,$(VENDOR_MCP_IMAGE):$(VENDOR_MCP_TAG))

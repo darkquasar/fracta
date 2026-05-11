@@ -64,12 +64,11 @@ The default is `K8S_IMAGE_LOADER=docker-desktop`. Only repo-built local images n
 
 ## Adding Or Changing An MCP Server
 
-1. Create or update `deployment/mcp-servers/<server-key>/server.yaml`.
-2. Create or update `deployment/mcp-servers/<server-key>/README.md`.
+1. Create or update `mcp-servers/<server-key>/server.yaml`.
+2. Create or update `mcp-servers/<server-key>/README.md`.
 3. Put any repo-owned Dockerfile in that same subdirectory.
-4. Add the entry to `deployment/mcp-servers/catalog.yaml`.
-5. Update the matching mode config under `deployment/<mode>/` if fracta should enable it by default.
-6. Update the in-cluster manifest under `deployment/k8s-local-cluster/manifests/` if the server runs as a pod.
-7. Add or update Makefile targets if the image must be built or loaded into local K8s.
+4. Add the entry to `mcp-servers/catalog.yaml`.
+5. Update the matching mode scaffold under `internal/project/scaffolds/templates/<mode>/` if fracta should enable it by default.
+6. Add or update Makefile targets if the image must be built or loaded into local K8s.
 
 Use `status: documented` or `status: candidate` until fracta has a repeatable smoke test for the server. Promote to `tested` only after the gateway can connect and list tools.

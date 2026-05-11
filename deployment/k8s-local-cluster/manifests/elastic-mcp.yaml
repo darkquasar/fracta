@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
         - name: elastic-mcp
-          # External public image pulled by the cluster. See deployment/mcp-servers/elastic/README.md.
+          # External public image pulled by the cluster. See mcp-servers/elastic/README.md.
           image: docker.elastic.co/mcp/elasticsearch:latest
           imagePullPolicy: IfNotPresent
           args: ["http", "--address", "0.0.0.0:8000", "--sse"]

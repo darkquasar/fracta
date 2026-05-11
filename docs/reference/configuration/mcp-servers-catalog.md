@@ -5,7 +5,7 @@ description: Reference for the bundled MCP server definitions
 
 # MCP Servers Catalog
 
-Fracta ships a catalog of pre-configured MCP server definitions in `deployment/mcp-servers/`. The catalog index lives at `deployment/mcp-servers/catalog.yaml`. Each server has its own `server.yaml`.
+Fracta ships a catalog of pre-configured MCP server definitions in `mcp-servers/`. The catalog index lives at `mcp-servers/catalog.yaml`. Each server has its own `server.yaml`.
 
 ## Catalog index
 

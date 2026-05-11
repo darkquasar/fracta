@@ -9,7 +9,7 @@ Fracta supports authenticated remote MCP servers through the `mcp_servers.*.remo
 
 This document covers authentication for MCP backend servers such as Notion, Raindrop, Elasticsearch, and internal HTTP MCP services. It is separate from LLM runtime authentication for Claude, Codex, or OpenCode. For runtime credentials, see [credential-pipeline.md](/guides/authentication/credential-pipeline).
 
-For the catalog of known MCP servers, see [deployment/mcp-servers/README.md](https://github.com/darkquasar/fracta/blob/main/deployment/mcp-servers/README.md).
+For the catalog of known MCP servers, see [mcp-servers/README.md](https://github.com/darkquasar/fracta/blob/main/mcp-servers/README.md).
 
 ## Ownership Model
 
