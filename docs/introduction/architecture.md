@@ -46,7 +46,7 @@ notion.get_page(id="...")
 fracta_spawn(task="my-task", contract="...")
 ```
 
-The `fracta_*` tools are first-party (lifecycle: spawn, list, peek, say, kill, send, inbox). Backend tools are everything else, namespaced by the server registration in [`deployment/mcp-servers/catalog.yaml`](https://github.com/darkquasar/fracta/blob/main/deployment/mcp-servers/catalog.yaml).
+The `fracta_*` tools are first-party (lifecycle: spawn, list, peek, say, kill, send, inbox). Backend tools are everything else, namespaced by the server registration in [`mcp-servers/catalog.yaml`](https://github.com/darkquasar/fracta/blob/main/mcp-servers/catalog.yaml).
 
 **Source:**
 - Gateway: [`internal/gateway/`](https://github.com/darkquasar/fracta/blob/main/internal/gateway)

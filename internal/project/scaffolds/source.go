@@ -21,7 +21,7 @@ type Source interface {
 
 	// RootFS returns the un-rebased fs.FS — the entire extracted tree
 	// (tarball root, repo root, embed FS root). Spec-43 uses this to reach
-	// into sibling subdirectories like deployment/mcp-servers without
+	// into sibling subdirectories like mcp-servers without
 	// re-downloading or re-extracting. Implementations are one-liners.
 	RootFS() (fs.FS, error)
 
