@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
+	"sort"
 	"strings"
 	"text/tabwriter"
 
@@ -273,11 +275,155 @@ var errNoCatalogRemediation = errors.New(
 		"run 'fracta config mcp fetch' to populate it (default source: github:darkquasar/fracta@main)",
 )
 
-// runConfigMcpListRemote handles `list --remote`. Implemented as a stub here
-// because I1 (Fetch) and I2 (Diff) are pending. Once those land, this function
-// is replaced with the canonical fetch-to-temp + Diff render.
+// runConfigMcpListRemote handles `list --remote`. Reads the local catalog,
+// fetches the canonical remote into a throwaway temp directory (not the
+// project tree), and renders a marketplace-style diff table.
+//
+// Offline / fetch failures: degrade gracefully — write a "remote unavailable"
+// warning to stderr and fall back to the local-only table. Exit 0.
 func runConfigMcpListRemote(cmd *cobra.Command) error {
-	return errors.New("'fracta config mcp list --remote' is not yet implemented; pending fetch + diff machinery (spec-43 §5.4)")
+	localCat, err := mcpcatalog.LoadProjectCatalog(projectRoot)
+	if err != nil {
+		if errors.Is(err, mcpcatalog.ErrNoCatalog) {
+			return errNoCatalogRemediation
+		}
+		return err
+	}
+
+	source, err := mcpcatalog.ResolveFetchSource(projectRoot, "")
+	if err != nil {
+		return err
+	}
+
+	flt, err := mcpcatalog.ParseFilter(listFilterFlag)
+	if err != nil {
+		return err
+	}
+
+	// Fetch into a temporary "project root" so we never touch <root>/mcp-servers/.
+	tmpRoot, err := os.MkdirTemp("", "fracta-remote-")
+	if err != nil {
+		return fmt.Errorf("create temp dir: %w", err)
+	}
+	defer os.RemoveAll(tmpRoot)
+
+	result, err := mcpcatalog.Fetch(context.Background(), tmpRoot, mcpcatalog.FetchOpts{
+		Source: source,
+		Filter: flt,
+	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "remote unavailable: %v\n", err)
+		// Degrade to local view.
+		state, _ := mcpcatalog.LoadProjectState(projectRoot)
+		wanted, _ := resolveTargetDeploymentFilter(listTargetDeploymentFlag, state)
+		rows := buildListRows(localCat, state, nil, flt)
+		return renderListTable(cmd.OutOrStdout(), rows, wanted)
+	}
+
+	delta := mcpcatalog.Diff(localCat, result.RemoteCatalog)
+	state, _ := mcpcatalog.LoadProjectState(projectRoot)
+	return renderRemoteTable(cmd.OutOrStdout(), localCat, result.RemoteCatalog, delta, state, result.CatalogVersion)
 }
+
+// renderRemoteTable prints the marketplace-style diff between the local
+// catalog and the remote. Columns: SERVER, LOCAL, REMOTE, DELTA, AUTH,
+// DESCRIPTION. LOCAL describes whether the operator has wired up the server
+// for any mode; REMOTE shows the catalog.yaml version; DELTA names the
+// difference bucket (up-to-date | available | local-only | changed).
+func renderRemoteTable(w io.Writer, local, remote *mcpcatalog.Catalog, delta mcpcatalog.Delta, state *mcpcatalog.ProjectState, version string) error {
+	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
+	fmt.Fprintln(tw, strings.Join([]string{"SERVER", "LOCAL", "REMOTE", "DELTA", "AUTH", "DESCRIPTION"}, "\t"))
+
+	// Build a single sorted list of every id we know about (union of local + remote).
+	ids := map[string]bool{}
+	if local != nil {
+		for id := range local.Entries {
+			ids[id] = true
+		}
+	}
+	if remote != nil {
+		for id := range remote.Entries {
+			ids[id] = true
+		}
+	}
+	allIDs := make([]string, 0, len(ids))
+	for id := range ids {
+		allIDs = append(allIDs, id)
+	}
+	sort.Strings(allIDs)
+
+	changed := map[string]bool{}
+	for _, p := range delta.Changed {
+		if p.Remote != nil {
+			changed[p.Remote.ID] = true
+		}
+	}
+	added := map[string]bool{}
+	for _, e := range delta.Added {
+		added[e.ID] = true
+	}
+	removed := map[string]bool{}
+	for _, e := range delta.Removed {
+		removed[e.ID] = true
+	}
+
+	for _, id := range allIDs {
+		var le, re *mcpcatalog.Entry
+		if local != nil {
+			le = local.Entries[id]
+		}
+		if remote != nil {
+			re = remote.Entries[id]
+		}
+		// Prefer the remote entry for descriptive fields (auth, description)
+		// since it's the authoritative source. Fall back to local for
+		// removed entries.
+		entry := re
+		if entry == nil {
+			entry = le
+		}
+		desc := ""
+		auth := "-"
+		if entry != nil {
+			desc = entry.Description
+			if len(entry.Auth.Modes) > 0 {
+				auth = strings.Join(entry.Auth.Modes, ",")
+			}
+		}
+
+		localCol := "not configured"
+		if state != nil && state.Configured[id] != nil {
+			modes := []string{}
+			for k, on := range state.Configured[id] {
+				if on {
+					modes = append(modes, k.String())
+				}
+			}
+			if len(modes) > 0 {
+				sort.Strings(modes)
+				localCol = "configured (" + strings.Join(modes, "+") + ")"
+			}
+		}
+
+		remoteCol := "v" + version
+		if re == nil {
+			remoteCol = "—"
+		}
+
+		deltaCol := "up-to-date"
+		switch {
+		case added[id]:
+			deltaCol = "available"
+		case removed[id]:
+			deltaCol = "local-only"
+		case changed[id]:
+			deltaCol = "changed"
+		}
+
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\n", id, localCol, remoteCol, deltaCol, auth, desc)
+	}
+	return tw.Flush()
+}
+
 
 
