@@ -1,0 +1,12 @@
+{{.ID}}:
+  local:
+    command: {{.Command}}
+{{- if .Args}}
+    args: [{{range $i, $a := .Args}}{{if $i}}, {{end}}{{$a}}{{end}}]
+{{- end}}
+{{- if .EnvRequired}}
+    env:
+{{- range .EnvRequired}}
+      {{.}}: "${{`{`}}{{.}}{{`}`}}"
+{{- end}}
+{{- end}}

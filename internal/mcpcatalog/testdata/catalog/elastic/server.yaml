@@ -12,6 +12,12 @@ auth:
   env_required:
     - ES_URL
     - ES_API_KEY
+  env_secret_keys:
+    ES_URL: url
+    ES_API_KEY: api-key
+  env_compose_values:
+    ES_URL: "${ELASTIC_URL}"
+    ES_API_KEY: "${ELASTIC_API_KEY}"
 variants:
   local:
     transport: stdio
@@ -31,6 +37,29 @@ variants:
     image_owner: external
     transport: streamable-http
     service_url: http://elastic-mcp.fracta.svc:3000/mcp
+    container_args:
+      - http
+      - --address
+      - 0.0.0.0:8000
+      - --sse
+    container_port: 8000
+    service_port: 3000
+    image_comment: "External public image pulled by the cluster. See deployment/mcp-servers/elastic/README.md."
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "100m"
+      limits:
+        memory: "1Gi"
+        cpu: "500m"
+    compose_healthcheck:
+      test:
+        - CMD-SHELL
+        - python3 -c 'import urllib.request; urllib.request.urlopen("http://localhost:8000/sse")'
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 support:
   local_process: supported
   docker_compose: supported

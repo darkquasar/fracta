@@ -32,7 +32,18 @@ type UpstreamSpec struct {
 type AuthSpec struct {
 	Modes       []string `yaml:"modes"`
 	EnvRequired []string `yaml:"env_required,omitempty"`
-	Notes       string   `yaml:"notes,omitempty"`
+	// EnvSecretKeys optionally overrides the auto-derived secret key for a
+	// given env var. The default key is the env var name with the longest
+	// common prefix (ending in `_`) stripped, lowercased, with underscores
+	// replaced by dashes. Example: for env [ES_URL, ES_API_KEY] the auto
+	// keys are `url` and `api-key`; explicit overrides only needed when the
+	// auto rule doesn't match the existing manifest.
+	EnvSecretKeys map[string]string `yaml:"env_secret_keys,omitempty"`
+	// EnvComposeValues maps the env var name to the literal value emitted in
+	// docker-compose `environment:` blocks (typically a shell-expansion like
+	// "${ELASTIC_URL}"). Defaults to "${<NAME>}" when the entry is silent.
+	EnvComposeValues map[string]string `yaml:"env_compose_values,omitempty"`
+	Notes            string            `yaml:"notes,omitempty"`
 }
 
 type VariantSpec struct {
@@ -45,6 +56,50 @@ type VariantSpec struct {
 	URL          string   `yaml:"url,omitempty"`
 	Auth         string   `yaml:"auth,omitempty"`
 	FractaNative string   `yaml:"fracta_native,omitempty"`
+	// ContainerArgs is the argv passed to the image's ENTRYPOINT when the
+	// container variant is rendered into a Deployment/Service or compose
+	// service. Compose uses `command:`, k8s uses `args:`. Optional — when
+	// empty the image's default ENTRYPOINT runs.
+	ContainerArgs []string `yaml:"container_args,omitempty"`
+	// ContainerPort is the port the container listens on. Default: 8000 for
+	// elastic-style "http" servers; some servers (like vendor) listen
+	// directly on 3000 and need no separate target port. Used to populate
+	// `containerPort:` and the compose healthcheck URL.
+	ContainerPort int `yaml:"container_port,omitempty"`
+	// ServicePort is the port the cluster-internal Service exposes.
+	// Defaults to 3000 (spec convention). Used to set `port:` on Service.
+	ServicePort int `yaml:"service_port,omitempty"`
+	// Resources optionally overrides the default k8s resource block.
+	Resources ResourcesSpec `yaml:"resources,omitempty"`
+	// ImageComment is a one-line comment placed above the `image:` field
+	// in the rendered k8s manifest. Optional — defaults differ per image_owner.
+	ImageComment string `yaml:"image_comment,omitempty"`
+	// ComposeHealthcheck is the optional compose healthcheck block. Map of
+	// key→value preserving order via yaml ordering is fine since the existing
+	// renderer reproduces a fixed key sequence.
+	ComposeHealthcheck *ComposeHealthcheckSpec `yaml:"compose_healthcheck,omitempty"`
+}
+
+// ResourcesSpec is a k8s pod resources block. Defaults fall back to a
+// 256Mi/100m → 1Gi/500m envelope when both blocks are zero — but that's a
+// renderer-side default, not encoded here.
+type ResourcesSpec struct {
+	Requests ResourceListSpec `yaml:"requests,omitempty"`
+	Limits   ResourceListSpec `yaml:"limits,omitempty"`
+}
+
+type ResourceListSpec struct {
+	Memory string `yaml:"memory,omitempty"`
+	CPU    string `yaml:"cpu,omitempty"`
+}
+
+// ComposeHealthcheckSpec is the docker-compose healthcheck for a service.
+type ComposeHealthcheckSpec struct {
+	Test        []string `yaml:"test,omitempty"`
+	Interval    string   `yaml:"interval,omitempty"`
+	Timeout     string   `yaml:"timeout,omitempty"`
+	Retries     int      `yaml:"retries,omitempty"`
+	StartPeriod string   `yaml:"start_period,omitempty"`
 }
 
 // SupportSpec — three separate fields; one tag each. A single shared tag

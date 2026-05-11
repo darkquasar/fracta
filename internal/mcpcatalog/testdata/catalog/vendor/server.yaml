@@ -12,12 +12,25 @@ auth:
   env_required:
     - VENDOR_MCP_CONSOLE_BASE_URL
     - VENDOR_MCP_CONSOLE_TOKEN
+  env_secret_keys:
+    VENDOR_MCP_CONSOLE_BASE_URL: console-base-url
+    VENDOR_MCP_CONSOLE_TOKEN: console-token
 variants:
   container:
     image: fracta/vendor-mcp:latest
     image_owner: fracta
     transport: streamable-http
     service_url: http://vendor-mcp.fracta.svc:3000/mcp
+    container_port: 3000
+    service_port: 3000
+    image_comment: "Repo-owned image. Dockerfile: deployment/mcp-servers/vendor/Dockerfile."
+    resources:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "256Mi"
+        cpu: "250m"
 support:
   local_process: not_supported
   docker_compose: supported
