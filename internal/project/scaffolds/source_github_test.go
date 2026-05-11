@@ -218,6 +218,92 @@ func TestGithubSource_BranchRefWarning(t *testing.T) {
 	}
 }
 
+func TestParseGithubURL(t *testing.T) {
+	cases := []struct {
+		spec, wantOwner, wantRepo, wantRef string
+		wantOK                              bool
+	}{
+		{"https://github.com/owner/repo", "owner", "repo", "main", true},
+		{"https://github.com/owner/repo/", "owner", "repo", "main", true},
+		{"https://github.com/owner/repo.git", "owner", "repo", "main", true},
+		{"https://github.com/owner/repo@v1.2.3", "owner", "repo", "v1.2.3", true},
+		{"https://github.com/owner/repo.git@v1.2.3", "owner", "repo", "v1.2.3", true},
+		{"https://github.com/owner/repo/tree/main", "", "", "", false},
+		{"https://github.com/owner/repo/blob/main/README.md", "", "", "", false},
+		{"https://github.com/owner/repo/archive/refs/tags/v1.tar.gz", "", "", "", false},
+		{"https://gitlab.com/owner/repo", "", "", "", false},
+		{"github:owner/repo@v1", "", "", "", false},
+	}
+	for _, c := range cases {
+		o, r, ref, ok := ParseGithubURL(c.spec)
+		if ok != c.wantOK || o != c.wantOwner || r != c.wantRepo || ref != c.wantRef {
+			t.Errorf("ParseGithubURL(%q) = (%q,%q,%q,%v); want (%q,%q,%q,%v)",
+				c.spec, o, r, ref, ok, c.wantOwner, c.wantRepo, c.wantRef, c.wantOK)
+		}
+	}
+}
+
+func TestParseGithubSSH(t *testing.T) {
+	cases := []struct {
+		spec, wantOwner, wantRepo, wantRef string
+		wantOK                              bool
+	}{
+		{"git@github.com:owner/repo", "owner", "repo", "main", true},
+		{"git@github.com:owner/repo.git", "owner", "repo", "main", true},
+		{"git@github.com:owner/repo@v1.2.3", "owner", "repo", "v1.2.3", true},
+		{"git@github.com:owner/repo.git@v1", "owner", "repo", "v1", true},
+		{"git@gitlab.com:owner/repo", "", "", "", false},
+		{"ssh://git@github.com/owner/repo", "", "", "", false},
+		{"https://github.com/owner/repo", "", "", "", false},
+	}
+	for _, c := range cases {
+		o, r, ref, ok := ParseGithubSSH(c.spec)
+		if ok != c.wantOK || o != c.wantOwner || r != c.wantRepo || ref != c.wantRef {
+			t.Errorf("ParseGithubSSH(%q) = (%q,%q,%q,%v); want (%q,%q,%q,%v)",
+				c.spec, o, r, ref, ok, c.wantOwner, c.wantRepo, c.wantRef, c.wantOK)
+		}
+	}
+}
+
+func TestGithubSourceFromParts(t *testing.T) {
+	tar := makeTarballGz(t, "myrepo-abc1234", map[string]string{
+		"local/fracta.yaml": "runtime:\n  backend: local\n",
+	})
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/owner/myrepo/tar.gz/abc1234" {
+			http.Error(w, "not found", 404)
+			return
+		}
+		_, _ = w.Write(tar)
+	}))
+	defer srv.Close()
+	prev := githubBaseURL
+	githubBaseURL = srv.URL
+	defer func() { githubBaseURL = prev }()
+
+	src, err := GithubSourceFromParts(context.Background(), "owner", "myrepo", "abc1234", KindLocal)
+	if err != nil {
+		t.Fatalf("GithubSourceFromParts: %v", err)
+	}
+	defer src.Close()
+	root, err := src.RootFS()
+	if err != nil {
+		t.Fatalf("RootFS: %v", err)
+	}
+	if _, err := fs.Stat(root, "local"); err != nil {
+		t.Errorf("RootFS missing local/: %v", err)
+	}
+}
+
+func TestGithubSourceFromParts_EmptyOwnerOrRepo(t *testing.T) {
+	if _, err := GithubSourceFromParts(context.Background(), "", "repo", "main", KindLocal); err == nil {
+		t.Errorf("expected error for empty owner")
+	}
+	if _, err := GithubSourceFromParts(context.Background(), "owner", "", "main", KindLocal); err == nil {
+		t.Errorf("expected error for empty repo")
+	}
+}
+
 // SHA-looking refs do not emit the warning.
 func TestGithubSource_SHARefSilent(t *testing.T) {
 	tar := makeTarballGz(t, "myrepo-abc1234", map[string]string{
