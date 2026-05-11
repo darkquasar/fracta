@@ -273,30 +273,6 @@ func TestResolveTargetDeploymentFilterDefaults(t *testing.T) {
 	}
 }
 
-func TestParseSimpleFilter(t *testing.T) {
-	cases := []struct {
-		expr string
-		ok   bool
-	}{
-		{"", true},
-		{"status=tested", true},
-		{"status=tested,category=knowledge", true},
-		{"invalid", false},
-		{"=value", false},
-	}
-	for _, tc := range cases {
-		t.Run(tc.expr, func(t *testing.T) {
-			_, err := parseSimpleFilter(tc.expr)
-			if tc.ok && err != nil {
-				t.Errorf("expr=%q: unexpected error %v", tc.expr, err)
-			}
-			if !tc.ok && err == nil {
-				t.Errorf("expr=%q: expected error", tc.expr)
-			}
-		})
-	}
-}
-
 // captureStdout swaps os.Stdout for the duration of fn and returns what was
 // written. The cobra.Command writes also use os.Stdout via OutOrStdout().
 func captureStdout(t *testing.T, fn func() error) (string, error) {

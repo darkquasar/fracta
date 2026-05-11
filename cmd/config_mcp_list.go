@@ -82,7 +82,7 @@ func runConfigMcpList(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("read project state: %w", err)
 	}
 
-	flt, err := parseSimpleFilter(listFilterFlag)
+	flt, err := mcpcatalog.ParseFilter(listFilterFlag)
 	if err != nil {
 		return err
 	}
@@ -145,7 +145,7 @@ func resolveTargetDeploymentFilter(flag string, state *mcpcatalog.ProjectState) 
 	}
 }
 
-func buildListRows(cat *mcpcatalog.Catalog, state *mcpcatalog.ProjectState, inspector mcpcatalog.ImageInspector, flt simpleFilter) []listRow {
+func buildListRows(cat *mcpcatalog.Catalog, state *mcpcatalog.ProjectState, inspector mcpcatalog.ImageInspector, flt mcpcatalog.Filter) []listRow {
 	rows := make([]listRow, 0, len(cat.Entries))
 	for _, id := range cat.SortedIDs() {
 		entry := cat.Entries[id]
@@ -280,75 +280,4 @@ func runConfigMcpListRemote(cmd *cobra.Command) error {
 	return errors.New("'fracta config mcp list --remote' is not yet implemented; pending fetch + diff machinery (spec-43 §5.4)")
 }
 
-// simpleFilter is a minimal in-cmd filter used by `list` and `inspect`.
-// Spec-43 I3 will replace this with mcpcatalog.Filter; the public surface
-// matches what I3 will ship.
-type simpleFilter struct {
-	keys map[string][]string // key → allowed values (OR-combined within a key)
-}
-
-// parseSimpleFilter parses expressions like "status=tested,category=knowledge".
-// AND across keys; OR within a key when the same key appears multiple times.
-// Empty expr matches everything.
-func parseSimpleFilter(expr string) (simpleFilter, error) {
-	f := simpleFilter{keys: map[string][]string{}}
-	if strings.TrimSpace(expr) == "" {
-		return f, nil
-	}
-	for _, part := range strings.Split(expr, ",") {
-		part = strings.TrimSpace(part)
-		if part == "" {
-			continue
-		}
-		idx := strings.IndexByte(part, '=')
-		if idx <= 0 {
-			return f, fmt.Errorf("invalid --filter expression %q (expected key=value)", part)
-		}
-		key := strings.TrimSpace(part[:idx])
-		val := strings.TrimSpace(part[idx+1:])
-		f.keys[key] = append(f.keys[key], val)
-	}
-	return f, nil
-}
-
-func (f simpleFilter) Match(e *mcpcatalog.Entry) bool {
-	if e == nil {
-		return false
-	}
-	for key, allowed := range f.keys {
-		got := entryField(e, key)
-		if !anyMatch(allowed, got) {
-			return false
-		}
-	}
-	return true
-}
-
-func entryField(e *mcpcatalog.Entry, key string) []string {
-	switch key {
-	case "id":
-		return []string{e.ID}
-	case "name":
-		return []string{e.Name}
-	case "status":
-		return []string{e.Status}
-	case "category":
-		return []string{e.Category}
-	case "auth":
-		return e.Auth.Modes
-	default:
-		return nil
-	}
-}
-
-func anyMatch(allowed, got []string) bool {
-	for _, a := range allowed {
-		for _, g := range got {
-			if a == g {
-				return true
-			}
-		}
-	}
-	return false
-}
 
