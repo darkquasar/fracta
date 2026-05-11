@@ -101,17 +101,17 @@ mcp_servers:
 OAuth has two phases: interactive authorization and runtime consumption.
 
 ```text
-local machine                         keyring                     deployment
---------------                        -------                     ----------
-fracta mcp login <server>
+local machine                                    keyring                     deployment
+--------------                                   -------                     ----------
+fracta config mcp auth login <server>
   reads fracta.yaml
   discovers OAuth metadata
   dynamically registers client if needed
   opens browser or device flow
-  exchanges code for token       ->    server:token
-                                      server:client
+  exchanges code for token                  ->    server:token
+                                                 server:client
 
-fracta mcp export <server>       <-     reads stored token
+fracta config mcp auth export <server>      <-     reads stored token
   writes env, files, or K8s Secret
 
 gateway starts in Compose/K8s
@@ -119,6 +119,10 @@ gateway starts in Compose/K8s
   builds OAuth transport
   refreshes in memory during process lifetime
 ```
+
+> The old top-level forms `fracta mcp login` / `fracta mcp export` /
+> `fracta mcp auth-status` still work as a one-release deprecation alias.
+> See the [spec-43 migration page](../../migration/spec-43-config-mcp.md).
 
 ### 1. Configure the OAuth server
 
@@ -254,7 +258,7 @@ mcp_servers:
           type: oauth
 ```
 
-Run `fracta mcp login notion` once before starting the gateway. The transport token store reads and updates the OS keyring.
+Run `fracta config mcp auth login notion` once before starting the gateway. The transport token store reads and updates the OS keyring.
 
 ### Kubernetes gateway
 
