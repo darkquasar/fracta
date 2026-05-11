@@ -13,9 +13,8 @@ import (
 // exist in both locations until the deployment/ copies are deleted by the
 // follow-up tombstone PR.
 //
-// MCP-server manifests (elastic-mcp, purple-mcp) and dev fixtures (spike-job,
-// k8s-spike, git-test-pods) are deferred to spec-43 and intentionally NOT in
-// this list — they live in deployment/ only.
+// MCP-server manifests (elastic-mcp, purple-mcp) are deferred to spec-43 and
+// intentionally NOT in this list — they live in deployment/ only.
 var migratedK8sManifests = []string{
 	"agent-job-template.yaml",
 	"falkordb.yaml",
