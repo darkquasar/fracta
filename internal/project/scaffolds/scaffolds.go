@@ -27,6 +27,11 @@ const (
 	// runtime.backend=kubernetes, manifests under fracta/k8s/manifests/, and
 	// a fracta-auth-helpers ConfigMap reference.
 	KindK8s
+	// KindNone is a sentinel used by callers (spec-43 catalog fetch) that
+	// only consume Source.RootFS() and never Source.FS(). Constructors that
+	// receive KindNone skip the kind-subdir validation, since the kind
+	// rebase is never used. Not a valid `fracta init --scaffold` value.
+	KindNone
 )
 
 // String returns the canonical CLI/filesystem name for the kind.
@@ -38,6 +43,8 @@ func (k Kind) String() string {
 		return "docker-compose"
 	case KindK8s:
 		return "k8s"
+	case KindNone:
+		return "none"
 	default:
 		return fmt.Sprintf("unknown(%d)", int(k))
 	}
