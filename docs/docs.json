@@ -95,6 +95,7 @@
               "reference/cli/worker",
               "reference/cli/host-mcp",
               "reference/cli/auth",
+              "reference/cli/config-mcp",
               "reference/cli/mcp",
               "reference/cli/registry",
               "reference/cli/graph"

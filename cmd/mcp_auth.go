@@ -16,56 +16,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var mcpCmd = &cobra.Command{
-	Use:   "mcp",
-	Short: "MCP server management commands",
-}
-
-var mcpLoginDeviceCode bool
-
-var mcpLoginCmd = &cobra.Command{
-	Use:   "login <server>",
-	Short: "Authenticate with an OAuth-enabled MCP server",
-	Args:  cobra.ExactArgs(1),
-	RunE:  runMCPLogin,
-}
-
-var mcpLogoutCmd = &cobra.Command{
-	Use:   "logout <server>",
-	Short: "Remove stored credentials for an MCP server",
-	Args:  cobra.ExactArgs(1),
-	RunE:  runMCPLogout,
-}
-
-var mcpAuthStatusCmd = &cobra.Command{
-	Use:   "auth-status [server]",
-	Short: "Show authentication status for MCP servers",
-	Args:  cobra.MaximumNArgs(1),
-	RunE:  runMCPAuthStatus,
-}
-
-var mcpExportFormat string
-
-var mcpExportOutputDir string
-
-var mcpExportCmd = &cobra.Command{
-	Use:   "export <server>",
-	Short: "Export OAuth credentials in various formats",
-	Long:  "Export stored credentials for deployment. Formats: k8s-secret, env, files",
-	Args:  cobra.ExactArgs(1),
-	RunE:  runMCPExport,
-}
-
-func init() {
-	mcpLoginCmd.Flags().BoolVar(&mcpLoginDeviceCode, "device-code", false, "use device code flow (for headless servers)")
-	mcpExportCmd.Flags().StringVar(&mcpExportFormat, "format", "env", "output format: k8s-secret, env, files")
-	mcpExportCmd.Flags().StringVar(&mcpExportOutputDir, "output-dir", "", "directory to write files (files format only)")
-	mcpCmd.AddCommand(mcpLoginCmd)
-	mcpCmd.AddCommand(mcpLogoutCmd)
-	mcpCmd.AddCommand(mcpAuthStatusCmd)
-	mcpCmd.AddCommand(mcpExportCmd)
-	rootCmd.AddCommand(mcpCmd)
-}
+// Flag globals shared by the new 'fracta config mcp auth ...' wiring
+// (cmd/config_mcp_auth.go) and the deprecation alias (cmd/mcp_alias.go).
+// The top-level 'fracta mcp <verb>' Cobra wiring that previously lived in
+// this file moved to those two files in spec-43.
+var (
+	mcpLoginDeviceCode bool
+	mcpExportFormat    string
+	mcpExportOutputDir string
+)
 
 func runMCPLogin(cmd *cobra.Command, args []string) error {
 	serverName := args[0]

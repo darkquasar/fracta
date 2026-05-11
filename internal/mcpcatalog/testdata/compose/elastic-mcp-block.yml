@@ -1,0 +1,11 @@
+image: docker.elastic.co/mcp/elasticsearch:latest
+command: ["http", "--address", "0.0.0.0:8000", "--sse"]
+environment:
+  ES_URL: "${ELASTIC_URL}"
+  ES_API_KEY: "${ELASTIC_API_KEY}"
+healthcheck:
+  test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8000/sse\")'"]
+  interval: 10s
+  timeout: 5s
+  retries: 5
+  start_period: 10s

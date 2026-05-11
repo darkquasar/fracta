@@ -20,7 +20,8 @@ description: Every fracta command at a glance
 | [`fracta worker`](/reference/cli/worker) | Run a queue worker for missions |
 | [`fracta host-mcp`](/reference/cli/host-mcp) | Run the host-facing MCP server |
 | [`fracta auth`](/reference/cli/auth) | Manage credential profiles |
-| [`fracta mcp`](/reference/cli/mcp) | Manage MCP server auth and credentials |
+| [`fracta config mcp`](/reference/cli/config-mcp) | Fetch the MCP catalog and inject servers into deployment configs |
+| [`fracta mcp`](/reference/cli/mcp) | [Deprecated] One-release alias for `fracta config mcp auth` |
 | [`fracta registry`](/reference/cli/registry) | Manage MCP server / tool registrations |
 | [`fracta graph`](/reference/cli/graph) | Query and update the knowledge graph |
 

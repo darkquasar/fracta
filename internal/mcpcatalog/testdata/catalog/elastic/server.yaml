@@ -1,0 +1,74 @@
+id: elastic
+name: Elasticsearch MCP
+category: security
+status: tested
+description: Elasticsearch-backed search and enrichment MCP backend.
+upstream:
+  type: vendor
+  url: https://www.elastic.co/
+auth:
+  modes:
+    - env_token
+  env_required:
+    - ES_URL
+    - ES_API_KEY
+  env_secret_keys:
+    ES_URL: url
+    ES_API_KEY: api-key
+  env_compose_values:
+    ES_URL: "${ELASTIC_URL}"
+    ES_API_KEY: "${ELASTIC_API_KEY}"
+variants:
+  local:
+    transport: stdio
+    command: podman
+    args:
+      - run
+      - -i
+      - --rm
+      - -e
+      - ES_URL
+      - -e
+      - ES_API_KEY
+      - docker.elastic.co/mcp/elasticsearch
+      - stdio
+  container:
+    image: docker.elastic.co/mcp/elasticsearch:latest
+    image_owner: external
+    transport: streamable-http
+    service_url: http://elastic-mcp.fracta.svc:3000/mcp
+    container_args:
+      - http
+      - --address
+      - 0.0.0.0:8000
+      - --sse
+    container_port: 8000
+    service_port: 3000
+    image_comment: "External public image pulled by the cluster. See deployment/mcp-servers/elastic/README.md."
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "100m"
+      limits:
+        memory: "1Gi"
+        cpu: "500m"
+    compose_healthcheck:
+      test:
+        - CMD-SHELL
+        - python3 -c 'import urllib.request; urllib.request.urlopen("http://localhost:8000/sse")'
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+support:
+  local_process: supported
+  docker_compose: supported
+  kubernetes: supported
+docker:
+  dockerfile: ""
+  build_target: ""
+  load_target: ""
+verification:
+  tested_on: "2026-04-30"
+  smoke_test: list_tools
+notes: Public vendor image; fracta does not own the Dockerfile.

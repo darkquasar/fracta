@@ -48,15 +48,17 @@ func HttpsSource(ctx context.Context, url string, kind Kind, checksum string) (S
 		return nil, err
 	}
 
-	kindDir := filepath.Join(tmpdir, kind.String())
-	if info, err := os.Stat(kindDir); err != nil || !info.IsDir() {
-		topEntries, _ := os.ReadDir(tmpdir)
-		names := make([]string, 0, len(topEntries))
-		for _, e := range topEntries {
-			names = append(names, e.Name())
+	if kind != KindNone {
+		kindDir := filepath.Join(tmpdir, kind.String())
+		if info, err := os.Stat(kindDir); err != nil || !info.IsDir() {
+			topEntries, _ := os.ReadDir(tmpdir)
+			names := make([]string, 0, len(topEntries))
+			for _, e := range topEntries {
+				names = append(names, e.Name())
+			}
+			_ = os.RemoveAll(tmpdir)
+			return nil, fmt.Errorf("scaffolds: https source %s does not contain a %q directory at archive root; got: %v", url, kind.String(), names)
 		}
-		_ = os.RemoveAll(tmpdir)
-		return nil, fmt.Errorf("scaffolds: https source %s does not contain a %q directory at archive root; got: %v", url, kind.String(), names)
 	}
 
 	return &httpsSource{url: url, tmpdir: tmpdir, kind: kind}, nil

@@ -1,0 +1,13 @@
+version: 2
+description: Test fixture catalog (subset).
+status_values:
+  tested: Connected and listed tools through fracta in at least one supported mode.
+  documented: Official or well-documented upstream exists.
+  candidate: Community or mode-specific entry.
+servers:
+  - id: elastic
+    path: elastic/server.yaml
+  - id: notion
+    path: notion/server.yaml
+  - id: vendor
+    path: vendor/server.yaml

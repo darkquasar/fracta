@@ -25,21 +25,30 @@ func PathSource(path string, kind Kind) (Source, error) {
 		return nil, fmt.Errorf("scaffolds: abs path %q: %w", path, err)
 	}
 	abs = filepath.Clean(abs)
-	kindDir := filepath.Join(abs, kind.String())
-	info, err := os.Stat(kindDir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			entries, _ := os.ReadDir(abs)
-			names := make([]string, 0, len(entries))
-			for _, e := range entries {
-				names = append(names, e.Name())
+	if kind != KindNone {
+		kindDir := filepath.Join(abs, kind.String())
+		info, err := os.Stat(kindDir)
+		if err != nil {
+			if os.IsNotExist(err) {
+				entries, _ := os.ReadDir(abs)
+				names := make([]string, 0, len(entries))
+				for _, e := range entries {
+					names = append(names, e.Name())
+				}
+				return nil, fmt.Errorf("scaffolds: source %q does not contain a %q directory; got: %v", abs, kind.String(), names)
 			}
-			return nil, fmt.Errorf("scaffolds: source %q does not contain a %q directory; got: %v", abs, kind.String(), names)
+			return nil, fmt.Errorf("scaffolds: stat %q: %w", kindDir, err)
 		}
-		return nil, fmt.Errorf("scaffolds: stat %q: %w", kindDir, err)
-	}
-	if !info.IsDir() {
-		return nil, fmt.Errorf("scaffolds: %q exists but is not a directory", kindDir)
+		if !info.IsDir() {
+			return nil, fmt.Errorf("scaffolds: %q exists but is not a directory", kindDir)
+		}
+	} else {
+		// Validate that the directory itself exists.
+		if info, err := os.Stat(abs); err != nil {
+			return nil, fmt.Errorf("scaffolds: stat %q: %w", abs, err)
+		} else if !info.IsDir() {
+			return nil, fmt.Errorf("scaffolds: %q exists but is not a directory", abs)
+		}
 	}
 	return &pathSource{
 		root:   abs,
