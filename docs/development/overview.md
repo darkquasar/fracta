@@ -30,14 +30,18 @@ fracta/
 ├── main.go                 # Binary entry point — sets version, calls cmd.Execute()
 ├── cmd/                    # Cobra command definitions (root, spawn, list, serve, etc.)
 ├── internal/               # Implementation packages (controlplane, gateway, mcpserver, ...)
+│   └── project/scaffolds/templates/{local,docker-compose,k8s}/
+│                           # Embedded scaffold sources — what `fracta init --scaffold <mode>` writes
+├── mcp-servers/            # Canonical MCP server catalog (spec-43); fetched by `fracta config mcp fetch`
 ├── strategies/             # Python strategy runner + sample strategies
-├── deployment/             # Docker Compose, K8s manifests, MCP server bundles
 ├── docs/                   # Mintlify documentation site (you're reading this)
 ├── Dockerfile              # Two-stage build: Go binary + Python sidecar runtime
 ├── Makefile                # `make build`, `make test`, `make docker-build`, etc.
 ├── go.mod                  # Go module — declares minimum Go version (1.25+)
 └── .github/workflows/      # ci.yml (per-push) and release.yml (per-tag)
 ```
+
+The old top-level `deployment/` directory was removed in spec-43 Concern L. The Compose stack, K8s manifests, and auth-helper templates moved into the embedded scaffold tree under `internal/project/scaffolds/templates/`; the MCP server catalog moved to `mcp-servers/` at the repo root.
 
 ## Quick start
 

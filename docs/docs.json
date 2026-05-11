@@ -72,7 +72,8 @@
               "guides/authentication/runtime-configuration",
               "guides/authentication/mcp-server-auth"
             ]
-          }
+          },
+          "guides/mcp-catalog"
         ]
       },
       {

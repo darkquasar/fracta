@@ -12,7 +12,7 @@ If you hit a new failure mode, add a section here so the next agent doesn't re-d
 
 ### 0. Don't write spec-style prose in user-facing docs
 
-The `fracta-specs/` repository (sibling of this one) is fracta's design ledger. It contains spec proposals (`spec-42-runtime-bootstrap-and-scaffolds`, etc.), task lists, breaking-change codes (`BC1`, `BC2`, `BC4`), section markers (`§4.10`, `§11 R3`), and risk identifiers (`R1`, `R7`). That vocabulary is internal — it tracks *how* a change was designed.
+We have our own, independent fracta's design ledger. It contains spec proposals (`spec-42-runtime-bootstrap-and-scaffolds`, etc.), task lists, breaking-change codes (`BC1`, `BC2`, `BC4`), section markers (`§4.10`, `§11 R3`), and risk identifiers (`R1`, `R7`). That vocabulary is internal — it tracks *how* a change was designed.
 
 User docs describe the *resulting* feature: what works, what flags exist, what files get scaffolded, what an error message means. Operators reading the docs should not need a spec to make sense of a docs page.
 
@@ -28,13 +28,13 @@ User docs describe the *resulting* feature: what works, what flags exist, what f
 - Operator-facing breaking-change announcements in CHANGELOG / release notes (those reach operators through a different channel; they may legitimately reference the spec).
 - A short inline citation as a *secondary* reference — fine if it's brief and doesn't replace user-facing explanation. Example: "(see spec-42 §6 for the discovery contract)" trailing a sentence that's already self-contained.
 
-The bar is: **a docs page must be useful to an operator who has never opened fracta-specs/.** If removing every spec citation leaves the page incomprehensible, the page is doing the spec's job, not the docs' job.
+The bar is: **a docs page must be useful to an operator who has never seen specs** If removing every spec citation leaves the page incomprehensible, the page is doing the spec's job, not the docs' job.
 
 #### Out of scope of this rule
 
 - **Source-file comments** (Go, YAML, shell) — short citations like `// spec-42 §8` or `# (R1 mitigation)` are *encouraged* there. They link code to the design decision and help reviewers navigate.
 - **Scaffold templates that reach operator repos** are an awkward middle ground. Inline citations in YAML comments are fine; long-form spec narratives in `auth-helpers/README.md` are not — operators won't have the spec.
-- **fracta-specs/** itself — that *is* where spec talk belongs.
+- **fracta collection of specs** itself — that *is* where spec talk belongs.
 
 ### 1. Never write `<` followed by a digit, space, or punctuation outside a code block
 

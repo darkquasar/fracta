@@ -11,11 +11,14 @@ description: How to work on fracta itself
 |---|---|
 | `cmd/` | CLI commands (cobra) |
 | `internal/` | All implementation packages |
-| `deployment/` | Docker Compose, Kubernetes, and local-process recipes |
+| `internal/project/scaffolds/templates/{local,docker-compose,k8s}/` | Embedded scaffold sources for `fracta init --scaffold <mode>` — the files materialized into operator projects |
+| `mcp-servers/` | Canonical MCP server catalog (fetched by `fracta config mcp fetch`; spec-43) |
 | `strategies/` | Python DAG strategy runner |
 | `graph-schema/` | Knowledge graph node and edge schema |
 | `scripts/` | Helper scripts |
 | `docs/` | This documentation |
+
+The old `deployment/` directory was removed in spec-43 Concern L. Its contents split two ways: the operator-facing scaffolds (Compose stack, K8s manifests, auth-helper templates) moved into the embedded templates at `internal/project/scaffolds/templates/`, and the MCP server catalog moved to `mcp-servers/` at the repo root. Editing a scaffold template changes what `fracta init` writes; editing `mcp-servers/<id>/server.yaml` changes what `fracta config mcp fetch` distributes.
 
 ## Build
 

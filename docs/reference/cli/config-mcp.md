@@ -41,7 +41,8 @@ fracta config mcp
 ```
 
 The old `fracta mcp <verb>` form is preserved as a deprecation alias for one
-minor release — see [the migration page](../../migration/spec-43-config-mcp.md).
+minor release — see [`fracta mcp` (deprecated alias)](./mcp.md) for the
+remapping table and a sed one-liner.
 
 ## `fetch`
 
@@ -268,5 +269,5 @@ column. `fracta config mcp` reads but does not write this field.
 
 First-class supported workflow. Mirror the canonical schema in any GitHub
 repo, HTTPS tarball, or local directory. See the
-[org-private walkthrough](../../migration/spec-43-config-mcp.md#org-private-catalog-walkthrough)
-on the migration page.
+[org-private catalog walkthrough](../../guides/mcp-catalog.md#org-private-catalogs)
+in the MCP catalog guide.

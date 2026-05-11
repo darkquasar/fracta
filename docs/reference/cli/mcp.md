@@ -12,9 +12,8 @@ path, then runs the same underlying runner — the OAuth flow, keyring writes,
 and credential-store behaviour are unchanged.
 
 For all new code and scripts, use the canonical paths under
-[`fracta config mcp`](./config-mcp.md). See the
-[migration page](../../migration/spec-43-config-mcp.md) for the remapping
-table and a sed one-liner.
+[`fracta config mcp`](./config-mcp.md). The remapping table and a sed
+one-liner for updating scripts are below.
 
 ## What still works on this path
 
@@ -43,9 +42,24 @@ Opening browser to authorize with notion...
 ## Removal timeline
 
 The alias group will be removed in the next minor release after spec-43
-ships. Plan your migration window accordingly — the sed substitution in the
-migration doc takes seconds per repo, and there are no semantic differences
-between the old and new paths.
+ships. Plan your migration window accordingly — the sed substitution below
+takes seconds per repo, and there are no semantic differences between the
+old and new paths.
+
+## Updating scripts
+
+```sh
+# Replace 'fracta mcp <verb>' with the new path. Note the auth-status rename.
+sed -i.bak \
+  -e 's|fracta mcp auth-status|fracta config mcp auth status|g' \
+  -e 's|fracta mcp login|fracta config mcp auth login|g' \
+  -e 's|fracta mcp logout|fracta config mcp auth logout|g' \
+  -e 's|fracta mcp export|fracta config mcp auth export|g' \
+  $(grep -rln 'fracta mcp ' . --include='*.sh' --include='*.yaml' --include='*.yml' --include='*.md')
+```
+
+Order matters: `auth-status` must be substituted before `login`/`logout` so the
+`auth-` prefix isn't mangled.
 
 ## Where the rest of MCP management lives
 

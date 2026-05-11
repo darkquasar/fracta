@@ -158,29 +158,57 @@ Fracta does not care which agentic runtimes (Claude, OpenAI, local models) are d
 
 **The Result**: You can deploy hundreds or thousands of containerized agent pods at any given time. They can run concurrently, solve independent missions, communicate securely with each other, and update the global state of the world in real-time.
 
-## Deployment Modes
+## Install
 
-| Mode | Complexity | Quickstart |
-|------|-----------|-----------|
-| Local Process | Lowest — everything on your machine | [quickstart-local-process.md](docs/quickstart-local-process.md) |
-| Docker Compose | Medium — containerized stack | [quickstart-docker-compose.md](docs/quickstart-docker-compose.md) |
-| Kubernetes | Highest — agents as K8s Jobs | [quickstart-kubernetes.md](docs/quickstart-kubernetes.md) |
+### Docker image (Compose / Kubernetes)
 
-## Build
+The release pipeline publishes multi-arch images (`linux/amd64`, `linux/arm64`) to GitHub Container Registry:
+
+```bash
+docker pull ghcr.io/darkquasar/fracta:latest
+docker run --rm ghcr.io/darkquasar/fracta:latest fracta --version
+```
+
+Available tags:
+
+- `ghcr.io/darkquasar/fracta:vX.Y.Z` — exact version
+- `ghcr.io/darkquasar/fracta:X.Y` — minor-version alias (auto-bumped)
+- `ghcr.io/darkquasar/fracta:X` — major-version alias (auto-bumped)
+- `ghcr.io/darkquasar/fracta:latest` — most recent stable release
+
+The scaffolded Compose and Kubernetes manifests reference this image — `fracta init --scaffold docker-compose` or `--scaffold k8s` wires it in for you.
+
+### Prebuilt binaries (local-process mode)
+
+Each tagged release ships statically linked binaries for `linux/{amd64,arm64}` and `darwin/{amd64,arm64}` on the [GitHub Releases page](https://github.com/darkquasar/fracta/releases), each with a `.sha256` sidecar.
+
+### Build from source
 
 ```bash
 make build          # Go binary → bin/fracta
 make docker-build   # Docker image (for Compose/K8s)
 ```
 
+Requires Go 1.25+. See [Building from source](docs/development/building.md) for the full reference.
+
+## Deployment Modes
+
+| Mode | Complexity | Quickstart |
+|------|-----------|-----------|
+| Local Process | Lowest — everything on your machine | [Local Process Quickstart](docs/guides/deployment/local-process.md) |
+| Docker Compose | Medium — containerized stack | [Docker Compose Quickstart](docs/guides/deployment/docker-compose.md) |
+| Kubernetes | Highest — agents as K8s Jobs | [Kubernetes Quickstart](docs/guides/deployment/kubernetes.md) |
+
 ## Reference
 
 | Doc | Covers |
 |-----|--------|
-| [Getting Started](docs/getting-started.md) | Architecture, credentials, mode selection |
-| [Deployment Modes](docs/deployment-modes.md) | Detailed architecture and config for all three modes |
-| [Runtime Configuration](docs/runtime-configuration.md) | Claude, Codex, OpenCode adapter setup |
-| [Credential Pipeline](docs/credential-pipeline.md) | Authentication deep dive |
-| [Strategies](docs/strategies.md) | Python DAG pipelines for investigations |
-| [Local K8s Guide](docs/local-k8s.md) | Complete K8s runbook with troubleshooting |
+| [Installation](docs/getting-started/installation.md) | Prerequisites, installing fracta, picking a mode |
+| [Core Concepts](docs/getting-started/core-concepts.md) | Architecture, credentials, mode selection |
+| [Deployment Overview](docs/guides/deployment/overview.md) | Detailed architecture and config for all three modes |
+| [Runtime Configuration](docs/guides/authentication/runtime-configuration.md) | Claude, Codex, OpenCode adapter setup |
+| [Credential Pipeline](docs/guides/authentication/credential-pipeline.md) | Authentication deep dive |
+| [Strategies](docs/strategies/overview.md) | Python DAG pipelines for investigations |
+| [Kubernetes Runbook](docs/guides/deployment/kubernetes-runbook.md) | Complete K8s runbook with troubleshooting |
 | [Kubernetes Configuration](docs/configuration/kubernetes.md) | `extra_volumes`, auth-helpers ConfigMap, `/opt/fracta/auth-helpers/` PATH convention |
+| [MCP Catalog](docs/reference/cli/config-mcp.md) | `fracta config mcp` — fetch the server catalog and wire servers into your scaffold |

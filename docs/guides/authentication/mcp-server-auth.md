@@ -122,7 +122,8 @@ gateway starts in Compose/K8s
 
 > The old top-level forms `fracta mcp login` / `fracta mcp export` /
 > `fracta mcp auth-status` still work as a one-release deprecation alias.
-> See the [spec-43 migration page](../../migration/spec-43-config-mcp.md).
+> See [`fracta mcp` (deprecated alias)](../../reference/cli/mcp.md) for the
+> remapping table.
 
 ### 1. Configure the OAuth server
 
