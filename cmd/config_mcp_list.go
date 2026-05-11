@@ -282,12 +282,18 @@ var errNoCatalogRemediation = errors.New(
 // Offline / fetch failures: degrade gracefully — write a "remote unavailable"
 // warning to stderr and fall back to the local-only table. Exit 0.
 func runConfigMcpListRemote(cmd *cobra.Command) error {
+	// Marketplace-browser behaviour: an absent local catalog is fine. We
+	// substitute an empty Catalog so every remote entry shows up as "available"
+	// and the LOCAL column renders as "not fetched". This lets operators run
+	// `fracta config mcp list --remote` immediately after `fracta init`
+	// to see what's available before deciding whether to fetch.
 	localCat, err := mcpcatalog.LoadProjectCatalog(projectRoot)
 	if err != nil {
 		if errors.Is(err, mcpcatalog.ErrNoCatalog) {
-			return errNoCatalogRemediation
+			localCat = &mcpcatalog.Catalog{Entries: map[string]*mcpcatalog.Entry{}}
+		} else {
+			return err
 		}
-		return err
 	}
 
 	source, err := mcpcatalog.ResolveFetchSource(projectRoot, "")
@@ -331,6 +337,11 @@ func runConfigMcpListRemote(cmd *cobra.Command) error {
 // for any mode; REMOTE shows the catalog.yaml version; DELTA names the
 // difference bucket (up-to-date | available | local-only | changed).
 func renderRemoteTable(w io.Writer, local, remote *mcpcatalog.Catalog, delta mcpcatalog.Delta, state *mcpcatalog.ProjectState, version string) error {
+	// An empty local catalog means the operator hasn't run `fracta config mcp
+	// fetch` yet. Render LOCAL as "not fetched" rather than "not configured"
+	// so the meaning is unambiguous.
+	localEmpty := local == nil || len(local.Entries) == 0
+
 	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
 	fmt.Fprintln(tw, strings.Join([]string{"SERVER", "LOCAL", "REMOTE", "DELTA", "AUTH", "DESCRIPTION"}, "\t"))
 
@@ -392,6 +403,9 @@ func renderRemoteTable(w io.Writer, local, remote *mcpcatalog.Catalog, delta mcp
 		}
 
 		localCol := "not configured"
+		if localEmpty {
+			localCol = "not fetched"
+		}
 		if state != nil && state.Configured[id] != nil {
 			modes := []string{}
 			for k, on := range state.Configured[id] {

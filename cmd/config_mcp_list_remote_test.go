@@ -99,6 +99,48 @@ mcp_servers:
 	}
 }
 
+// TestConfigMcpListRemoteOnFreshProject covers the marketplace-browser flow:
+// an operator who has just run `fracta init` (and so has no local catalog
+// yet) should still be able to run `list --remote` to see what's available
+// upstream. Every remote entry renders as "available" with LOCAL = "not
+// fetched".
+func TestConfigMcpListRemoteOnFreshProject(t *testing.T) {
+	root := tempProject(t, tempProjectOpts{
+		fractaYAML: "runtime:\n  backend: kubernetes\n",
+	})
+	// Note: no <root>/mcp-servers/ — fresh project.
+
+	remoteSrc := fixtureRemoteAvailableCatalog(t)
+	writeFile(t, filepath.Join(root, "mcp-servers", ".fracta-source"), remoteSrc)
+	// Above call had to create mcp-servers/ to write the .fracta-source file;
+	// we delete the rest so LoadProjectCatalog returns ErrNoCatalog. The
+	// .fracta-source file alone is not a catalog.
+	_ = os.Remove(filepath.Join(root, "mcp-servers", "catalog.yaml"))
+
+	listOutputFlag = "table"
+	listRemoteFlag = true
+	listFilterFlag = ""
+	listNoImageStateFlag = true
+	listTargetDeploymentFlag = ""
+
+	out, err := captureStdout(t, func() error {
+		return runConfigMcpList(configMcpListCmd, nil)
+	})
+	if err != nil {
+		t.Fatalf("list --remote on fresh project: %v", err)
+	}
+
+	if !strings.Contains(out, "not fetched") {
+		t.Errorf("LOCAL column should show 'not fetched' on fresh project:\n%s", out)
+	}
+	if !strings.Contains(out, "available") {
+		t.Errorf("every remote entry should be 'available' on fresh project:\n%s", out)
+	}
+	if !strings.Contains(out, "vendor") || !strings.Contains(out, "elastic") {
+		t.Errorf("expected vendor + elastic rows from fixture remote:\n%s", out)
+	}
+}
+
 func TestConfigMcpListRemoteDegradesWhenSourceFails(t *testing.T) {
 	root := tempProject(t, tempProjectOpts{
 		fractaYAML: "runtime:\n  backend: local\n",
