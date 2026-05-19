@@ -8,12 +8,12 @@ import (
 
 	"github.com/darkquasar/fracta/internal/contract"
 	"github.com/darkquasar/fracta/internal/events"
+	"github.com/darkquasar/fracta/internal/fractalog"
 	"github.com/darkquasar/fracta/internal/gateway"
 	"github.com/darkquasar/fracta/internal/graph"
 	"github.com/darkquasar/fracta/internal/loaders"
 	"github.com/darkquasar/fracta/internal/mailbox"
 	"github.com/darkquasar/fracta/internal/mcpclient"
-	"github.com/darkquasar/fracta/internal/fractalog"
 	"github.com/darkquasar/fracta/internal/objective"
 	"github.com/darkquasar/fracta/internal/proposal"
 	"github.com/darkquasar/fracta/internal/registry"
@@ -212,6 +212,11 @@ func NewGatewayServer(root string, opts ...GatewayServerOption) *GatewayServer {
 			}
 			gwCancel()
 		}
+
+		// Build initial visibility set and register the tool filter.
+		gs.gateway.BuildVisibleSet(context.Background())
+		server.WithToolFilter(gs.gateway.FilterToolsForAgent)(gs.mcp)
+
 		if gs.graph != nil {
 			registerSearchTool(gs.mcp, gs.graph, gs.gateway)
 		}
@@ -275,4 +280,4 @@ func (gs *GatewayServer) emitReadyEvent() {
 	e.Detail = fmt.Sprintf("listen=%s", gs.listenAddr)
 	e.Attrs = map[string]string{"status": "ready"}
 	gs.events.Emit(context.Background(), e)
-}
+} 

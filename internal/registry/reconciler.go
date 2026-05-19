@@ -29,7 +29,7 @@ type ReconcilerPool interface {
 // ReconcilerGateway defines the gateway operations the reconciler needs.
 type ReconcilerGateway interface {
 	UnregisterServer(name string)
-	ReconcileServer(name string, tools []mcpclient.ToolInfo) error
+	ReconcileServer(ctx context.Context, name string, tools []mcpclient.ToolInfo) error
 }
 
 // Reconciler drives the gateway from registry state. It runs as a background
@@ -295,7 +295,7 @@ func (r *Reconciler) persistAndReconcile(ctx context.Context, name string, tools
 		// Non-critical: health update failure doesn't invalidate tool persistence.
 	}
 
-	if err := r.gateway.ReconcileServer(name, tools); err != nil {
+	if err := r.gateway.ReconcileServer(ctx, name, tools); err != nil {
 		r.logger.Error("reconcile: gateway reconcile", "server", name, "error", err)
 		return schemaDrift, fmt.Errorf("gateway reconcile: %w", err)
 	}
@@ -631,4 +631,4 @@ func serverToConfigEntry(srv Server) config.MCPServerEntry {
 		_ = json.Unmarshal(srv.ConnectionConfig, &entry)
 	}
 	return entry
-}
+} 

@@ -1,3 +1,4 @@
+{{- /* x */ -}}
 url: {{.ServiceURL}}
 transport: {{.Transport}}
 {{- if .EnvRequired}}
@@ -5,4 +6,4 @@ env_required:
 {{- range .EnvRequired}}
   - {{.}}
 {{- end}}
-{{- end}} 
+{{- end}}

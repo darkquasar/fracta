@@ -1,3 +1,4 @@
+{{- /* x */ -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -31,7 +32,7 @@ spec:
           ports:
             - containerPort: {{.ContainerPort}}
               name: mcp
-{{- if .EnvBindings}}
+{{- if or .EnvBindings .PlainEnv}}
           env:
 {{- range .EnvBindings}}
             - name: {{.Name}}
@@ -39,6 +40,10 @@ spec:
                 secretKeyRef:
                   name: {{.SecretName}}
                   key: {{.SecretKey}}
+{{- end}}
+{{- range .PlainEnv}}
+            - name: {{.Name}}
+              value: {{yamlQuote .Value}}
 {{- end}}
 {{- end}}
           resources:

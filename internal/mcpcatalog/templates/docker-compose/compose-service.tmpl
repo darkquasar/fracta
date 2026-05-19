@@ -1,12 +1,16 @@
+{{- /* x */ -}}
 {{.ServiceName}}:
     image: {{.Image}}
 {{- if .ContainerArgs}}
     command: [{{range $i, $a := .ContainerArgs}}{{if $i}}, {{end}}"{{$a}}"{{end}}]
 {{- end}}
-{{- if .EnvComposePairs}}
+{{- if or .EnvComposePairs .PlainEnv}}
     environment:
 {{- range .EnvComposePairs}}
       {{.Name}}: "{{.Value}}"
+{{- end}}
+{{- range .PlainEnv}}
+      {{.Name}}: {{yamlQuote .Value}}
 {{- end}}
 {{- end}}
 {{- if .Healthcheck}}

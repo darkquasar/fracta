@@ -53,7 +53,7 @@ func (g *e2eGateway) UnregisterServer(name string) {
 	g.unregistered = append(g.unregistered, name)
 }
 
-func (g *e2eGateway) ReconcileServer(name string, tools []mcpclient.ToolInfo) error {
+func (g *e2eGateway) ReconcileServer(_ context.Context, name string, tools []mcpclient.ToolInfo) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	g.servers[name] = tools
@@ -91,7 +91,7 @@ func (e2eGraph) Query(context.Context, string, map[string]any) ([]graph.Record, 
 	return nil, nil
 }
 func (e2eGraph) Update(context.Context, string, map[string]any) error { return nil }
-func (e2eGraph) Close() error                                        { return nil }
+func (e2eGraph) Close() error                                         { return nil }
 
 // e2eHarness bundles all E2E components.
 type e2eHarness struct {
@@ -400,4 +400,4 @@ func TestE2E_ReAddServerToConfig(t *testing.T) {
 	if !srvReg2.ProxyEnabled {
 		t.Error("proxy_enabled should be true after re-add")
 	}
-}
+} 

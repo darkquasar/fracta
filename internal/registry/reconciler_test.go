@@ -238,7 +238,7 @@ func (g *mockGateway) UnregisterServer(name string) {
 	g.unregistered = append(g.unregistered, name)
 }
 
-func (g *mockGateway) ReconcileServer(name string, tools []mcpclient.ToolInfo) error {
+func (g *mockGateway) ReconcileServer(_ context.Context, name string, tools []mcpclient.ToolInfo) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	g.servers[name] = tools
@@ -538,7 +538,7 @@ func TestReconciler_AddNewServer(t *testing.T) {
 	}
 
 	// Reconcile gateway
-	if err := h.gw.ReconcileServer("new-server", tools); err != nil {
+	if err := h.gw.ReconcileServer(context.Background(), "new-server", tools); err != nil {
 		t.Fatal(err)
 	}
 	if !h.gw.hasServer("new-server") {
@@ -556,7 +556,7 @@ func TestReconciler_RemoveServer(t *testing.T) {
 
 	// Server in pool but not in desired (registry)
 	h.addPoolServer("old-server", cfg, mcpclient.ConnReady)
-	h.gw.ReconcileServer("old-server", []mcpclient.ToolInfo{
+	h.gw.ReconcileServer(context.Background(), "old-server", []mcpclient.ToolInfo{
 		{Name: "tool1", Description: "desc"},
 	})
 
@@ -592,7 +592,7 @@ func TestReconciler_ConfigDrift(t *testing.T) {
 
 	// Server in pool with old config
 	h.addPoolServer("drifted", oldCfg, mcpclient.ConnReady)
-	h.gw.ReconcileServer("drifted", []mcpclient.ToolInfo{
+	h.gw.ReconcileServer(context.Background(), "drifted", []mcpclient.ToolInfo{
 		{Name: "t1", Description: "d1"},
 	})
 
@@ -804,7 +804,7 @@ func TestReconciler_FullLifecycle(t *testing.T) {
 		}
 		regTools := toRegistryTools(name, tools)
 		h.store.ReplaceDiscoveredTools(ctx, name, regTools)
-		h.gw.ReconcileServer(name, tools)
+		h.gw.ReconcileServer(context.Background(), name, tools)
 	}
 
 	// Verify
@@ -925,11 +925,11 @@ type failingGateway struct {
 	failReconcile bool
 }
 
-func (f *failingGateway) ReconcileServer(name string, tools []mcpclient.ToolInfo) error {
+func (f *failingGateway) ReconcileServer(ctx context.Context, name string, tools []mcpclient.ToolInfo) error {
 	if f.failReconcile {
 		return fmt.Errorf("simulated gateway failure")
 	}
-	return f.mockGateway.ReconcileServer(name, tools)
+	return f.mockGateway.ReconcileServer(ctx, name, tools)
 }
 
 func TestReconciler_DisabledServerRemoved(t *testing.T) {
@@ -945,7 +945,7 @@ func TestReconciler_DisabledServerRemoved(t *testing.T) {
 
 	// Server in pool and gateway, but disabled in registry.
 	h.addPoolServer("disabled-srv", cfg, mcpclient.ConnReady)
-	h.gw.ReconcileServer("disabled-srv", []mcpclient.ToolInfo{
+	h.gw.ReconcileServer(context.Background(), "disabled-srv", []mcpclient.ToolInfo{
 		{Name: "tool1", Description: "a tool"},
 	})
 
@@ -1021,7 +1021,7 @@ func TestReconciler_ReEnabledServerReconnects(t *testing.T) {
 	}
 
 	// Reconcile gateway.
-	if err := h.gw.ReconcileServer("reenabled-srv", tools); err != nil {
+	if err := h.gw.ReconcileServer(context.Background(), "reenabled-srv", tools); err != nil {
 		t.Fatal(err)
 	}
 
@@ -1043,7 +1043,7 @@ func TestReconciler_NoStaleGatewayAfterDisable(t *testing.T) {
 
 	// Set up server with tools in gateway.
 	h.addPoolServer("srv", cfg, mcpclient.ConnReady)
-	h.gw.ReconcileServer("srv", []mcpclient.ToolInfo{
+	h.gw.ReconcileServer(context.Background(), "srv", []mcpclient.ToolInfo{
 		{Name: "t1", Description: "d1"},
 		{Name: "t2", Description: "d2"},
 	})
@@ -1466,4 +1466,4 @@ func TestReconciler_DiscoveryTimeout_HungBackendBecomesDegrade(t *testing.T) {
 	default:
 		t.Error("readyCh should be closeable after reconcileAll completes")
 	}
-}
+} 

@@ -46,6 +46,15 @@ type AuthSpec struct {
 	Notes            string            `yaml:"notes,omitempty"`
 }
 
+// VariantEnvSpec describes environment variables for a catalog variant.
+// Static entries are rendered into deployment manifests; Required/Optional are
+// informational hints for the operator.
+type VariantEnvSpec struct {
+	Required []string          `yaml:"required,omitempty"`
+	Optional []string          `yaml:"optional,omitempty"`
+	Static   map[string]string `yaml:"static,omitempty"`
+}
+
 type VariantSpec struct {
 	Transport    string   `yaml:"transport,omitempty"`
 	Command      string   `yaml:"command,omitempty"`
@@ -78,6 +87,8 @@ type VariantSpec struct {
 	// key→value preserving order via yaml ordering is fine since the existing
 	// renderer reproduces a fixed key sequence.
 	ComposeHealthcheck *ComposeHealthcheckSpec `yaml:"compose_healthcheck,omitempty"`
+	// Env describes environment variables for this variant.
+	Env VariantEnvSpec `yaml:"env,omitempty"`
 }
 
 // ResourcesSpec is a k8s pod resources block. Defaults fall back to a
@@ -200,4 +211,4 @@ func (e Entry) PreferredVariant(k scaffolds.Kind) (string, bool) {
 		return "", false
 	}
 	return "", false
-}
+} 

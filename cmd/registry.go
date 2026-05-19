@@ -14,8 +14,10 @@ import (
 )
 
 var registryCmd = &cobra.Command{
-	Use:   "registry",
-	Short: "Manage the MCP server registry",
+	Use:        "registry",
+	Short:      "Manage the MCP server registry (deprecated: use 'fracta debug registry')",
+	Hidden:     true,
+	Deprecated: "use 'fracta debug registry' instead",
 }
 
 var registryListCmd = &cobra.Command{
@@ -267,4 +269,4 @@ func showRegistrySummary(ctx context.Context, store registry.Store) error {
 	fmt.Printf("  Tools: %d total (%d enabled)\n", len(tools), enabledTools)
 
 	return nil
-}
+} 

@@ -3,11 +3,39 @@ package mcpcatalog
 import (
 	"bytes"
 	"fmt"
+	"sort"
 	"strings"
 	"text/template"
 
 	"github.com/darkquasar/fracta/internal/project/scaffolds"
 )
+
+// PlainEnvEntry is a non-secret environment variable rendered into manifests.
+type PlainEnvEntry struct {
+	Name  string
+	Value string
+}
+
+// plainEnvEntries returns sorted static env vars for a variant, filtering out
+// any that collide with auth.env_required (secrets win).
+func (e *Entry) plainEnvEntries(variant string) []PlainEnvEntry {
+	v, ok := e.Variants[variant]
+	if !ok || len(v.Env.Static) == 0 {
+		return nil
+	}
+	secretNames := make(map[string]bool, len(e.Auth.EnvRequired))
+	for _, name := range e.Auth.EnvRequired {
+		secretNames[name] = true
+	}
+	var entries []PlainEnvEntry
+	for name, val := range v.Env.Static {
+		if !secretNames[name] {
+			entries = append(entries, PlainEnvEntry{Name: name, Value: val})
+		}
+	}
+	sort.Slice(entries, func(i, j int) bool { return entries[i].Name < entries[j].Name })
+	return entries
+}
 
 // RenderOpts controls rendering of fracta.yaml blocks and k8s/compose manifests.
 //
@@ -52,6 +80,7 @@ type k8sRenderData struct {
 	Resources         ResourcesSpec
 	SecretName        string
 	EnvBindings       []EnvBinding
+	PlainEnv          []PlainEnvEntry
 }
 
 // composeRenderData is the input to the compose-service template.
@@ -61,6 +90,7 @@ type composeRenderData struct {
 	ContainerArgs   []string
 	EnvComposePairs []composeEnvPair
 	Healthcheck     *ComposeHealthcheckSpec
+	PlainEnv        []PlainEnvEntry
 }
 
 // fractaYAMLK8sData / fractaYAMLLocalData are inputs to the per-mode fracta.yaml block templates.
@@ -69,6 +99,7 @@ type fractaYAMLK8sData struct {
 	ServiceURL  string
 	Transport   string
 	EnvRequired []string
+	PlainEnv    []PlainEnvEntry
 }
 
 type fractaYAMLLocalData struct {
@@ -76,6 +107,7 @@ type fractaYAMLLocalData struct {
 	Command     string
 	Args        []string
 	EnvRequired []string
+	PlainEnv    []PlainEnvEntry
 }
 
 // RenderFractaYAMLBlock emits the YAML snippet that gets spliced under
@@ -102,6 +134,7 @@ func (e *Entry) RenderFractaYAMLBlock(mode scaffolds.Kind, opts RenderOpts) ([]b
 			Command:     v.Command,
 			Args:        args,
 			EnvRequired: e.Auth.EnvRequired,
+			PlainEnv:    e.plainEnvEntries(variant),
 		})
 	case scaffolds.KindDockerCompose:
 		return renderTemplate("templates/docker-compose/fracta-yaml-block.tmpl", fractaYAMLK8sData{
@@ -109,6 +142,7 @@ func (e *Entry) RenderFractaYAMLBlock(mode scaffolds.Kind, opts RenderOpts) ([]b
 			ServiceURL:  v.ServiceURL,
 			Transport:   v.Transport,
 			EnvRequired: e.Auth.EnvRequired,
+			PlainEnv:    e.plainEnvEntries(variant),
 		})
 	case scaffolds.KindK8s:
 		return renderTemplate("templates/k8s/fracta-yaml-block.tmpl", fractaYAMLK8sData{
@@ -116,6 +150,7 @@ func (e *Entry) RenderFractaYAMLBlock(mode scaffolds.Kind, opts RenderOpts) ([]b
 			ServiceURL:  v.ServiceURL,
 			Transport:   v.Transport,
 			EnvRequired: e.Auth.EnvRequired,
+			PlainEnv:    e.plainEnvEntries(variant),
 		})
 	}
 	return nil, fmt.Errorf("mcpcatalog: unknown mode %v", mode)
@@ -181,6 +216,7 @@ func (e *Entry) RenderK8sManifest(opts RenderOpts) ([]byte, error) {
 		Resources:         resources,
 		SecretName:        svcName + "-secrets",
 		EnvBindings:       e.envBindings(svcName),
+		PlainEnv:          e.plainEnvEntries(variant),
 	}
 	return renderTemplate("templates/k8s/deployment-service.tmpl", data)
 }
@@ -249,6 +285,7 @@ func (e *Entry) RenderComposeService(opts RenderOpts) ([]byte, error) {
 		ContainerArgs:   v.ContainerArgs,
 		EnvComposePairs: pairs,
 		Healthcheck:     v.ComposeHealthcheck,
+		PlainEnv:        e.plainEnvEntries(variant),
 	}
 	return renderTemplate("templates/docker-compose/compose-service.tmpl", data)
 }
@@ -296,6 +333,7 @@ func renderTemplate(path string, data any) ([]byte, error) {
 	}
 	tmpl, err := template.New(path).Funcs(template.FuncMap{
 		"quoteHealthcheck": quoteHealthcheck,
+		"yamlQuote":        yamlQuote,
 	}).Parse(string(raw))
 	if err != nil {
 		return nil, fmt.Errorf("mcpcatalog: parse template %s: %w", path, err)
@@ -305,6 +343,13 @@ func renderTemplate(path string, data any) ([]byte, error) {
 		return nil, fmt.Errorf("mcpcatalog: execute template %s: %w", path, err)
 	}
 	return buf.Bytes(), nil
+}
+
+// yamlQuote wraps a string in double quotes with minimal escaping for YAML values.
+func yamlQuote(s string) string {
+	s = strings.ReplaceAll(s, `\`, `\\`)
+	s = strings.ReplaceAll(s, `"`, `\"`)
+	return `"` + s + `"`
 }
 
 // supportKey returns the catalog support.<key> name for a kind.
@@ -414,4 +459,4 @@ func strconv_Quote(s string) string {
 // quoted strings.
 func quoteHealthcheck(s string) string {
 	return "\"" + strings.ReplaceAll(s, "\"", "\\\"") + "\""
-}
+} 

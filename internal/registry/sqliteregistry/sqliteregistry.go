@@ -184,7 +184,9 @@ func (s *SQLiteRegistry) UpdateServerHealth(ctx context.Context, name string, st
 	return nil
 }
 
-// ReplaceDiscoveredTools atomically replaces all tools for a server.
+// ReplaceDiscoveredTools upserts discovered tools for a server, preserving
+// the operator-controlled `enabled` column. Stale tools (no longer in the
+// discovered set) are deleted.
 func (s *SQLiteRegistry) ReplaceDiscoveredTools(ctx context.Context, server string, tools []registry.Tool) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -192,29 +194,48 @@ func (s *SQLiteRegistry) ReplaceDiscoveredTools(ctx context.Context, server stri
 	}
 	defer tx.Rollback()
 
-	if _, err := tx.ExecContext(ctx, `DELETE FROM registered_tools WHERE server_name = ?`, server); err != nil {
-		return fmt.Errorf("sqliteregistry: clear tools for %q: %w", server, err)
-	}
-
 	now := time.Now().UTC().Format(timeFormat)
+
 	for _, t := range tools {
 		inputSchema := ""
 		if t.InputSchema != nil {
 			inputSchema = string(t.InputSchema)
 		}
 		metadata := defaultJSON(t.Metadata)
-		enabled := 1
-		if !t.Enabled {
-			enabled = 0
-		}
 		_, err := tx.ExecContext(ctx, `INSERT INTO registered_tools
 			(server_name, tool_name, description, input_schema, schema_hash, enabled, last_seen_at, metadata)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-			server, t.ToolName, t.Description, inputSchema, t.SchemaHash, enabled, now, string(metadata))
+			VALUES (?, ?, ?, ?, ?, 1, ?, ?)
+			ON CONFLICT(server_name, tool_name) DO UPDATE SET
+				description = excluded.description,
+				input_schema = excluded.input_schema,
+				schema_hash = excluded.schema_hash,
+				last_seen_at = excluded.last_seen_at,
+				metadata = excluded.metadata`,
+			server, t.ToolName, t.Description, inputSchema, t.SchemaHash, now, string(metadata))
 		if err != nil {
-			return fmt.Errorf("sqliteregistry: insert tool %q/%q: %w", server, t.ToolName, err)
+			return fmt.Errorf("sqliteregistry: upsert tool %q/%q: %w", server, t.ToolName, err)
 		}
 	}
+
+	if len(tools) == 0 {
+		if _, err := tx.ExecContext(ctx, `DELETE FROM registered_tools WHERE server_name = ?`, server); err != nil {
+			return fmt.Errorf("sqliteregistry: clear all tools for %q: %w", server, err)
+		}
+	} else {
+		placeholders := make([]string, len(tools))
+		args := make([]any, 0, len(tools)+1)
+		args = append(args, server)
+		for i, t := range tools {
+			placeholders[i] = "?"
+			args = append(args, t.ToolName)
+		}
+		query := fmt.Sprintf(`DELETE FROM registered_tools WHERE server_name = ? AND tool_name NOT IN (%s)`,
+			strings.Join(placeholders, ","))
+		if _, err := tx.ExecContext(ctx, query, args...); err != nil {
+			return fmt.Errorf("sqliteregistry: delete stale tools for %q: %w", server, err)
+		}
+	}
+
 	return tx.Commit()
 }
 
@@ -481,4 +502,4 @@ func defaultJSON(data json.RawMessage) json.RawMessage {
 }
 
 // Verify interface compliance at compile time.
-var _ registry.Store = (*SQLiteRegistry)(nil)
+var _ registry.Store = (*SQLiteRegistry)(nil) 

@@ -23,6 +23,8 @@ var (
 	listFilterFlag           string
 	listOutputFlag           string
 	listNoImageStateFlag     bool
+	listRenderTableFlag      bool
+	listSimpleFlag           bool
 )
 
 var configMcpListCmd = &cobra.Command{
@@ -48,20 +50,24 @@ func init() {
 		"Output format: table | json | yaml")
 	configMcpListCmd.Flags().BoolVar(&listNoImageStateFlag, "no-image-state", false,
 		"Skip docker/podman image presence inspection (faster).")
+	configMcpListCmd.Flags().BoolVar(&listRenderTableFlag, "render-table", false,
+		"Force horizontal table output (all columns).")
+	configMcpListCmd.Flags().BoolVar(&listSimpleFlag, "simple", false,
+		"Simplified output: name, transport, status, modes only.")
 
 	configMcpCmd.AddCommand(configMcpListCmd)
 }
 
 // listRow is one row in the local-list table/JSON output.
 type listRow struct {
-	ID         string                 `json:"id" yaml:"id"`
-	Name       string                 `json:"name" yaml:"name"`
-	Status     string                 `json:"status" yaml:"status"`
-	Category   string                 `json:"category" yaml:"category"`
-	AuthModes  []string               `json:"auth_modes,omitempty" yaml:"auth_modes,omitempty"`
-	Transport  string                 `json:"transport,omitempty" yaml:"transport,omitempty"`
-	Image      string                 `json:"image,omitempty" yaml:"image,omitempty"`
-	ImageState string                 `json:"image_state,omitempty" yaml:"image_state,omitempty"`
+	ID         string   `json:"id" yaml:"id"`
+	Name       string   `json:"name" yaml:"name"`
+	Status     string   `json:"status" yaml:"status"`
+	Category   string   `json:"category" yaml:"category"`
+	AuthModes  []string `json:"auth_modes,omitempty" yaml:"auth_modes,omitempty"`
+	Transport  string   `json:"transport,omitempty" yaml:"transport,omitempty"`
+	Image      string   `json:"image,omitempty" yaml:"image,omitempty"`
+	ImageState string   `json:"image_state,omitempty" yaml:"image_state,omitempty"`
 	// Configured[mode-string] is true when the server is wired up in that mode.
 	Configured map[string]bool `json:"configured" yaml:"configured"`
 }
@@ -103,6 +109,9 @@ func runConfigMcpList(cmd *cobra.Command, _ []string) error {
 
 	switch listOutputFlag {
 	case "table", "":
+		if listSimpleFlag {
+			return renderListSimple(cmd.OutOrStdout(), rows, wanted)
+		}
 		return renderListTable(cmd.OutOrStdout(), rows, wanted)
 	case "json":
 		enc := json.NewEncoder(cmd.OutOrStdout())
@@ -331,6 +340,21 @@ func runConfigMcpListRemote(cmd *cobra.Command) error {
 	return renderRemoteTable(cmd.OutOrStdout(), localCat, result.RemoteCatalog, delta, state, result.CatalogVersion)
 }
 
+// renderListSimple shows a condensed view: name, transport, status, modes.
+func renderListSimple(w io.Writer, rows []listRow, wanted []scaffolds.Kind) error {
+	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
+	fmt.Fprintln(tw, "SERVER\tTRANSPORT\tSTATUS\tMODES")
+	for _, r := range rows {
+		transport := r.Transport
+		if transport == "" {
+			transport = "-"
+		}
+		modes := formatModesCell(r, wanted)
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\n", r.ID, transport, r.Status, modes)
+	}
+	return tw.Flush()
+}
+
 // renderRemoteTable prints the marketplace-style diff between the local
 // catalog and the remote. Columns: SERVER, LOCAL, REMOTE, DELTA, AUTH,
 // DESCRIPTION. LOCAL describes whether the operator has wired up the server
@@ -437,7 +461,4 @@ func renderRemoteTable(w io.Writer, local, remote *mcpcatalog.Catalog, delta mcp
 		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\n", id, localCol, remoteCol, deltaCol, auth, desc)
 	}
 	return tw.Flush()
-}
-
-
-
+} 

@@ -187,7 +187,9 @@ func (r *PgRegistry) UpdateServerHealth(ctx context.Context, name string, status
 	return nil
 }
 
-// ReplaceDiscoveredTools atomically replaces all tools for a server.
+// ReplaceDiscoveredTools upserts discovered tools for a server, preserving
+// the operator-controlled `enabled` column. Stale tools (no longer in the
+// discovered set) are deleted.
 func (r *PgRegistry) ReplaceDiscoveredTools(ctx context.Context, server string, tools []registry.Tool) error {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
@@ -195,21 +197,40 @@ func (r *PgRegistry) ReplaceDiscoveredTools(ctx context.Context, server string, 
 	}
 	defer tx.Rollback(ctx)
 
-	if _, err := tx.Exec(ctx, `DELETE FROM registered_tools WHERE server_name = $1`, server); err != nil {
-		return fmt.Errorf("pgregistry: clear tools for %q: %w", server, err)
-	}
-
 	now := time.Now().UTC()
+
 	for _, t := range tools {
 		metadata := defaultJSON(t.Metadata)
 		_, err := tx.Exec(ctx, `INSERT INTO registered_tools
 			(server_name, tool_name, description, input_schema, schema_hash, enabled, last_seen_at, metadata)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-			server, t.ToolName, t.Description, t.InputSchema, t.SchemaHash, t.Enabled, now, metadata)
+			VALUES ($1, $2, $3, $4, $5, true, $6, $7)
+			ON CONFLICT(server_name, tool_name) DO UPDATE SET
+				description = EXCLUDED.description,
+				input_schema = EXCLUDED.input_schema,
+				schema_hash = EXCLUDED.schema_hash,
+				last_seen_at = EXCLUDED.last_seen_at,
+				metadata = EXCLUDED.metadata`,
+			server, t.ToolName, t.Description, t.InputSchema, t.SchemaHash, now, metadata)
 		if err != nil {
-			return fmt.Errorf("pgregistry: insert tool %q/%q: %w", server, t.ToolName, err)
+			return fmt.Errorf("pgregistry: upsert tool %q/%q: %w", server, t.ToolName, err)
 		}
 	}
+
+	if len(tools) == 0 {
+		if _, err := tx.Exec(ctx, `DELETE FROM registered_tools WHERE server_name = $1`, server); err != nil {
+			return fmt.Errorf("pgregistry: clear all tools for %q: %w", server, err)
+		}
+	} else {
+		names := make([]string, len(tools))
+		for i, t := range tools {
+			names[i] = t.ToolName
+		}
+		if _, err := tx.Exec(ctx, `DELETE FROM registered_tools WHERE server_name = $1 AND tool_name != ALL($2::text[])`,
+			server, names); err != nil {
+			return fmt.Errorf("pgregistry: delete stale tools for %q: %w", server, err)
+		}
+	}
+
 	return tx.Commit(ctx)
 }
 
@@ -462,4 +483,4 @@ func defaultJSON(data json.RawMessage) json.RawMessage {
 }
 
 // Verify interface compliance at compile time.
-var _ registry.Store = (*PgRegistry)(nil)
+var _ registry.Store = (*PgRegistry)(nil) 

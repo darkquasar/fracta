@@ -50,7 +50,7 @@ func newTestGatewayWithCatalog(t *testing.T, entries []gateway.CatalogEntry) *ga
 		})
 	}
 	for name, tools := range byServer {
-		if err := gw.ReconcileServer(name, tools); err != nil {
+		if err := gw.ReconcileServer(context.Background(), name, tools); err != nil {
 			t.Fatalf("ReconcileServer(%s): %v", name, err)
 		}
 	}
@@ -301,4 +301,4 @@ func TestSearchTool_CallableFiltering_Integration(t *testing.T) {
 			t.Errorf("unexpected server %q — only elastic tools should be callable", tool.Server)
 		}
 	}
-}
+} 
