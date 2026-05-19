@@ -1,9 +1,7 @@
 ---
-title: Core Concepts
-description: The components and ideas that make up fracta
+title: Getting Started with Fracta
+description: Core concepts, how credentials flow, and which deployment mode to pick.
 ---
-
-# Getting Started with Fracta
 
 Fracta is a multi-agent orchestration system. It lets you spawn parallel AI agents from Claude Code, Codex, or OpenCode — each working on a separate task — and coordinate their output. You keep using your preferred AI CLI as you normally would;  fracta adds the ability to fan work out to multiple agents and bring it back together.
 

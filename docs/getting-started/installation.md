@@ -3,8 +3,6 @@ title: Installation
 description: Prerequisites and how to install fracta
 ---
 
-# Installation
-
 ## Prerequisites
 
 <Steps>

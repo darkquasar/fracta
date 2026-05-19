@@ -1,11 +1,7 @@
 ---
 title: Your First Agent
-description: Spawn, peek, and clean up a fracta agent
+description: Spawn, peek, and clean up a fracta agent in about 5 minutes.
 ---
-
-# Your First Agent
-
-This walkthrough takes about 5 minutes. It assumes you have fracta [installed](/getting-started/installation) and at least one runtime CLI configured.
 
 <Steps>
   <Step title="Initialize fracta in your project">
