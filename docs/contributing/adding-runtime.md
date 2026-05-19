@@ -1,9 +1,7 @@
 ---
-title: Adding a Runtime
+title: Adding a New Runtime to Fracta
 description: How to onboard a new LLM CLI as a fracta host runtime
 ---
-
-# Adding a New Runtime to Fracta
 
 ## Overview
 
