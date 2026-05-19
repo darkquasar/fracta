@@ -1,9 +1,7 @@
 ---
 title: Releasing
-description: Cutting tagged releases with multi-arch binaries and Docker images
+description: Cutting tagged releases — multi-arch binaries, Docker images, GitHub Release notes.
 ---
-
-# Releasing
 
 Fracta releases are triggered by pushing a semver-shaped git tag. The release workflow then builds platform binaries, publishes a multi-arch Docker image, and creates a GitHub Release with auto-generated notes.
 
@@ -157,7 +155,7 @@ Pre-release tags (e.g. `v0.2.0-rc1`) skip `latest` so consumers pulling `latest`
 Auto-generated from commit history since the previous tag. Includes:
 
 - List of merged PRs with author attribution
-- Categorised changes (if you use conventional commit prefixes like `feat:`, `fix:`, `docs:`)
+- Categorised changes (GitHub groups by conventional-commit prefixes if present; fracta uses domain prefixes like `cli:`, `mcpcatalog:`, `docs:` instead — these still appear in the list but won't be auto-categorised into release-notes sections)
 - Comparison link to the previous release
 
 You can edit the release notes manually after the workflow finishes via `gh release edit vX.Y.Z`.
