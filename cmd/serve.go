@@ -17,6 +17,7 @@ import (
 	"github.com/darkquasar/fracta/internal/controlplane"
 	"github.com/darkquasar/fracta/internal/cpapi"
 	"github.com/darkquasar/fracta/internal/events"
+	"github.com/darkquasar/fracta/internal/fractalog"
 	"github.com/darkquasar/fracta/internal/gateway"
 	"github.com/darkquasar/fracta/internal/graph"
 	"github.com/darkquasar/fracta/internal/host"
@@ -25,7 +26,6 @@ import (
 	"github.com/darkquasar/fracta/internal/mcpserver"
 	"github.com/darkquasar/fracta/internal/model"
 	"github.com/darkquasar/fracta/internal/oauth"
-	"github.com/darkquasar/fracta/internal/fractalog"
 	"github.com/darkquasar/fracta/internal/objective"
 	"github.com/darkquasar/fracta/internal/orchestrator"
 	"github.com/darkquasar/fracta/internal/proposal"
@@ -119,12 +119,11 @@ func resolveTransport(rc *resolvedConfig) (transport, listen string) {
 
 // resolvedConfig holds connection and runtime details extracted from config + CLI overrides.
 type resolvedConfig struct {
-	graphAddr     string
-	graphName     string // FalkorDB graph name (default: fracta_knowledge)
-	elasticURL    string
-	elasticAPIKey string
-	runtime       config.RuntimeConfig
-	fullConfig    *config.Config // full parsed config, nil when no config file
+	graphAddr  string
+	graphName  string // FalkorDB graph name (default: fracta_knowledge)
+	runtime    config.RuntimeConfig
+	fullConfig *config.Config // full parsed config, nil when no config file
+	eventBus   events.Bus    // optional; wired after control plane init
 }
 
 func resolveConfig() (*resolvedConfig, error) {
@@ -154,12 +153,6 @@ func resolveConfig() (*resolvedConfig, error) {
 			}
 		}
 
-		// Extract elastic config
-		if conn, ok := cfg.Connections["elastic_main"]; ok {
-			rc.elasticURL = conn.URL
-			rc.elasticAPIKey = conn.APIKey
-		}
-
 		// Extract runtime config
 		if cfg.Runtime.Backend != "" {
 			rc.runtime = cfg.Runtime
@@ -167,6 +160,21 @@ func resolveConfig() (*resolvedConfig, error) {
 	}
 
 	return rc, nil
+}
+
+// resolveGatewayURL returns the gateway URL for sidecar MCP access.
+func resolveGatewayURL(cfg *config.Config) string {
+	if cfg.Gateway.URL != "" {
+		return cfg.Gateway.URL
+	}
+	if cfg.Gateway.Listen != "" {
+		listen := cfg.Gateway.Listen
+		if strings.HasPrefix(listen, ":") {
+			return "http://127.0.0.1" + listen
+		}
+		return "http://" + listen
+	}
+	return ""
 }
 
 // strategyParts holds the resolved Python/runner paths and sidecar options
@@ -201,14 +209,17 @@ func resolveStrategyParts(rc *resolvedConfig) (*strategyParts, error) {
 	if rc.graphName != "" {
 		opts = append(opts, strategy.WithGraphName(rc.graphName))
 	}
-	if rc.elasticURL != "" {
-		opts = append(opts, strategy.WithElasticURL(rc.elasticURL))
-	}
-	if rc.elasticAPIKey != "" {
-		opts = append(opts, strategy.WithElasticAPIKey(rc.elasticAPIKey))
+	if rc.fullConfig != nil && rc.fullConfig.Strategy.GatewayAccess {
+		gwURL := resolveGatewayURL(rc.fullConfig)
+		if gwURL != "" {
+			opts = append(opts, strategy.WithGatewayAccess(gwURL, serveAgentTask))
+		}
 	}
 	if rc.runtime.StagingDir != "" {
 		opts = append(opts, strategy.WithStagingDir(rc.runtime.StagingDir))
+	}
+	if rc.eventBus != nil {
+		opts = append(opts, strategy.WithEventBus(rc.eventBus))
 	}
 
 	return &strategyParts{
@@ -635,6 +646,23 @@ func runServeGateway(rc *resolvedConfig, log *slog.Logger) error {
 
 		gw := gateway.New(pool, gc)
 		gw.SetEventBus(cp.Events)
+
+		// Inject registry store and tool policies for visibility filtering.
+		if cp.RegistryStore != nil {
+			gw.SetRegistryStore(cp.RegistryStore)
+		}
+		if rc.fullConfig != nil {
+			policies := make(map[string]*config.ToolPolicy)
+			for name, entry := range rc.fullConfig.MCPServers.Servers {
+				if entry.ToolPolicy != nil {
+					policies[name] = entry.ToolPolicy
+				}
+			}
+			if len(policies) > 0 {
+				gw.SetToolPolicies(policies)
+			}
+		}
+
 		gwOpts = append(gwOpts, mcpserver.WithGatewayGateway(gw))
 
 		if cp.RegistryStore != nil {
@@ -662,6 +690,7 @@ func runServeGateway(rc *resolvedConfig, log *slog.Logger) error {
 		effectiveStrategyDir = rc.fullConfig.Strategy.Dir
 	}
 	if effectiveStrategyDir != "" {
+		rc.eventBus = cp.Events
 		runner, err := createStrategyRunner(rc)
 		if err != nil {
 			return fmt.Errorf("strategy runner: %w", err)
@@ -976,4 +1005,4 @@ func (a *oauthStoreAdapter) GetClientRegistration(ctx context.Context, server st
 		ClientID:     reg.ClientID,
 		ClientSecret: reg.ClientSecret,
 	}, nil
-}
+} 

@@ -15,10 +15,6 @@ data:
       level: info
 
     connections:
-      elastic_main:
-        type: elasticsearch
-        url: ${ELASTIC_URL}
-        api_key: ${ELASTIC_API_KEY}
       falkordb:
         type: redis
         url: redis://falkordb.fracta.svc:6379
@@ -233,3 +229,4 @@ spec:
     - port: 8080
       targetPort: http
       name: http
+

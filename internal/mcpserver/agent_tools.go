@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/darkquasar/fracta/internal/ctxkeys"
 	"github.com/darkquasar/fracta/internal/events"
 	"github.com/darkquasar/fracta/internal/host"
 	"github.com/darkquasar/fracta/internal/mailbox"
@@ -22,10 +23,14 @@ import (
 type agentTaskKey struct{}
 
 // agentTaskFromContext returns the agent task name injected by the HTTP
-// transport from the URL path (/agents/{task}/mcp). Returns "" in stdio
+// transport from the URL path (/agents/{task}/mcp). Checks both the
+// package-local key and the shared ctxkeys package. Returns "" in stdio
 // mode, preserving current behavior.
 func agentTaskFromContext(ctx context.Context) string {
 	if task, ok := ctx.Value(agentTaskKey{}).(string); ok {
+		return task
+	}
+	if task, ok := ctxkeys.AgentTask(ctx); ok {
 		return task
 	}
 	return ""
@@ -457,4 +462,4 @@ func makeResolveObjectiveHandler(resolver ObjectiveContextResolver, objStore obj
 		data, _ := json.Marshal(result)
 		return mcp.NewToolResultText(string(data)), nil
 	}
-}
+} 

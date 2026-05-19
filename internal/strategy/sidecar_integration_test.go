@@ -121,7 +121,7 @@ func TestSidecarIntegration(t *testing.T) {
 
 		// Try running the first strategy with empty params
 		name := strategies[0].Name
-		result, err := sc.Run(name, map[string]any{}, nil)
+		result, err := sc.Run(name, map[string]any{}, nil, nil)
 		if err != nil {
 			t.Fatalf("Run(%q): %v", name, err)
 		}
@@ -138,4 +138,4 @@ func TestSidecarIntegration(t *testing.T) {
 			}
 		}
 	})
-}
+} 

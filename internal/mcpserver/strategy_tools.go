@@ -702,7 +702,8 @@ func makeStrategyRunHandler(
 		}
 
 		// All data resolved — execute the strategy.
-		result, err := sc.Run(name, params, manifest)
+		runOpts := &strategy.RunOptions{AgentTask: agentTaskFromContext(ctx)}
+		result, err := sc.Run(name, params, manifest, runOpts)
 		if err != nil {
 			emitStrategyEvent(bus, "run_complete", "failure", "", name, map[string]string{
 				"phase": "execution",
@@ -904,7 +905,8 @@ func handleRunReentry(
 		log.Info("staging.run.execute",
 			"run_id", runID, "strategy", run.StrategyName)
 		manifest := buildManifestFromRun(run, sc)
-		result, runErr := sc.Run(run.StrategyName, run.Params, manifest)
+		reentryOpts := &strategy.RunOptions{AgentTask: agentTaskFromContext(ctx)}
+		result, runErr := sc.Run(run.StrategyName, run.Params, manifest, reentryOpts)
 		if runErr != nil {
 			// Mark as failed in store with structured error.
 			structErr := classifyExecutionError(runErr, run.StrategyName)
@@ -2558,21 +2560,33 @@ func buildStagingManifest(rr *resolveResult, cs *contract.ContractSpec) strategy
 
 	for _, p := range rr.Pending {
 		required := true
+		var columns []string
 		if ts, ok := cs.Requires.Tables[p.Table]; ok {
 			required = !ts.Optional
+			for col := range ts.Columns {
+				columns = append(columns, col)
+			}
 		}
 		manifest[p.Table] = strategy.StagingManifestEntry{
 			Mode:     p.FetchMode,
 			Required: required,
-			Staged:   false, // agent may stage later; runner checks _staged_parquet
+			Staged:   false,
+			Columns:  columns,
 		}
 	}
 
 	for _, n := range rr.Native {
+		var columns []string
+		if ts, ok := cs.Requires.Tables[n.Table]; ok {
+			for col := range ts.Columns {
+				columns = append(columns, col)
+			}
+		}
 		manifest[n.Table] = strategy.StagingManifestEntry{
 			Mode:     "native",
 			Required: false,
 			Staged:   false,
+			Columns:  columns,
 		}
 	}
 
@@ -2882,13 +2896,13 @@ func serializeFetchPlan(tp resolve.TablePlan, sb *contract.SourceBinding, params
 
 // --- Observability helpers (S10) ---
 
-// emitStrategyEvent emits a staging lifecycle event to the bus if non-nil.
+// emitStrategyEvent emits a strategy lifecycle event to the bus if non-nil.
 func emitStrategyEvent(bus events.Bus, action, outcome, runID, strategyName string, attrs map[string]string) {
 	if bus == nil {
 		return
 	}
-	e := events.Info("strategy", action)
-	e.Category = "staging"
+	e := events.Info("strategy-runner", action)
+	e.Category = "strategy"
 	e.Resource = "staging_run:" + runID
 	e.Outcome = outcome
 	if attrs == nil {
@@ -2898,4 +2912,4 @@ func emitStrategyEvent(bus events.Bus, action, outcome, runID, strategyName stri
 	attrs["run_id"] = runID
 	e.Attrs = attrs
 	bus.Emit(context.Background(), e)
-}
+} 

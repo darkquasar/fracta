@@ -113,8 +113,8 @@ func (p *SidecarPool) Describe(name string) (*StrategyInfo, error) {
 	return p.pick().Describe(name)
 }
 
-func (p *SidecarPool) Run(name string, params map[string]any, manifest StagingManifest) (*RunResult, error) {
-	return p.pick().Run(name, params, manifest)
+func (p *SidecarPool) Run(name string, params map[string]any, manifest StagingManifest, opts *RunOptions) (*RunResult, error) {
+	return p.pick().Run(name, params, manifest, opts)
 }
 
 func (p *SidecarPool) Create(name, code, metadata string, force bool) error {
@@ -145,4 +145,4 @@ func (p *SidecarPool) Close() error {
 		}
 	}
 	return firstErr
-}
+} 

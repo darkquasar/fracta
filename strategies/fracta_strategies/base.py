@@ -15,14 +15,16 @@ class StrategyContext:
         graph:  FalkorDB graph client (None if no graph configured).
         duckdb: DuckDB connection (fresh per execution for isolation).
         params: Validated input parameters from the caller.
+        mcp:    MCPGatewayClient for mid-execution tool calls (None if no gateway).
     """
 
-    __slots__ = ("graph", "duckdb", "params")
+    __slots__ = ("graph", "duckdb", "params", "mcp")
 
-    def __init__(self, *, graph=None, duckdb=None, params=None):
+    def __init__(self, *, graph=None, duckdb=None, params=None, mcp=None):
         self.graph = graph
         self.duckdb = duckdb
         self.params = params or {}
+        self.mcp = mcp
 
 
 class Step:
@@ -238,4 +240,4 @@ class Strategy:
                 "steps": trace,
                 "total_duration_ms": sum(t["duration_ms"] for t in trace),
             },
-        }
+        } 

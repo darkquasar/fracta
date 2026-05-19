@@ -17,14 +17,18 @@ import (
 	"fmt"
 	"log/slog"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/darkquasar/fracta/internal/config"
+	"github.com/darkquasar/fracta/internal/ctxkeys"
 	"github.com/darkquasar/fracta/internal/events"
-	"github.com/darkquasar/fracta/internal/graph"
 	"github.com/darkquasar/fracta/internal/fractalog"
+	"github.com/darkquasar/fracta/internal/graph"
 	"github.com/darkquasar/fracta/internal/mcpclient"
+	"github.com/darkquasar/fracta/internal/registry"
 	"github.com/darkquasar/fracta/internal/schema"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -43,10 +47,15 @@ type Gateway struct {
 	mcpServer        *server.MCPServer
 	pool             *mcpclient.Pool
 	graph            graph.GraphClient
-	schema           *schema.SchemaRegistry // optional; enables label validation on graph writes
-	events           events.Bus             // optional; for future event emission
-	reconcilerActive bool                   // when true, gateway skips graph writes (reconciler owns them)
-	catalog          map[string]CatalogEntry // namespaced name → route info
+	schema           *schema.SchemaRegistry        // optional; enables label validation on graph writes
+	events           events.Bus                    // optional; for future event emission
+	reconcilerActive bool                          // when true, gateway skips graph writes (reconciler owns them)
+	catalog          map[string]CatalogEntry       // namespaced name → route info
+	registryStore    registry.Store                // optional; for visibility computation
+	toolPolicies     map[string]*config.ToolPolicy // server name → policy (from config)
+	visibleSet       map[string]bool               // namespaced tool name → visible (cached)
+	visibleGen       uint64                        // monotonic generation; prevents stale builds overwriting newer ones
+	scopes           *scopeStore                   // per-agent tool visibility scopes
 	mu               sync.RWMutex
 	logger           *slog.Logger
 }
@@ -71,6 +80,7 @@ func New(pool *mcpclient.Pool, gc graph.GraphClient) *Gateway {
 		pool:    pool,
 		graph:   gc,
 		catalog: make(map[string]CatalogEntry),
+		scopes:  newScopeStore(),
 		logger:  fractalog.Component("gateway"),
 	}
 }
@@ -78,6 +88,151 @@ func New(pool *mcpclient.Pool, gc graph.GraphClient) *Gateway {
 // SetEventBus attaches an event bus for future event emission.
 func (g *Gateway) SetEventBus(bus events.Bus) {
 	g.events = bus
+}
+
+// SetRegistryStore attaches the registry store for visibility computations.
+func (g *Gateway) SetRegistryStore(store registry.Store) {
+	g.mu.Lock()
+	g.registryStore = store
+	g.mu.Unlock()
+}
+
+// SetToolPolicies sets the per-server tool policies from config.
+func (g *Gateway) SetToolPolicies(policies map[string]*config.ToolPolicy) {
+	g.mu.Lock()
+	g.toolPolicies = policies
+	g.mu.Unlock()
+}
+
+// BuildVisibleSet computes the set of namespaced tool names that are visible
+// (enabled AND policy_allowed). Fails closed: on registry read error, the
+// previous visibleSet is preserved (never set to nil after first successful build).
+// Uses a generation counter to prevent stale builds from overwriting newer ones.
+func (g *Gateway) BuildVisibleSet(ctx context.Context) {
+	g.mu.Lock()
+	gen := g.visibleGen + 1
+	g.visibleGen = gen
+	policies := g.toolPolicies
+	store := g.registryStore
+	catalogSnapshot := make(map[string]CatalogEntry, len(g.catalog))
+	for k, v := range g.catalog {
+		catalogSnapshot[k] = v
+	}
+	g.mu.Unlock()
+
+	if len(catalogSnapshot) == 0 {
+		g.mu.Lock()
+		if g.visibleGen == gen {
+			g.visibleSet = make(map[string]bool)
+		}
+		g.mu.Unlock()
+		return
+	}
+
+	// Build enabled map from registry (if available).
+	enabledMap := make(map[string]bool)
+	if store != nil {
+		tools, err := store.ListTools(ctx, registry.ToolFilter{})
+		if err != nil {
+			g.logger.Error("BuildVisibleSet: registry read failed, preserving existing set", "error", err)
+			return // fail closed — keep previous visibleSet
+		}
+		for _, t := range tools {
+			key := t.ServerName + "." + t.ToolName
+			enabledMap[key] = t.Enabled
+		}
+	}
+
+	newSet := make(map[string]bool, len(catalogSnapshot))
+	for nsName, entry := range catalogSnapshot {
+		policy := policies[entry.ServerName]
+		policyAllowed := PolicyAllowed(policy, entry.OriginalName)
+
+		enabled := true
+		if store != nil {
+			if e, found := enabledMap[nsName]; found {
+				enabled = e
+			}
+		}
+		newSet[nsName] = enabled && policyAllowed
+	}
+
+	g.mu.Lock()
+	// Only write if this is still the latest generation (no newer build started).
+	if g.visibleGen == gen {
+		g.visibleSet = newSet
+	}
+	g.mu.Unlock()
+}
+
+// IsToolVisible returns whether a namespaced tool is in the visible set AND
+// still exists in the catalog. Fails closed: if the visible set hasn't been
+// computed yet but enforcement is configured, denies access.
+func (g *Gateway) IsToolVisible(namespacedName string) bool {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	if g.visibleSet == nil {
+		return g.registryStore == nil && len(g.toolPolicies) == 0
+	}
+	// Tool must still be in catalog (prevents stale visibleSet entries
+	// from authorizing tools that were removed by UnregisterServer).
+	if _, inCatalog := g.catalog[namespacedName]; !inCatalog {
+		return false
+	}
+	visible, found := g.visibleSet[namespacedName]
+	if !found {
+		return false
+	}
+	return visible
+}
+
+// FilterToolsForAgent returns a filtered tool list removing non-visible
+// gateway-proxied tools. Native fracta tools (not in catalog) always pass.
+// Respects both global visibility and per-agent scope (if registered).
+// Fails closed: if visibility enforcement is configured but the set hasn't
+// been built yet, all proxied tools are filtered out.
+func (g *Gateway) FilterToolsForAgent(ctx context.Context, tools []mcp.Tool) []mcp.Tool {
+	g.mu.RLock()
+	visible := g.visibleSet
+	hasEnforcement := g.registryStore != nil || len(g.toolPolicies) > 0
+	catalogKeys := make(map[string]struct{}, len(g.catalog))
+	for k := range g.catalog {
+		catalogKeys[k] = struct{}{}
+	}
+	g.mu.RUnlock()
+
+	if visible == nil && !hasEnforcement {
+		return tools // no enforcement configured — pass all (backward compat)
+	}
+
+	// Check for per-agent scope.
+	agentTask, hasAgent := ctxkeys.AgentTask(ctx)
+	var agentScope *AgentScope
+	if hasAgent {
+		g.scopes.mu.RLock()
+		if s, ok := g.scopes.scopes[agentTask]; ok && time.Now().Before(s.ExpiresAt) {
+			agentScope = s
+		}
+		g.scopes.mu.RUnlock()
+	}
+
+	filtered := make([]mcp.Tool, 0, len(tools))
+	for _, t := range tools {
+		if _, inCatalog := catalogKeys[t.Name]; !inCatalog {
+			filtered = append(filtered, t)
+			continue
+		}
+		// Global visibility: fail closed if set not built yet.
+		if visible == nil || !visible[t.Name] {
+			continue
+		}
+		// Per-agent scope: if registered, intersect.
+		if agentScope != nil && !agentScope.AllowedTools[t.Name] {
+			continue
+		}
+		filtered = append(filtered, t)
+	}
+	return filtered
 }
 
 // SetMCPServer is called by the WithGateway ServerOption during construction.
@@ -177,14 +332,75 @@ func (g *Gateway) RegisterServer(ctx context.Context, name string) (int, error) 
 
 // proxyHandler creates a handler that forwards tool calls to the backend
 // via CallToolRaw — preserving the full MCP response without normalization.
+// Includes defense-in-depth visibility check (global + per-agent scope) at call time.
 func (g *Gateway) proxyHandler(serverName, toolName string) server.ToolHandlerFunc {
+	nsName := serverName + "." + toolName
 	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		agentTask, _ := ctxkeys.AgentTask(ctx)
+
+		// Global policy check.
+		if !g.IsToolVisible(nsName) {
+			g.emitProxyEvent("proxy_rejected", "rejected", nsName, agentTask, map[string]string{
+				"server": serverName,
+				"tool":   toolName,
+				"reason": "disabled by policy",
+			})
+			return mcp.NewToolResultError(fmt.Sprintf("tool %q is not available (blocked by policy or disabled)", nsName)), nil
+		}
+
+		// Per-agent scope check.
+		if agentTask != "" && !g.IsToolVisibleForAgent(agentTask, nsName) {
+			g.emitProxyEvent("proxy_rejected", "rejected", nsName, agentTask, map[string]string{
+				"server": serverName,
+				"tool":   toolName,
+				"reason": "not in agent scope",
+			})
+			return mcp.NewToolResultError(fmt.Sprintf("tool %q is not available in your current scope", nsName)), nil
+		}
+
+		start := time.Now()
 		result, err := g.pool.CallToolRaw(ctx, serverName, toolName, req.GetArguments())
+		duration := time.Since(start)
+
 		if err != nil {
+			g.emitProxyEvent("proxy_call", "failure", nsName, agentTask, map[string]string{
+				"server":      serverName,
+				"tool":        toolName,
+				"duration_ms": strconv.FormatInt(duration.Milliseconds(), 10),
+				"error":       err.Error(),
+			})
 			return mcp.NewToolResultError(fmt.Sprintf("gateway proxy %s.%s: %v", serverName, toolName, err)), nil
 		}
+
+		outcome := "success"
+		if result.IsError {
+			outcome = "failure"
+		}
+		g.emitProxyEvent("proxy_call", outcome, nsName, agentTask, map[string]string{
+			"server":      serverName,
+			"tool":        toolName,
+			"duration_ms": strconv.FormatInt(duration.Milliseconds(), 10),
+		})
 		return result, nil
 	}
+}
+
+func (g *Gateway) emitProxyEvent(action, outcome, resource, agentTask string, attrs map[string]string) {
+	if g.events == nil {
+		return
+	}
+	var e events.Event
+	if outcome == "rejected" {
+		e = events.Warn("gateway", action, attrs["reason"])
+	} else {
+		e = events.Info("gateway", action)
+	}
+	e.Category = "backend"
+	e.Resource = "mcp_tool:" + resource
+	e.Outcome = outcome
+	e.Task = agentTask
+	e.Attrs = attrs
+	g.events.Emit(context.Background(), e)
 }
 
 // Catalog returns a sorted snapshot of all registered proxied tools.
@@ -193,7 +409,12 @@ func (g *Gateway) Catalog() []CatalogEntry {
 	defer g.mu.RUnlock()
 
 	entries := make([]CatalogEntry, 0, len(g.catalog))
-	for _, e := range g.catalog {
+	for nsName, e := range g.catalog {
+		if g.visibleSet != nil {
+			if visible, found := g.visibleSet[nsName]; found && !visible {
+				continue
+			}
+		}
 		entries = append(entries, e)
 	}
 	sort.Slice(entries, func(i, j int) bool {
@@ -278,8 +499,9 @@ func (g *Gateway) UnregisterServer(name string) {
 }
 
 // ReconcileServer diffs the current catalog for a server against a new tool list
-// and applies additions/removals/updates. No graph sync — that is the reconciler's job.
-func (g *Gateway) ReconcileServer(name string, tools []mcpclient.ToolInfo) error {
+// and applies additions/removals/updates. Rebuilds the visibility set after
+// reconciliation. No graph sync — that is the reconciler's job.
+func (g *Gateway) ReconcileServer(ctx context.Context, name string, tools []mcpclient.ToolInfo) error {
 	if g.mcpServer == nil {
 		return fmt.Errorf("gateway: MCPServer not set")
 	}
@@ -380,6 +602,8 @@ func (g *Gateway) ReconcileServer(name string, tools []mcpclient.ToolInfo) error
 		"total_tools", g.ToolCount(),
 	)
 
+	g.BuildVisibleSet(ctx)
+
 	return nil
 }
 
@@ -431,4 +655,4 @@ func (g *Gateway) GetTool(namespacedName string) (json.RawMessage, bool) {
 	}
 	data, _ := json.Marshal(e)
 	return data, true
-}
+} 

@@ -409,7 +409,8 @@ def _collect_run_dirs(manifest, staging_root=None):
 
 
 def handle_run(strategy_dir, name, params, graph_client, graph_name="fracta_knowledge",
-               staging_manifest=None, staging_dir=None):
+               staging_manifest=None, staging_dir=None,
+               gateway_url=None, agent_task=None):
     """Handle {"action": "run"} -- load, instantiate, execute a strategy."""
     from fracta_strategies import StrategyContext
 
@@ -467,10 +468,17 @@ def handle_run(strategy_dir, name, params, graph_client, graph_name="fracta_know
     if graph_client is not None:
         graph = graph_client.select_graph(graph_name)
 
+    # Create MCP gateway client if both URL and task are available
+    mcp_client = None
+    if gateway_url and agent_task:
+        from fracta_strategies.mcp_client import MCPGatewayClient
+        mcp_client = MCPGatewayClient(gateway_url, agent_task)
+
     ctx = StrategyContext(
         graph=graph,
         duckdb=db,
         params=params,
+        mcp=mcp_client,
     )
 
     # Collect run directories for cleanup before execution (in case manifest
@@ -509,7 +517,8 @@ def handle_run(strategy_dir, name, params, graph_client, graph_name="fracta_know
     }
 
 
-def handle_request(request, strategy_dir, graph_client, graph_name="fracta_knowledge"):
+def handle_request(request, strategy_dir, graph_client, graph_name="fracta_knowledge",
+                   gateway_url=None, agent_task=None):
     """Route a request to the appropriate handler."""
     action = request.get("action")
 
@@ -526,6 +535,10 @@ def handle_request(request, strategy_dir, graph_client, graph_name="fracta_knowl
             force=request.get("force", False),
         )
     elif action == "run":
+        # Per-request override: JSON request fields take precedence over CLI defaults.
+        effective_gw_url = request.get("gateway_url", gateway_url)
+        effective_agent_task = request.get("agent_task", agent_task)
+
         return handle_run(
             strategy_dir,
             request.get("strategy", ""),
@@ -534,12 +547,15 @@ def handle_request(request, strategy_dir, graph_client, graph_name="fracta_knowl
             graph_name,
             staging_manifest=request.get("staging_manifest"),
             staging_dir=request.get("staging_dir"),
+            gateway_url=effective_gw_url,
+            agent_task=effective_agent_task,
         )
     else:
         return {"status": "error", "error": f"Unknown action: {action}"}
 
 
-def handle_connection(conn, strategy_dir, graph_client, graph_name="fracta_knowledge"):
+def handle_connection(conn, strategy_dir, graph_client, graph_name="fracta_knowledge",
+                      gateway_url=None, agent_task=None):
     """Handle a single connection -- read newline-delimited JSON requests."""
     buf = b""
     while True:
@@ -561,12 +577,13 @@ def handle_connection(conn, strategy_dir, graph_client, graph_name="fracta_knowl
                 conn.sendall(json.dumps(response, cls=_ExtendedEncoder).encode() + b"\n")
                 continue
 
-            response = handle_request(request, strategy_dir, graph_client, graph_name)
+            response = handle_request(request, strategy_dir, graph_client, graph_name,
+                                      gateway_url=gateway_url, agent_task=agent_task)
             conn.sendall(json.dumps(response, cls=_ExtendedEncoder).encode() + b"\n")
 
 
 def serve(sock_path, strategy_dir, graph_client, graph_name="fracta_knowledge",
-          staging_dir=None):
+          staging_dir=None, gateway_url=None, agent_task=None):
     """Main server loop -- listen on Unix socket, handle JSON requests."""
     # Clean up stale Parquet files and run directories from previous crashes
     cleanup_stale_parquet(staging_dir or DEFAULT_STAGING_DIR)
@@ -586,7 +603,8 @@ def serve(sock_path, strategy_dir, graph_client, graph_name="fracta_knowledge",
         conn, _ = server.accept()
         conn.settimeout(CONN_IDLE_TIMEOUT)
         try:
-            handle_connection(conn, strategy_dir, graph_client, graph_name)
+            handle_connection(conn, strategy_dir, graph_client, graph_name,
+                              gateway_url=gateway_url, agent_task=agent_task)
         except Exception as e:
             sys.stderr.write(f"Connection error: {e}\n")
         finally:
@@ -620,6 +638,16 @@ def main():
         default=None,
         help="Staging directory for Parquet files (default: /tmp/fracta-staging)",
     )
+    parser.add_argument(
+        "--gateway-url",
+        default=None,
+        help="MCP gateway base URL for mid-execution tool calls (e.g. http://fracta-gateway:8080)",
+    )
+    parser.add_argument(
+        "--agent-task",
+        default=None,
+        help="Agent task name for gateway tool visibility scope (default for all runs)",
+    )
     args = parser.parse_args()
 
     # Initialize FalkorDB client if address provided
@@ -637,8 +665,10 @@ def main():
                 sys.stderr.write(f"Warning: could not connect to FalkorDB at {args.graph_addr}: {e}\n")
 
     serve(args.socket, args.strategy_dir, graph_client, args.graph_name,
-          staging_dir=args.staging_dir)
+          staging_dir=args.staging_dir,
+          gateway_url=args.gateway_url,
+          agent_task=args.agent_task)
 
 
 if __name__ == "__main__":
-    main()
+    main() 

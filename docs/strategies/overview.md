@@ -250,6 +250,7 @@ Every step receives `ctx` with:
 | `ctx.duckdb` | `duckdb.Connection` | Fresh per-run DuckDB (400MB memory limit, spill to disk). Staged tables are pre-loaded. |
 | `ctx.graph` | `FalkorDB client` or `None` | Knowledge graph access. Only available when `requires.graph: true` and graph is configured. |
 | `ctx.params` | `dict` | Validated and type-coerced parameters from the caller. |
+| `ctx.mcp` | `MCPGatewayClient` or `None` | Gateway client for mid-execution MCP tool calls. Available when the gateway is configured and `strategy.gateway_access: true`. See [Runtime API](runtime-api.md#ctxmcp--gateway-tool-access-mid-execution). |
 
 ### Querying Staged Data
 
@@ -278,6 +279,37 @@ def find_systems(self, ctx):
     )
     return [{"system": r[0], "events": r[1]} for r in result.result_set]
 ```
+
+### Mid-Execution Tool Calls (ctx.mcp)
+
+When the gateway is configured and `strategy.gateway_access: true`, strategies can call MCP tools during execution for targeted follow-up queries:
+
+```python
+@step("Enrich suspicious IPs")
+def enrich_ips(self, ctx, detect_anomalies):
+    if not ctx.mcp:
+        return {"skipped": "no gateway access"}
+
+    enriched = []
+    for ip in detect_anomalies["suspicious_ips"][:10]:
+        result = ctx.mcp.call_tool("elastic.platform_core_search", {
+            "query": f"source.ip:{ip} AND event.category:authentication",
+            "index": "logs-*",
+            "size": 100,
+        })
+        enriched.append({"ip": ip, "auth_events": result})
+    return {"enriched": enriched}
+```
+
+**When to use `ctx.mcp` vs pre-staging:**
+
+| Use `ctx.mcp` when... | Use pre-staging when... |
+|---|---|
+| Follow-up queries depend on intermediate results | Data requirements are known upfront |
+| Fetching targeted data for a small set of IOCs | Bulk data needed for joins/aggregations |
+| The query can't be formulated until mid-execution | DuckDB columnar processing is the goal |
+
+See [Runtime API](runtime-api.md) for full documentation.
 
 <hr />
 
@@ -418,7 +450,7 @@ Strategy errors include classification for client-side handling:
 }
 ```
 
-Categories: `transient` (retryable), `permanent` (fix required), `validation` (bad input).
+Categories: `transient` (retryable), `permanent` (fix required), `validation` (bad input), `partial` (strategy ran but incomplete).
 
 <hr />
 
@@ -432,4 +464,4 @@ Strategies are baked into the Docker image at `/opt/fracta/strategies/`. The `Do
 COPY strategies/ /opt/fracta/strategies/
 ```
 
-For hot reload (deploying a new or updated strategy to a running cluster without rebuilding) and the dual-container split between `strategy-runner` and `fracta-gateway`, see [Lifecycle](/strategies/lifecycle).
+For hot reload (deploying a new or updated strategy to a running cluster without rebuilding) and the dual-container split between `strategy-runner` and `fracta-gateway`, see [Lifecycle](/strategies/lifecycle). 

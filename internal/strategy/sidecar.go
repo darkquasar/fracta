@@ -2,6 +2,7 @@ package strategy
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,11 +11,13 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
 	"time"
 
+	"github.com/darkquasar/fracta/internal/events"
 	"github.com/darkquasar/fracta/internal/fractalog"
 	"github.com/darkquasar/fracta/internal/staging"
 )
@@ -155,17 +158,13 @@ func WithGraphName(name string) SidecarOption {
 	}
 }
 
-// WithElasticURL passes an Elasticsearch URL to the Python runner as a CLI arg.
-func WithElasticURL(url string) SidecarOption {
+// WithGatewayAccess provides the sidecar with a default MCP gateway URL and agent task.
+// These are passed as CLI args to the Python runner at startup (the default scope),
+// but can be overridden per-request via RunOptions.
+func WithGatewayAccess(gatewayURL, agentTask string) SidecarOption {
 	return func(s *Sidecar) {
-		s.elasticURL = url
-	}
-}
-
-// WithElasticAPIKey passes an Elasticsearch API key to the Python runner as a CLI arg.
-func WithElasticAPIKey(key string) SidecarOption {
-	return func(s *Sidecar) {
-		s.elasticAPIKey = key
+		s.gatewayURL = gatewayURL
+		s.agentTask = agentTask
 	}
 }
 
@@ -209,6 +208,13 @@ func WithRunTimeout(d time.Duration) SidecarOption {
 	}
 }
 
+// WithEventBus attaches an event bus for strategy execution observability.
+func WithEventBus(bus events.Bus) SidecarOption {
+	return func(s *Sidecar) {
+		s.bus = bus
+	}
+}
+
 // Sidecar manages a long-lived Python strategy runner subprocess
 // communicating over a Unix socket with newline-delimited JSON.
 type Sidecar struct {
@@ -216,14 +222,15 @@ type Sidecar struct {
 	runnerPath    string
 	socketPath    string // Unix socket path (default: DefaultSockPath)
 	strategyDir   string
-	graphAddr     string
-	graphName     string
-	elasticURL    string
-	elasticAPIKey string
-	uvBin         string
+	graphAddr  string
+	graphName  string
+	gatewayURL string
+	agentTask  string
+	uvBin      string
 	stagingDir    string
 	runTimeout    time.Duration
-	externalMode  bool // true: connect to existing socket, no subprocess
+	bus           events.Bus // optional; for strategy execution observability
+	externalMode  bool       // true: connect to existing socket, no subprocess
 
 	cmd    *exec.Cmd
 	conn   net.Conn
@@ -323,6 +330,12 @@ func (s *Sidecar) startLocal() error {
 	}
 	if s.stagingDir != "" {
 		runnerArgs = append(runnerArgs, "--staging-dir", s.stagingDir)
+	}
+	if s.gatewayURL != "" {
+		runnerArgs = append(runnerArgs, "--gateway-url", s.gatewayURL)
+	}
+	if s.agentTask != "" {
+		runnerArgs = append(runnerArgs, "--agent-task", s.agentTask)
 	}
 	if s.uvBin != "" {
 		// uv run --project <dir> <script> <args...>
@@ -612,10 +625,11 @@ func (s *Sidecar) Describe(name string) (*StrategyInfo, error) {
 // Run executes a strategy by name with the given parameters.
 // If manifest is non-nil, it is included as staging_manifest in the request
 // so the runner can load tables from explicit paths and validate requirements.
+// opts provides per-request gateway context (overrides sidecar defaults).
 // On write-phase transport error, restarts the sidecar and retries once
 // (request never reached Python). On read-phase error, does NOT retry
 // (request may have been processed).
-func (s *Sidecar) Run(name string, params map[string]any, manifest StagingManifest) (*RunResult, error) {
+func (s *Sidecar) Run(name string, params map[string]any, manifest StagingManifest, opts *RunOptions) (*RunResult, error) {
 	req := map[string]any{
 		"action":      "run",
 		"strategy":    name,
@@ -626,17 +640,76 @@ func (s *Sidecar) Run(name string, params map[string]any, manifest StagingManife
 		req["staging_manifest"] = manifest
 	}
 
+	// Resolve gateway info: RunOptions override sidecar defaults.
+	gwURL := s.gatewayURL
+	agentTask := s.agentTask
+	if opts != nil {
+		if opts.GatewayURL != "" {
+			gwURL = opts.GatewayURL
+		}
+		if opts.AgentTask != "" {
+			agentTask = opts.AgentTask
+		}
+	}
+	if gwURL != "" {
+		req["gateway_url"] = gwURL
+	}
+	if agentTask != "" {
+		req["agent_task"] = agentTask
+	}
+
+	manifestSize := 0
+	if manifest != nil {
+		manifestSize = len(manifest)
+	}
+	s.emitEvent("sidecar_dispatch", "unknown", name, agentTask, map[string]string{
+		"manifest_tables": strconv.Itoa(manifestSize),
+		"has_gateway":     strconv.FormatBool(gwURL != ""),
+	})
+
+	start := time.Now()
 	var resp RunResult
 	err := s.withRetry(func() error {
 		resp = RunResult{} // reset for retry
 		return s.sendRecv(req, &resp, s.RunTimeout())
 	}, false, true) // retry on write failure (request never reached Python)
+
+	duration := time.Since(start)
 	if err != nil {
+		s.emitEvent("sidecar_error", "failure", name, agentTask, map[string]string{
+			"duration_ms": strconv.FormatInt(duration.Milliseconds(), 10),
+			"error":       err.Error(),
+		})
 		return nil, fmt.Errorf("run: %w", err)
 	}
-	// Don't treat status=="error" as a Go error — the caller may want
-	// to inspect the partial trace. Return the full result.
+
+	outcome := "success"
+	if resp.Status == "error" {
+		outcome = "failure"
+	}
+	s.emitEvent("sidecar_response", outcome, name, agentTask, map[string]string{
+		"status":      resp.Status,
+		"duration_ms": strconv.FormatInt(duration.Milliseconds(), 10),
+		"steps":       strconv.Itoa(len(resp.Trace.Steps)),
+	})
 	return &resp, nil
+}
+
+func (s *Sidecar) emitEvent(action, outcome, strategyName, agentTask string, attrs map[string]string) {
+	if s.bus == nil {
+		return
+	}
+	e := events.Info("strategy-runner", action)
+	e.Category = "strategy"
+	e.Resource = "strategy:" + strategyName
+	e.Outcome = outcome
+	e.Task = agentTask
+	if attrs == nil {
+		attrs = make(map[string]string)
+	}
+	attrs["strategy"] = strategyName
+	e.Attrs = attrs
+	s.bus.Emit(context.Background(), e)
 }
 
 // createResponse is the wire format for a create response.
@@ -724,4 +797,4 @@ func (s *Sidecar) Close() error {
 		return fmt.Errorf("%s", strings.Join(errs, "; "))
 	}
 	return nil
-}
+} 

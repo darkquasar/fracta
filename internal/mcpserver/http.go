@@ -8,12 +8,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/darkquasar/fracta/internal/ctxkeys"
 	"github.com/darkquasar/fracta/internal/fractalog"
 	"github.com/mark3labs/mcp-go/server"
 )
-
-// agentTaskKey and agentTaskFromContext are defined in agent_tools.go —
-// the canonical location shared by HTTP transport and tool handlers.
 
 // mcpReadyWaitTimeout bounds how long /agents/{task}/mcp blocks waiting for
 // the gateway reconciler to finish its initial pass.
@@ -44,12 +42,12 @@ func serveHTTP(mcp *server.MCPServer, addr string, readyCh <-chan struct{}) erro
 		server.WithHTTPContextFunc(func(ctx context.Context, r *http.Request) context.Context {
 			// The agent task is injected by the outer mux handler before
 			// delegating to the StreamableHTTPServer. Propagate it.
-			if task := r.Context().Value(agentTaskKey{}); task != nil {
-				return context.WithValue(ctx, agentTaskKey{}, task)
+			if task, ok := ctxkeys.AgentTask(r.Context()); ok {
+				return ctxkeys.WithAgentTask(ctx, task)
 			}
 			// Fallback: extract from header (for non-Claude hosts that can set custom headers).
 			if task := r.Header.Get("X-Fracta-Agent"); task != "" {
-				return context.WithValue(ctx, agentTaskKey{}, task)
+				return ctxkeys.WithAgentTask(ctx, task)
 			}
 			return ctx
 		}),
@@ -72,7 +70,7 @@ func serveHTTP(mcp *server.MCPServer, addr string, readyCh <-chan struct{}) erro
 			return
 		}
 		task := r.PathValue("task")
-		ctx := context.WithValue(r.Context(), agentTaskKey{}, task)
+		ctx := ctxkeys.WithAgentTask(r.Context(), task)
 		httpTransport.ServeHTTP(w, r.WithContext(ctx))
 	})
 
@@ -121,4 +119,4 @@ func serveHTTP(mcp *server.MCPServer, addr string, readyCh <-chan struct{}) erro
 		}
 		return nil
 	}
-}
+} 

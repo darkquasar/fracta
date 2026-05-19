@@ -324,19 +324,14 @@ func TestCreateResponseErrorJSON(t *testing.T) {
 	}
 }
 
-func TestWithElasticURL(t *testing.T) {
+func TestWithGatewayAccess(t *testing.T) {
 	s := &Sidecar{}
-	WithElasticURL("https://elastic.example.com")(s)
-	if s.elasticURL != "https://elastic.example.com" {
-		t.Errorf("elasticURL = %q", s.elasticURL)
+	WithGatewayAccess("http://gw:8080", "agent-1")(s)
+	if s.gatewayURL != "http://gw:8080" {
+		t.Errorf("gatewayURL = %q", s.gatewayURL)
 	}
-}
-
-func TestWithElasticAPIKey(t *testing.T) {
-	s := &Sidecar{}
-	WithElasticAPIKey("test-key")(s)
-	if s.elasticAPIKey != "test-key" {
-		t.Errorf("elasticAPIKey = %q", s.elasticAPIKey)
+	if s.agentTask != "agent-1" {
+		t.Errorf("agentTask = %q", s.agentTask)
 	}
 }
 
@@ -1009,4 +1004,4 @@ func TestSidecar_ExternalSocket_Timeout(t *testing.T) {
 	if !strings.Contains(err.Error(), "timeout") {
 		t.Errorf("expected timeout error, got: %v", err)
 	}
-}
+} 

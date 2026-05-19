@@ -16,22 +16,16 @@ import (
 
 var envVarPattern = regexp.MustCompile(`\$\{([A-Za-z_][A-Za-z0-9_]*)\}`)
 
-// ConnectionConfig describes a single service connection.
+// ConnectionConfig describes a single service connection in fracta.yaml.
+// Generic fields (Type, URL, APIKey) cover most backends.
+// FalkorDB fields exist because the graph is a fracta-internal component.
+// All other service-specific config belongs in Extra.
 type ConnectionConfig struct {
-	Type   string `yaml:"type"`
-	URL    string `yaml:"url,omitempty"`
-	APIKey string `yaml:"api_key,omitempty"`
-
-	// Snowflake-specific
-	Account  string `yaml:"account,omitempty"`
-	User     string `yaml:"user,omitempty"`
-	Password string `yaml:"password,omitempty"`
-
-	// FalkorDB-specific
-	GraphName string `yaml:"graph_name,omitempty"`
-
-	// Bedrock-specific
-	Region string `yaml:"region,omitempty"`
+	Type      string            `yaml:"type"`
+	URL       string            `yaml:"url,omitempty"`
+	APIKey    string            `yaml:"api_key,omitempty"`
+	GraphName string            `yaml:"graph_name,omitempty"` // FalkorDB-specific (core fracta component)
+	Extra     map[string]string `yaml:"extra,omitempty"`      // service-specific fields
 }
 
 // ResourceConfig specifies CPU/memory resource requests and limits.
@@ -609,11 +603,19 @@ type MCPServerRemote struct {
 // MCPServerKubernetes is a deprecated alias for MCPServerRemote.
 type MCPServerKubernetes = MCPServerRemote
 
+// ToolPolicy defines per-server tool filtering rules.
+// Uses raw tool names (the server context is implicit from YAML placement).
+type ToolPolicy struct {
+	Deny      []string `yaml:"deny,omitempty"`
+	AllowOnly []string `yaml:"allow_only,omitempty"`
+}
+
 // MCPServerEntry describes a single MCP server with local or remote connection variants.
 type MCPServerEntry struct {
 	Local      MCPServerLocal   `yaml:"local"`
 	Remote     *MCPServerRemote `yaml:"remote,omitempty" json:"Remote,omitempty"`
 	Kubernetes MCPServerRemote  `yaml:"kubernetes"` // Deprecated: use remote.
+	ToolPolicy *ToolPolicy      `yaml:"tool_policy,omitempty" json:"ToolPolicy,omitempty"`
 }
 
 // EffectiveRemote returns the explicit remote server config, falling back to
@@ -648,9 +650,10 @@ type AuthzConfig struct {
 
 // StrategyConfig controls strategy engine behavior.
 type StrategyConfig struct {
-	PoolSize    int    `yaml:"pool_size,omitempty"`    // number of sidecar subprocesses (default: 2)
-	Dir         string `yaml:"dir,omitempty"`          // strategy directory path
-	AutoPromote bool   `yaml:"auto_promote,omitempty"` // enable auto validated->promoted (default: false)
+	PoolSize      int    `yaml:"pool_size,omitempty"`      // number of sidecar subprocesses (default: 2)
+	Dir           string `yaml:"dir,omitempty"`            // strategy directory path
+	AutoPromote   bool   `yaml:"auto_promote,omitempty"`   // enable auto validated->promoted (default: false)
+	GatewayAccess bool   `yaml:"gateway_access,omitempty"` // enable ctx.mcp in strategies (default: false)
 }
 
 // EffectivePoolSize returns the pool size, defaulting to 2.
@@ -998,4 +1001,4 @@ func (c *Config) EffectiveRuntimeConfig(runtimeType, root string) (RuntimeEntry,
 // EffectiveHostConfig is a deprecated alias for EffectiveRuntimeConfig.
 func (c *Config) EffectiveHostConfig(hostType, root string) (RuntimeEntry, bool) {
 	return c.EffectiveRuntimeConfig(hostType, root)
-}
+} 

@@ -64,11 +64,18 @@ In practice, `strategy-runner` needs the contract and the Python; `fracta-gatewa
 
 When the knowledge graph is connected, every strategy carries a governance status. The status reflects how much trust an operator has placed in the strategy, not whether it runs:
 
-| Status | Meaning |
-|---|---|
-| `exploratory` | Newly authored or experimental. Runs fine, but not promoted as a production asset. |
-| `validated` | Reviewed and confirmed to behave as intended. Promoted by an operator using `strategy_promote`. |
-| `promoted` | Validated *and* recommended for routine use. The highest tier. |
+| Status | Meaning | Entry condition |
+|---|---|---|
+| `exploratory` | Newly authored or experimental. Runs fine, but not promoted as a production asset. | Default for newly created strategies |
+| `validated` | Proven reliable through repeated use. | Automatic: run_count >= 5 AND reliability >= 0.8 |
+| `promoted` | Validated *and* recommended for routine use. The highest tier. | Operator calls `strategy_promote` (or auto: run_count >= 20, reliability >= 0.95, composite_score >= 0.7) |
+| `deprecated` | Scheduled for removal. | Operator marks deprecated |
+| `retired` | No longer available for execution. | Automatic: 30 days after deprecation with no runs |
+
+**Auto-transitions:**
+- `exploratory -> validated`: When a strategy accumulates >= 5 runs with >= 0.8 reliability score.
+- `promoted -> validated` (demotion): If reliability drops below 0.7, the strategy is demoted back to validated.
+- `deprecated -> retired`: After 30 days with no executions, deprecated strategies are automatically retired.
 
 `strategy_list` does not filter by status by default — it returns every discovered strategy and, when the graph is connected, enriches each with its governance status. To filter explicitly, pass the `status` parameter:
 
@@ -100,4 +107,4 @@ The example strategy at [`strategies/_example/security/enrichment/elastic_field_
 
 - [Overview](/strategies/overview) — the full framework reference, including the MCP tools listed above
 - [Quick Start](/strategies/quickstart) — build a minimal strategy end-to-end
-- [Bindings](/strategies/bindings) — what `fracta-gateway` is reading from `binding.yaml`
+- [Bindings](/strategies/bindings) — what `fracta-gateway` is reading from `binding.yaml` 
