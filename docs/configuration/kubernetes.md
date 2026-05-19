@@ -1,9 +1,7 @@
 ---
 title: Kubernetes runtime configuration
-description: Configure agent pods, mount operator-supplied auth helpers, customize the Kubernetes runtime
+description: The runtime.kubernetes block in fracta.yaml — agent pods, operator-supplied auth helpers, and customization.
 ---
-
-# Kubernetes runtime configuration
 
 This page documents the `runtime.kubernetes` block in `fracta.yaml`. The
 quickest way to get a working tree is `fracta init --scaffold k8s`, which
