@@ -1,4 +1,14 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="./assets/fracta-logo-dark.png">
+    <source media="(prefers-color-scheme: light)" srcset="./assets/fracta-logo-light.png">
+    <img src="./assets/fracta-logo-dark.png" alt="Fracta" width="160" />
+  </picture>
+</p>
+
 # Fracta: A Swarm Intelligence Engine
+
+> Source-available under the [Functional Source License v1.1 (FSL-1.1-ALv2)](./LICENSE). Internal use is free for any organization. Hosted-service offerings and other competing commercial uses require a commercial license — see [COMMERCIAL.md](./COMMERCIAL.md).
 
 Fracta is the system materialization of the explore/exploit pattern for AI agents.
 
@@ -212,3 +222,15 @@ Requires Go 1.25+. See [Building from source](docs/development/building.md) for 
 | [Kubernetes Runbook](docs/guides/deployment/kubernetes-runbook.md) | Complete K8s runbook with troubleshooting |
 | [Kubernetes Configuration](docs/configuration/kubernetes.md) | `extra_volumes`, auth-helpers ConfigMap, `/opt/fracta/auth-helpers/` PATH convention |
 | [MCP Catalog](docs/reference/cli/config-mcp.md) | `fracta config mcp` — fetch the server catalog and wire servers into your scaffold |
+
+## License
+
+Fracta is released under the **Functional Source License v1.1 with Apache License 2.0 future grant** ([FSL-1.1-ALv2](./LICENSE)).
+
+- **Free for internal use** by any organization — startups, enterprises, charities, research institutions. Run it, modify it, build on top of it, integrate it with your stack.
+- **Commercial license required** for offering Fracta (or a fork/derivative) as a hosted product or managed service, or for productizing it as a branded consulting offering. See [COMMERCIAL.md](./COMMERCIAL.md) for the full guide and how to request a license.
+- **Auto-converts to Apache-2.0** two years after each release, per the standard FSL terms.
+
+See [LICENSE-HISTORY.md](./LICENSE-HISTORY.md) for the project's licensing timeline (including the original MIT phase through commit `90b1864` on 2026-05-20).
+
+For commercial licensing questions: Diego Perez — <diego.perez@quasarops.com> / <https://www.linkedin.com/in/diegope/>.
