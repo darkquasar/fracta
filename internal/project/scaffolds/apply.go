@@ -222,8 +222,13 @@ func resolveMode(p string, d fs.DirEntry) os.FileMode {
 	if info, err := d.Info(); err == nil {
 		perm := info.Mode().Perm()
 		if perm != 0 {
+			// embed.FS reports files as 0444 (read-only in-binary), but
+			// scaffold output must be operator-editable. Promote to 0644.
+			if perm == 0o444 {
+				return 0o644
+			}
 			return perm
 		}
 	}
 	return 0o644
-}
+} 

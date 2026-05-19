@@ -12,7 +12,7 @@ spec:
   persistentVolumeReclaimPolicy: Retain
   storageClassName: fracta-local
   hostPath:
-    path: ${HOME}/fracta-workspace
+    path: __PROJECT_ROOT__/fracta-workspace
     type: DirectoryOrCreate
 ---
 apiVersion: v1
@@ -29,3 +29,4 @@ spec:
   resources:
     requests:
       storage: 5Gi
+

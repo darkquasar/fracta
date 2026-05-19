@@ -1,10 +1,8 @@
-{{.ID}}:
-  remote:
-    url: {{.ServiceURL}}
-    transport: {{.Transport}}
+url: {{.ServiceURL}}
+transport: {{.Transport}}
 {{- if .EnvRequired}}
-    env_required:
+env_required:
 {{- range .EnvRequired}}
-      - {{.}}
+  - {{.}}
 {{- end}}
-{{- end}}
+{{- end}} 

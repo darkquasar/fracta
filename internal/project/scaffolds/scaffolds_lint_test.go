@@ -46,7 +46,7 @@ func repoRoot(t *testing.T) string {
 
 // TestScaffoldsK8sDriftParity verifies that every migrated manifest lives in
 // BOTH deployment/k8s-local-cluster/manifests/ AND
-// internal/project/scaffolds/templates/k8s/fracta/k8s/manifests/. Skipped if
+// internal/project/scaffolds/templates/k8s/deployment/k8s/manifests/. Skipped if
 // the deployment tree is gone (post-tombstone-PR future).
 func TestScaffoldsK8sDriftParity(t *testing.T) {
 	root := repoRoot(t)
@@ -112,4 +112,4 @@ func TestScaffoldsK8sDriftParity(t *testing.T) {
 			t.Errorf("templates manifest %q is not in migratedK8sManifests nor allowedTemplatesOnly; if intentional, update scaffolds_lint_test.go", e.Name())
 		}
 	}
-}
+} 

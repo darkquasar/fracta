@@ -21,17 +21,17 @@ type ProjectState struct {
 	// rules per spec-43 plan §1.2:
 	//
 	//   local           runtime.backend == "local" AND
-	//                   fracta/docker-compose.yml does NOT exist
+	//                   deployment/docker-compose.yml does NOT exist
 	//   docker-compose  runtime.backend == "local" AND
-	//                   fracta/docker-compose.yml exists
+	//                   deployment/docker-compose.yml exists
 	//   k8s             runtime.backend == "kubernetes"
 	EnabledScaffolds map[scaffolds.Kind]bool
 
 	// Configured[id][k] is true when server id is configured for mode k.
 	// Detection rules:
 	//   local           fracta.yaml mcp_servers.servers.<id>.local exists
-	//   docker-compose  fracta/docker-compose.yml services.<id>-mcp exists
-	//   k8s             fracta/k8s/manifests/<id>-mcp.yaml exists on disk
+	//   docker-compose  deployment/docker-compose.yml services.<id>-mcp exists
+	//   k8s             deployment/k8s/manifests/<id>-mcp.yaml exists on disk
 	Configured map[string]map[scaffolds.Kind]bool
 }
 
@@ -52,8 +52,8 @@ func (s *ProjectState) OnlyEnabled() (scaffolds.Kind, bool) {
 	return 0, false
 }
 
-// LoadProjectState walks fracta.yaml, fracta/docker-compose.yml, and
-// fracta/k8s/manifests/ to determine which scaffolds are present and which
+// LoadProjectState walks fracta.yaml, deployment/docker-compose.yml, and
+// deployment/k8s/manifests/ to determine which scaffolds are present and which
 // servers are configured for which modes.
 //
 // Returns an empty (all-false) ProjectState rather than an error when no
@@ -83,7 +83,7 @@ func LoadProjectState(projectRoot string) (*ProjectState, error) {
 	}
 
 	backend := scalarAt(doc, "runtime", "backend")
-	composePath := filepath.Join(projectRoot, "fracta", "docker-compose.yml")
+	composePath := filepath.Join(projectRoot, "deployment", "docker-compose.yml")
 	composeExists := fileExists(composePath)
 
 	switch backend {
@@ -149,8 +149,8 @@ func LoadProjectState(projectRoot string) (*ProjectState, error) {
 		}
 	}
 
-	// k8s detection: scan fracta/k8s/manifests/ for <id>-mcp.yaml files.
-	manifestsDir := filepath.Join(projectRoot, "fracta", "k8s", "manifests")
+	// k8s detection: scan deployment/k8s/manifests/ for <id>-mcp.yaml files.
+	manifestsDir := filepath.Join(projectRoot, "deployment", "k8s", "manifests")
 	entries, err := os.ReadDir(manifestsDir)
 	if err == nil {
 		for _, e := range entries {
@@ -277,4 +277,4 @@ func scalarAt(m *yaml.Node, keys ...string) string {
 		cur = next
 	}
 	return ""
-}
+} 

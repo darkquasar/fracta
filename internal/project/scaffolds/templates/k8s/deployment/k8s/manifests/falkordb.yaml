@@ -34,7 +34,7 @@ spec:
               cpu: "500m"
           volumeMounts:
             - name: data
-              mountPath: /data
+              mountPath: /var/lib/falkordb/data
   volumeClaimTemplates:
     - metadata:
         name: data
@@ -60,3 +60,4 @@ spec:
     - port: 6379
       targetPort: redis
       name: redis
+

@@ -20,7 +20,7 @@ func resetAddFlags() {
 // fixtureProjectForK8sAdd builds a project with:
 //   - the 2-entry minimalCatalog at <root>/mcp-servers/
 //   - fracta.yaml with runtime.backend = kubernetes
-//   - empty fracta/k8s/manifests/ directory (so the scaffold is "enabled")
+//   - empty deployment/k8s/manifests/ directory (so the scaffold is "enabled")
 func fixtureProjectForK8sAdd(t *testing.T) string {
 	cat, entries := minimalCatalog()
 	root := tempProject(t, tempProjectOpts{
@@ -28,7 +28,7 @@ func fixtureProjectForK8sAdd(t *testing.T) string {
 		entries:     entries,
 		fractaYAML:  "runtime:\n  backend: kubernetes\n",
 	})
-	if err := os.MkdirAll(filepath.Join(root, "fracta", "k8s", "manifests"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(root, "deployment", "k8s", "manifests"), 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
 	return root
@@ -43,11 +43,11 @@ func TestConfigMcpAddElasticK8s_WritesManifestAndUpdatesFractaYAML(t *testing.T)
 		t.Fatalf("add: %v", err)
 	}
 
-	manifestPath := filepath.Join(root, "fracta", "k8s", "manifests", "elastic-mcp.yaml")
+	manifestPath := filepath.Join(root, "deployment", "k8s", "manifests", "elastic-mcp.yaml")
 	if _, err := os.Stat(manifestPath); err != nil {
 		t.Errorf("manifest not written: %v", err)
 	}
-	secretPath := filepath.Join(root, "fracta", "k8s", "manifests", "elastic-mcp-secret.yaml")
+	secretPath := filepath.Join(root, "deployment", "k8s", "manifests", "elastic-mcp-secret.yaml")
 	if _, err := os.Stat(secretPath); err != nil {
 		t.Errorf("secret stub not written (elastic has env_required so the stub should land): %v", err)
 	}
@@ -96,7 +96,7 @@ func TestConfigMcpAddDryRunWritesNothing(t *testing.T) {
 	if string(pre) != string(post) {
 		t.Errorf("dry-run mutated fracta.yaml:\npre=%q\npost=%q", pre, post)
 	}
-	if _, err := os.Stat(filepath.Join(root, "fracta", "k8s", "manifests", "elastic-mcp.yaml")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(root, "deployment", "k8s", "manifests", "elastic-mcp.yaml")); !os.IsNotExist(err) {
 		t.Errorf("dry-run wrote manifest")
 	}
 }
@@ -192,7 +192,7 @@ func TestConfigMcpAddPlanRollback(t *testing.T) {
 	// content. Without --force, planAdd should refuse and not mutate
 	// anything; the sentinel content remains intact.
 	root := fixtureProjectForK8sAdd(t)
-	manifestPath := filepath.Join(root, "fracta", "k8s", "manifests", "elastic-mcp.yaml")
+	manifestPath := filepath.Join(root, "deployment", "k8s", "manifests", "elastic-mcp.yaml")
 	sentinel := []byte("# sentinel content; planAdd must refuse without --force\n")
 	if err := os.WriteFile(manifestPath, sentinel, 0o644); err != nil {
 		t.Fatalf("plant sentinel: %v", err)
@@ -213,4 +213,4 @@ func TestConfigMcpAddPlanRollback(t *testing.T) {
 	if _, err := os.Stat(manifestPath + ".bak"); !os.IsNotExist(err) {
 		t.Errorf(".bak should not exist; stat err=%v", err)
 	}
-}
+} 

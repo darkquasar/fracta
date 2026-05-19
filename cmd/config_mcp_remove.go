@@ -123,9 +123,9 @@ func planRemove(root, id string, mode scaffolds.Kind, state *mcpcatalog.ProjectS
 	plan := &removePlan{}
 
 	fractaYAML := filepath.Join(root, "fracta.yaml")
-	composePath := filepath.Join(root, "fracta", "docker-compose.yml")
-	manifestPath := filepath.Join(root, "fracta", "k8s", "manifests", id+"-mcp.yaml")
-	secretPath := filepath.Join(root, "fracta", "k8s", "manifests", id+"-mcp-secret.yaml")
+	composePath := filepath.Join(root, "deployment", "docker-compose.yml")
+	manifestPath := filepath.Join(root, "deployment", "k8s", "manifests", id+"-mcp.yaml")
+	secretPath := filepath.Join(root, "deployment", "k8s", "manifests", id+"-mcp-secret.yaml")
 
 	configured := false
 	if state != nil && state.Configured[id] != nil {
@@ -150,7 +150,7 @@ func planRemove(root, id string, mode scaffolds.Kind, state *mcpcatalog.ProjectS
 		if _, err := os.Stat(composePath); err == nil {
 			plan.actions = append(plan.actions, removeAction{
 				kind:        "compose",
-				description: "~ fracta/docker-compose.yml (remove services." + id + "-mcp)",
+				description: "~ deployment/docker-compose.yml (remove services." + id + "-mcp)",
 				composePath: composePath, serviceName: id + "-mcp",
 			})
 		}
@@ -251,4 +251,4 @@ func applyRemoveCompose(a removeAction) error {
 		return fmt.Errorf("remove service from %s: %w", a.composePath, err)
 	}
 	return mcpcatalog.WriteComposeYAMLAtomic(a.composePath, root)
-}
+} 

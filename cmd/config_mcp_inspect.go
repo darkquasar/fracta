@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/darkquasar/fracta/internal/config"
 	"github.com/darkquasar/fracta/internal/mcpcatalog"
 	"github.com/darkquasar/fracta/internal/project/scaffolds"
 	"github.com/spf13/cobra"
@@ -47,10 +48,12 @@ func runConfigMcpInspect(cmd *cobra.Command, args []string) error {
 
 	inspector := mcpcatalog.DetectImageInspector()
 
-	return renderInspect(cmd.OutOrStdout(), entry, state, inspector)
+	cfg, _ := loadConfigOrDefault(projectRoot)
+
+	return renderInspect(cmd.OutOrStdout(), entry, state, inspector, cfg)
 }
 
-func renderInspect(w io.Writer, e *mcpcatalog.Entry, state *mcpcatalog.ProjectState, inspector mcpcatalog.ImageInspector) error {
+func renderInspect(w io.Writer, e *mcpcatalog.Entry, state *mcpcatalog.ProjectState, inspector mcpcatalog.ImageInspector, cfg *config.Config) error {
 	displayName := e.Name
 	if displayName == "" {
 		displayName = e.ID
@@ -110,8 +113,44 @@ func renderInspect(w io.Writer, e *mcpcatalog.Entry, state *mcpcatalog.ProjectSt
 	fmt.Fprintln(w, "Configured in this project:")
 	configured := configuredModes(state, e.ID)
 	fmt.Fprintf(w, "  local           %s\n", configuredCellInspect(configured, scaffolds.KindLocal, e.ID, "fracta.yaml mcp_servers.servers.%s.local"))
-	fmt.Fprintf(w, "  docker-compose  %s\n", configuredCellInspect(configured, scaffolds.KindDockerCompose, e.ID, "fracta/docker-compose.yml service:%s-mcp"))
-	fmt.Fprintf(w, "  kubernetes      %s\n", configuredCellInspect(configured, scaffolds.KindK8s, e.ID, "fracta/k8s/manifests/%s-mcp.yaml"))
+	fmt.Fprintf(w, "  docker-compose  %s\n", configuredCellInspect(configured, scaffolds.KindDockerCompose, e.ID, "deployment/docker-compose.yml service:%s-mcp"))
+	fmt.Fprintf(w, "  kubernetes      %s\n", configuredCellInspect(configured, scaffolds.KindK8s, e.ID, "deployment/k8s/manifests/%s-mcp.yaml"))
+
+	// Tool policy from fracta.yaml
+	if cfg != nil {
+		if entry, ok := cfg.MCPServers.Servers[e.ID]; ok && entry.ToolPolicy != nil {
+			fmt.Fprintln(w)
+			fmt.Fprintln(w, "Tool Policy:")
+			p := entry.ToolPolicy
+			if len(p.Deny) > 0 {
+				fmt.Fprintf(w, "  deny: %s\n", strings.Join(p.Deny, ", "))
+			} else {
+				fmt.Fprintln(w, "  deny: (not set)")
+			}
+			if len(p.AllowOnly) > 0 {
+				fmt.Fprintf(w, "  allow_only: %s\n", strings.Join(p.AllowOnly, ", "))
+			} else {
+				fmt.Fprintln(w, "  allow_only: (not set)")
+			}
+		}
+	}
+
+	// Static env vars from catalog variant
+	for _, vName := range variantNames {
+		v := e.Variants[vName]
+		if len(v.Env.Static) > 0 {
+			fmt.Fprintln(w)
+			fmt.Fprintf(w, "Static Env Vars (variant: %s):\n", vName)
+			keys := make([]string, 0, len(v.Env.Static))
+			for k := range v.Env.Static {
+				keys = append(keys, k)
+			}
+			sort.Strings(keys)
+			for _, k := range keys {
+				fmt.Fprintf(w, "  %s: %q\n", k, v.Env.Static[k])
+			}
+		}
+	}
 
 	return nil
 }
@@ -169,4 +208,4 @@ func valOrDash(s string) string {
 		return "-"
 	}
 	return s
-}
+} 

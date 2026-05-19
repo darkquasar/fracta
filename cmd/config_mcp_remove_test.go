@@ -19,9 +19,9 @@ mcp_servers:
 `,
 	})
 	// Drop a k8s manifest + secret stub so the plan detects them.
-	writeFile(t, filepath.Join(root, "fracta", "k8s", "manifests", "elastic-mcp.yaml"),
+	writeFile(t, filepath.Join(root, "deployment", "k8s", "manifests", "elastic-mcp.yaml"),
 		"apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: elastic-mcp\n")
-	writeFile(t, filepath.Join(root, "fracta", "k8s", "manifests", "elastic-mcp-secret.yaml"),
+	writeFile(t, filepath.Join(root, "deployment", "k8s", "manifests", "elastic-mcp-secret.yaml"),
 		"apiVersion: v1\nkind: Secret\nmetadata:\n  name: elastic-mcp-secrets\n")
 
 	removeTargetDeploymentFlag = "k8s"
@@ -32,10 +32,10 @@ mcp_servers:
 		t.Fatalf("remove: %v", err)
 	}
 
-	if _, err := os.Stat(filepath.Join(root, "fracta", "k8s", "manifests", "elastic-mcp.yaml")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(root, "deployment", "k8s", "manifests", "elastic-mcp.yaml")); !os.IsNotExist(err) {
 		t.Errorf("expected manifest to be deleted, stat err=%v", err)
 	}
-	if _, err := os.Stat(filepath.Join(root, "fracta", "k8s", "manifests", "elastic-mcp-secret.yaml")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(root, "deployment", "k8s", "manifests", "elastic-mcp-secret.yaml")); !os.IsNotExist(err) {
 		t.Errorf("expected secret stub to be deleted, stat err=%v", err)
 	}
 	data, _ := os.ReadFile(filepath.Join(root, "fracta.yaml"))
@@ -55,7 +55,7 @@ mcp_servers:
         url: http://elastic-mcp.fracta.svc:3000/mcp
 `,
 	})
-	writeFile(t, filepath.Join(root, "fracta", "k8s", "manifests", "elastic-mcp.yaml"),
+	writeFile(t, filepath.Join(root, "deployment", "k8s", "manifests", "elastic-mcp.yaml"),
 		"apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: elastic-mcp\n")
 
 	removeTargetDeploymentFlag = "k8s"
@@ -66,7 +66,7 @@ mcp_servers:
 		t.Fatalf("remove: %v", err)
 	}
 
-	if _, err := os.Stat(filepath.Join(root, "fracta", "k8s", "manifests", "elastic-mcp.yaml")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(root, "deployment", "k8s", "manifests", "elastic-mcp.yaml")); !os.IsNotExist(err) {
 		t.Errorf("expected manifest deleted")
 	}
 	data, _ := os.ReadFile(filepath.Join(root, "fracta.yaml"))
@@ -109,4 +109,4 @@ func TestConfigMcpRemoveAmbiguousModeError(t *testing.T) {
 	if !strings.Contains(err.Error(), "--target-deployment") {
 		t.Errorf("error should mention --target-deployment: %v", err)
 	}
-}
+} 

@@ -168,8 +168,8 @@ Image state (local docker daemon): present (sha256:abc...)
 
 Configured in this project:
   local           yes (fracta.yaml mcp_servers.elastic.local)
-  docker-compose  yes (fracta/docker-compose.yml service:elastic-mcp)
-  kubernetes      yes (fracta/k8s/manifests/elastic-mcp.yaml)
+  docker-compose  yes (deployment/docker-compose.yml service:elastic-mcp)
+  kubernetes      yes (deployment/k8s/manifests/elastic-mcp.yaml)
 ```
 
 ## `add <server>`
@@ -194,8 +194,8 @@ Flags:
 | Mode | Files touched |
 |---|---|
 | `local` | `<root>/fracta.yaml` (`mcp_servers.servers.<id>.local`) |
-| `docker-compose` | `<root>/fracta.yaml` (`.remote`), `<root>/fracta/docker-compose.yml` (`services.<id>-mcp`), `<root>/.env.example` |
-| `k8s` | `<root>/fracta.yaml` (`.remote`), `<root>/fracta/k8s/manifests/<id>-mcp.yaml` (Deployment+Service), `<root>/fracta/k8s/manifests/<id>-mcp-secret.yaml` (Secret stub — only if `auth.env_required` non-empty) |
+| `docker-compose` | `<root>/fracta.yaml` (`.remote`), `<root>/deployment/docker-compose.yml` (`services.<id>-mcp`), `<root>/.env.example` |
+| `k8s` | `<root>/fracta.yaml` (`.remote`), `<root>/deployment/k8s/manifests/<id>-mcp.yaml` (Deployment+Service), `<root>/deployment/k8s/manifests/<id>-mcp-secret.yaml` (Secret stub — only if `auth.env_required` non-empty) |
 
 All `fracta.yaml` and `docker-compose.yml` mutations are atomic, idempotent,
 and comment-preserving. Reads decode to `*yaml.Node`; writes round-trip
@@ -270,4 +270,4 @@ column. `fracta config mcp` reads but does not write this field.
 First-class supported workflow. Mirror the canonical schema in any GitHub
 repo, HTTPS tarball, or local directory. See the
 [org-private catalog walkthrough](../../guides/mcp-catalog.md#org-private-catalogs)
-in the MCP catalog guide.
+in the MCP catalog guide. 

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/darkquasar/fracta/internal/project/scaffolds"
+	"gopkg.in/yaml.v3"
 )
 
 func loadFixture(t *testing.T, id string) *Entry {
@@ -120,9 +121,14 @@ func TestRenderFractaYAMLBlock_K8s(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err = %v", err)
 	}
-	for _, want := range []string{"elastic:", "remote:", "url: http://elastic-mcp.fracta.svc:3000/mcp", "transport: streamable-http"} {
+	for _, want := range []string{"url: http://elastic-mcp.fracta.svc:3000/mcp", "transport: streamable-http"} {
 		if !strings.Contains(string(out), want) {
 			t.Errorf("block missing %q in:\n%s", want, out)
+		}
+	}
+	for _, absent := range []string{"elastic:", "remote:"} {
+		if strings.Contains(string(out), absent) {
+			t.Errorf("block should NOT contain wrapper key %q (leaf-only rendering):\n%s", absent, out)
 		}
 	}
 }
@@ -133,9 +139,14 @@ func TestRenderFractaYAMLBlock_Local(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err = %v", err)
 	}
-	for _, want := range []string{"elastic:", "local:", "command: podman", "args: [run"} {
+	for _, want := range []string{"command: podman", "args: [run"} {
 		if !strings.Contains(string(out), want) {
 			t.Errorf("block missing %q in:\n%s", want, out)
+		}
+	}
+	for _, absent := range []string{"elastic:", "local:"} {
+		if strings.Contains(string(out), absent) {
+			t.Errorf("block should NOT contain wrapper key %q (leaf-only rendering):\n%s", absent, out)
 		}
 	}
 }
@@ -145,6 +156,61 @@ func TestRenderFractaYAMLBlock_ModeUnsupported(t *testing.T) {
 	_, err := e.RenderFractaYAMLBlock(scaffolds.KindLocal, RenderOpts{})
 	if err == nil {
 		t.Fatalf("expected error: vendor.support.local_process == not_supported")
+	}
+}
+
+func TestRenderThenUpsert_NoDoubleNesting(t *testing.T) {
+	cases := []struct {
+		name    string
+		mode    scaffolds.Kind
+		modeKey string
+	}{
+		{"k8s", scaffolds.KindK8s, "remote"},
+		{"docker-compose", scaffolds.KindDockerCompose, "remote"},
+		{"local", scaffolds.KindLocal, "local"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := loadFixture(t, "elastic")
+			rendered, err := e.RenderFractaYAMLBlock(tc.mode, RenderOpts{})
+			if err != nil {
+				t.Fatalf("render: %v", err)
+			}
+
+			root := &yaml.Node{Kind: yaml.DocumentNode, Content: []*yaml.Node{
+				{Kind: yaml.MappingNode},
+			}}
+			if err := UpsertMCPServer(root, "elastic", tc.mode, rendered, false); err != nil {
+				t.Fatalf("upsert: %v", err)
+			}
+
+			out, err := yaml.Marshal(root)
+			if err != nil {
+				t.Fatalf("marshal: %v", err)
+			}
+
+			var cfg map[string]interface{}
+			if err := yaml.Unmarshal(out, &cfg); err != nil {
+				t.Fatalf("unmarshal result: %v", err)
+			}
+
+			servers, ok := cfg["mcp_servers"].(map[string]interface{})["servers"].(map[string]interface{})
+			if !ok {
+				t.Fatalf("missing mcp_servers.servers in:\n%s", out)
+			}
+			elastic, ok := servers["elastic"].(map[string]interface{})
+			if !ok {
+				t.Fatalf("missing mcp_servers.servers.elastic in:\n%s", out)
+			}
+			modeBlock, ok := elastic[tc.modeKey].(map[string]interface{})
+			if !ok {
+				t.Fatalf("missing mcp_servers.servers.elastic.%s in:\n%s", tc.modeKey, out)
+			}
+			if _, doubled := modeBlock["elastic"]; doubled {
+				t.Errorf("double-nesting detected: mcp_servers.servers.elastic.%s.elastic exists in:\n%s", tc.modeKey, out)
+			}
+		})
 	}
 }
 
@@ -183,4 +249,4 @@ func TestKebabAfterPrefix(t *testing.T) {
 	if got != "url" {
 		t.Errorf("got %q, want url", got)
 	}
-}
+} 

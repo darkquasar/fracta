@@ -3,6 +3,7 @@ package project
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -64,6 +65,12 @@ func Init(root string, opts InitOpts) (scaffolds.Result, error) {
 		return res, fmt.Errorf("applying scaffold: %w", err)
 	}
 
+	if opts.Scaffold == scaffolds.KindK8s {
+		if err := fixupWorkspacePVC(root); err != nil {
+			return res, fmt.Errorf("fixing workspace PVC path: %w", err)
+		}
+	}
+
 	// SQLite is only meaningful for local mode — compose and k8s use
 	// postgres-backed state in their deployed services.
 	if opts.Scaffold == scaffolds.KindLocal {
@@ -84,6 +91,43 @@ func Init(root string, opts InitOpts) (scaffolds.Result, error) {
 	}
 
 	return res, nil
+}
+
+func fixupWorkspacePVC(root string) error {
+	pvcPath := filepath.Join(root, "deployment", "k8s", "manifests", "workspace-pvc.yaml")
+
+	absRoot, err := filepath.Abs(root)
+	if err != nil {
+		return fmt.Errorf("resolve project root: %w", err)
+	}
+
+	f, err := os.OpenFile(pvcPath, os.O_RDWR, 0644)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("open workspace-pvc.yaml: %w", err)
+	}
+	defer f.Close()
+
+	data, err := io.ReadAll(f)
+	if err != nil {
+		return fmt.Errorf("read workspace-pvc.yaml: %w", err)
+	}
+
+	replaced := strings.ReplaceAll(string(data), "__PROJECT_ROOT__", absRoot)
+	if replaced == string(data) {
+		return nil
+	}
+
+	if _, err := f.Seek(0, 0); err != nil {
+		return err
+	}
+	if err := f.Truncate(0); err != nil {
+		return err
+	}
+	_, err = f.WriteString(replaced)
+	return err
 }
 
 func ensureGitignore(root string) error {
@@ -125,4 +169,4 @@ func ensureGitignore(root string) error {
 	}
 
 	return nil
-}
+} 

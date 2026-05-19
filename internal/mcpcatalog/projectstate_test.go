@@ -44,7 +44,7 @@ func TestLoadProjectState_OnlyLocal(t *testing.T) {
 func TestLoadProjectState_OnlyCompose(t *testing.T) {
 	dir := t.TempDir()
 	mustWrite(t, filepath.Join(dir, "fracta.yaml"), "runtime:\n  backend: local\n")
-	mustWrite(t, filepath.Join(dir, "fracta", "docker-compose.yml"), "services:\n  fracta:\n    image: ghcr.io/x\n")
+	mustWrite(t, filepath.Join(dir, "deployment", "docker-compose.yml"), "services:\n  fracta:\n    image: ghcr.io/x\n")
 	s, err := LoadProjectState(dir)
 	if err != nil {
 		t.Fatalf("err = %v", err)
@@ -99,7 +99,7 @@ mcp_servers:
 func TestLoadProjectState_ConfiguredK8sViaManifest(t *testing.T) {
 	dir := t.TempDir()
 	mustWrite(t, filepath.Join(dir, "fracta.yaml"), "runtime:\n  backend: kubernetes\n")
-	mustWrite(t, filepath.Join(dir, "fracta", "k8s", "manifests", "elastic-mcp.yaml"), "kind: Deployment\n")
+	mustWrite(t, filepath.Join(dir, "deployment", "k8s", "manifests", "elastic-mcp.yaml"), "kind: Deployment\n")
 	s, err := LoadProjectState(dir)
 	if err != nil {
 		t.Fatalf("err = %v", err)
@@ -112,7 +112,7 @@ func TestLoadProjectState_ConfiguredK8sViaManifest(t *testing.T) {
 func TestLoadProjectState_ConfiguredComposeViaService(t *testing.T) {
 	dir := t.TempDir()
 	mustWrite(t, filepath.Join(dir, "fracta.yaml"), "runtime:\n  backend: local\n")
-	mustWrite(t, filepath.Join(dir, "fracta", "docker-compose.yml"), `services:
+	mustWrite(t, filepath.Join(dir, "deployment", "docker-compose.yml"), `services:
   fracta:
     image: x
   elastic-mcp:
@@ -132,7 +132,7 @@ func TestLoadProjectState_K8sManifestDeleted(t *testing.T) {
 	// "enabled" because fracta.yaml says backend: kubernetes.
 	dir := t.TempDir()
 	mustWrite(t, filepath.Join(dir, "fracta.yaml"), "runtime:\n  backend: kubernetes\n")
-	// No fracta/k8s/manifests/ dir at all.
+	// No deployment/k8s/manifests/ dir at all.
 	s, err := LoadProjectState(dir)
 	if err != nil {
 		t.Fatalf("err = %v", err)
@@ -140,7 +140,7 @@ func TestLoadProjectState_K8sManifestDeleted(t *testing.T) {
 	if !s.EnabledScaffolds[scaffolds.KindK8s] {
 		t.Errorf("k8s should still be enabled even with no manifests/ dir; got %v", s.EnabledScaffolds)
 	}
-	if _, err := os.Stat(filepath.Join(dir, "fracta", "k8s", "manifests")); err == nil {
+	if _, err := os.Stat(filepath.Join(dir, "deployment", "k8s", "manifests")); err == nil {
 		t.Fatalf("test invariant: manifests dir should not exist")
 	}
-}
+} 

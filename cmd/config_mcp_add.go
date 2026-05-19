@@ -29,7 +29,7 @@ var configMcpAddCmd = &cobra.Command{
 	Use:   "add <server>",
 	Short: "Inject an MCP server into the current scaffold mode.",
 	Long: `Renders the per-mode configuration for one MCP server and writes it
-to fracta.yaml, fracta/docker-compose.yml, and/or fracta/k8s/manifests/.
+to fracta.yaml, deployment/docker-compose.yml, and/or deployment/k8s/manifests/.
 
 A failed mutation rolls back to the pre-'add' state; the successful happy path
 leaves no .bak files. Re-running without --force errors when the per-mode
@@ -237,10 +237,10 @@ func planAdd(root string, entry *mcpcatalog.Entry, mode scaffolds.Kind, variant 
 		variant:      variant,
 		force:        force,
 		fractaYAML:   filepath.Join(root, "fracta.yaml"),
-		composeFile:  filepath.Join(root, "fracta", "docker-compose.yml"),
+		composeFile:  filepath.Join(root, "deployment", "docker-compose.yml"),
 		envExample:   filepath.Join(root, ".env.example"),
-		k8sManifestP: filepath.Join(root, "fracta", "k8s", "manifests", entry.ID+"-mcp.yaml"),
-		k8sSecretP:   filepath.Join(root, "fracta", "k8s", "manifests", entry.ID+"-mcp-secret.yaml"),
+		k8sManifestP: filepath.Join(root, "deployment", "k8s", "manifests", entry.ID+"-mcp.yaml"),
+		k8sSecretP:   filepath.Join(root, "deployment", "k8s", "manifests", entry.ID+"-mcp-secret.yaml"),
 	}
 
 	opts := mcpcatalog.RenderOpts{
@@ -274,7 +274,7 @@ func planAdd(root string, entry *mcpcatalog.Entry, mode scaffolds.Kind, variant 
 		p.actions = []addAction{
 			{
 				kind:        "compose",
-				description: "~ fracta/docker-compose.yml (append services." + entry.ID + "-mcp)",
+				description: "~ deployment/docker-compose.yml (append services." + entry.ID + "-mcp)",
 				path:        p.composeFile, serviceName: entry.ID + "-mcp", composeBody: svc,
 			},
 			{
@@ -518,4 +518,4 @@ func runBestEffort(w io.Writer, name string, args ...string) {
 		fmt.Fprintf(w, "warning: %s %s: %v\n", name, strings.Join(args, " "), err)
 	}
 }
-
+ 

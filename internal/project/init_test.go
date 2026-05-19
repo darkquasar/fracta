@@ -172,7 +172,7 @@ func TestInit_ForceOverwrites(t *testing.T) {
 }
 
 // TestInit_DockerComposeStructure: kind=docker-compose materializes the
-// expected tree (no SQLite, has fracta/docker-compose.yml).
+// expected tree (no SQLite, has deployment/docker-compose.yml).
 func TestInit_DockerComposeStructure(t *testing.T) {
 	if _, err := exec.LookPath("docker"); err != nil {
 		t.Skip("docker not installed; skipping docker-compose scaffold test")
@@ -252,3 +252,103 @@ func TestInit_K8sStructure(t *testing.T) {
 		t.Errorf("k8s fracta.yaml missing 'extra_volumes' block")
 	}
 }
+
+func TestInit_K8sWorkspacePVCInterpolated(t *testing.T) {
+	if _, err := exec.LookPath("kubectl"); err != nil {
+		t.Skip("kubectl not installed; skipping k8s scaffold test")
+	}
+	root := setupGitRepo(t)
+	if _, err := Init(root, InitOpts{Scaffold: scaffolds.KindK8s}); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+
+	pvcPath := filepath.Join(root, "deployment", "k8s", "manifests", "workspace-pvc.yaml")
+	data, err := os.ReadFile(pvcPath)
+	if err != nil {
+		t.Fatalf("read workspace-pvc.yaml: %v", err)
+	}
+
+	content := string(data)
+	if strings.Contains(content, "__PROJECT_ROOT__") {
+		t.Errorf("workspace-pvc.yaml still contains __PROJECT_ROOT__ placeholder")
+	}
+	if strings.Contains(content, "${HOME}") {
+		t.Errorf("workspace-pvc.yaml still contains ${HOME}")
+	}
+
+	absRoot, _ := filepath.Abs(root)
+	expected := filepath.Join(absRoot, "fracta-workspace")
+	if !strings.Contains(content, expected) {
+		t.Errorf("workspace-pvc.yaml missing interpolated path %q; got:\n%s", expected, content)
+	}
+}
+
+func TestFixupWorkspacePVC(t *testing.T) {
+	root := t.TempDir()
+	manifestDir := filepath.Join(root, "deployment", "k8s", "manifests")
+	if err := os.MkdirAll(manifestDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	pvcContent := `apiVersion: v1
+kind: PersistentVolume
+spec:
+  hostPath:
+    path: __PROJECT_ROOT__/fracta-workspace
+    type: DirectoryOrCreate
+`
+	pvcPath := filepath.Join(manifestDir, "workspace-pvc.yaml")
+	if err := os.WriteFile(pvcPath, []byte(pvcContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := fixupWorkspacePVC(root); err != nil {
+		t.Fatalf("fixupWorkspacePVC: %v", err)
+	}
+
+	data, err := os.ReadFile(pvcPath)
+	if err != nil {
+		t.Fatalf("read after fixup: %v", err)
+	}
+	content := string(data)
+
+	if strings.Contains(content, "__PROJECT_ROOT__") {
+		t.Errorf("placeholder not replaced; got:\n%s", content)
+	}
+
+	absRoot, _ := filepath.Abs(root)
+	expected := filepath.Join(absRoot, "fracta-workspace")
+	if !strings.Contains(content, expected) {
+		t.Errorf("expected path %q not found in:\n%s", expected, content)
+	}
+}
+
+func TestFixupWorkspacePVC_MissingFile(t *testing.T) {
+	root := t.TempDir()
+	if err := fixupWorkspacePVC(root); err != nil {
+		t.Errorf("should return nil for missing file; got: %v", err)
+	}
+}
+
+func TestFixupWorkspacePVC_NoPlaceholder(t *testing.T) {
+	root := t.TempDir()
+	manifestDir := filepath.Join(root, "deployment", "k8s", "manifests")
+	if err := os.MkdirAll(manifestDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	content := "path: /already/resolved/fracta-workspace\n"
+	pvcPath := filepath.Join(manifestDir, "workspace-pvc.yaml")
+	if err := os.WriteFile(pvcPath, []byte(content), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := fixupWorkspacePVC(root); err != nil {
+		t.Fatalf("fixupWorkspacePVC: %v", err)
+	}
+
+	data, _ := os.ReadFile(pvcPath)
+	if string(data) != content {
+		t.Errorf("file should be unchanged; got:\n%s", string(data))
+	}
+} 

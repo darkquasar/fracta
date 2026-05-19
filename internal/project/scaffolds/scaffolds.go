@@ -24,7 +24,7 @@ const (
 	// §4.10 for why backend=local even in compose mode.
 	KindDockerCompose
 	// KindK8s scaffolds a Kubernetes deployment: fracta.yaml with
-	// runtime.backend=kubernetes, manifests under fracta/k8s/manifests/, and
+	// runtime.backend=kubernetes, manifests under deployment/k8s/manifests/, and
 	// a fracta-auth-helpers ConfigMap reference.
 	KindK8s
 	// KindNone is a sentinel used by callers (spec-43 catalog fetch) that
@@ -68,4 +68,4 @@ func ParseKind(s string) (Kind, error) {
 	default:
 		return 0, fmt.Errorf("unknown scaffold %q; valid: local, docker-compose, k8s", s)
 	}
-}
+} 

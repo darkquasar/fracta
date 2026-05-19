@@ -14,7 +14,7 @@ For the exhaustive flag reference, see [`fracta config mcp`](../reference/cli/co
 Three things to keep separate:
 
 1. **The catalog** — a tree at `<root>/mcp-servers/` containing one `server.yaml` per MCP server fracta knows about. Operator-owned, git-tracked, edited like any other config.
-2. **Your scaffold** — the per-mode files `fracta init` wrote (`fracta.yaml`, plus `fracta/docker-compose.yml` or `fracta/k8s/manifests/` depending on the mode).
+2. **Your scaffold** — the per-mode files `fracta init` wrote (`fracta.yaml`, plus `deployment/docker-compose.yml` or `deployment/k8s/manifests/` depending on the mode).
 3. **`fracta config mcp`** — the CLI that reads (1) and mutates (2) on your behalf.
 
 `fetch` populates (1). `add` reads (1) and writes (2). Both are reversible.
@@ -32,7 +32,7 @@ git add mcp-servers/ && git commit -m "fetch fracta MCP catalog"
 
 fracta config mcp list                 # browse what's available
 fracta config mcp inspect elastic      # full per-server metadata
-fracta config mcp add elastic          # writes fracta.yaml + fracta/k8s/manifests/elastic-mcp.yaml
+fracta config mcp add elastic          # writes fracta.yaml + deployment/k8s/manifests/elastic-mcp.yaml
 git add . && git commit -m "add elastic MCP server"
 ```
 
@@ -43,8 +43,8 @@ Three commits land on your repo: the scaffold (`fracta init`), the catalog (`fet
 | Mode | Files touched |
 |---|---|
 | `local` | `fracta.yaml` only (inserts `mcp_servers.servers.<id>.local`) |
-| `docker-compose` | `fracta.yaml` + `fracta/docker-compose.yml` + `.env.example` |
-| `k8s` | `fracta.yaml` + `fracta/k8s/manifests/<id>-mcp.yaml` + `fracta/k8s/manifests/<id>-mcp-secret.yaml` (if the server needs env vars) |
+| `docker-compose` | `fracta.yaml` + `deployment/docker-compose.yml` + `.env.example` |
+| `k8s` | `fracta.yaml` + `deployment/k8s/manifests/<id>-mcp.yaml` + `deployment/k8s/manifests/<id>-mcp-secret.yaml` (if the server needs env vars) |
 
 `add` refuses to run if the scaffold for the chosen mode isn't present — the error names the prereq command (`fracta init --scaffold <mode>`) verbatim.
 
@@ -59,8 +59,8 @@ Adding 'elastic' for target-deployment 'k8s':
   Image present locally: yes (docker)
   Auth: env_token; you must populate ES_URL and ES_API_KEY in a Secret
   Files to be written:
-    + fracta/k8s/manifests/elastic-mcp.yaml
-    + fracta/k8s/manifests/elastic-mcp-secret.yaml
+    + deployment/k8s/manifests/elastic-mcp.yaml
+    + deployment/k8s/manifests/elastic-mcp-secret.yaml
     ~ fracta.yaml
 Proceed? [y/N]
 ```
@@ -200,4 +200,4 @@ These are the same runners that used to live at `fracta mcp <verb>` — the [dep
 
 - [`fracta config mcp` reference](../reference/cli/config-mcp.md) — every flag, every subcommand.
 - [MCP Servers Catalog reference](../reference/configuration/mcp-servers-catalog.md) — `server.yaml` schema, the bundled entries.
-- [`fracta mcp` (deprecated alias)](../reference/cli/mcp.md) — old top-level verbs and the remapping table.
+- [`fracta mcp` (deprecated alias)](../reference/cli/mcp.md) — old top-level verbs and the remapping table. 

@@ -1,12 +1,13 @@
-{{.ID}}:
-  local:
-    command: {{.Command}}
+command: {{.Command}}
 {{- if .Args}}
-    args: [{{range $i, $a := .Args}}{{if $i}}, {{end}}{{$a}}{{end}}]
+args: [{{range $i, $a := .Args}}{{if $i}}, {{end}}{{$a}}{{end}}]
 {{- end}}
-{{- if .EnvRequired}}
-    env:
+{{- if or .EnvRequired .PlainEnv}}
+env:
 {{- range .EnvRequired}}
-      {{.}}: "${{`{`}}{{.}}{{`}`}}"
+  {{.}}: "${{`{`}}{{.}}{{`}`}}"
 {{- end}}
+{{- range .PlainEnv}}
+  {{.Name}}: {{yamlQuote .Value}}
 {{- end}}
+{{- end}} 
