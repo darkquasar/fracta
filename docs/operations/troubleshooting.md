@@ -3,8 +3,6 @@ title: Troubleshooting
 description: Common issues across all deployment modes
 ---
 
-# Troubleshooting
-
 ## By deployment mode
 
 ### Local process
