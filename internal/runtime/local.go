@@ -138,6 +138,7 @@ func (b *LocalBackend) Spawn(ctx context.Context, opts SpawnOpts) (AgentHandle, 
 }
 
 // Kill terminates a running local agent process.
+// Idempotent: returns ErrNotFound if the process is already dead or unknown.
 func (b *LocalBackend) Kill(ctx context.Context, id string) error {
 	b.mu.Lock()
 	h, ok := b.handles[id]
@@ -148,10 +149,21 @@ func (b *LocalBackend) Kill(ctx context.Context, id string) error {
 	}
 
 	if h.cmd.Process == nil {
-		return fmt.Errorf("runtime/local: agent %q has no process", id)
+		b.mu.Lock()
+		delete(b.handles, id)
+		b.mu.Unlock()
+		return fmt.Errorf("runtime/local: agent %q has no process: %w", id, ErrNotFound)
 	}
 
 	if err := h.cmd.Process.Kill(); err != nil {
+		if errors.Is(err, os.ErrProcessDone) {
+			// Process already exited (context cancellation, natural exit).
+			<-h.done
+			b.mu.Lock()
+			delete(b.handles, id)
+			b.mu.Unlock()
+			return fmt.Errorf("runtime/local: agent %q: %w", id, ErrNotFound)
+		}
 		return fmt.Errorf("runtime/local: killing agent %q: %w", id, err)
 	}
 
@@ -223,4 +235,4 @@ func (b *LocalBackend) Logs(_ context.Context, id string, tailLines int) (string
 	}
 
 	return string(data), nil
-}
+} 

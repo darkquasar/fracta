@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -11,6 +12,7 @@ import (
 	"github.com/darkquasar/fracta/internal/model"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtimeapi "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/fake"
@@ -147,21 +149,89 @@ func TestKubernetesBackend_Kill(t *testing.T) {
 	ctx := context.Background()
 
 	_, err := b.Spawn(ctx, SpawnOpts{
-		ID:    "kill-me",
-		Image: "fracta/agent:latest",
+		ID:             "kill-me",
+		Image:          "fracta/agent:latest",
+		ConfigSnapshot: "settings: true\n",
+		AuthSecretData: map[string][]byte{"token": []byte("secret")},
 	})
 	if err != nil {
 		t.Fatalf("Spawn: %v", err)
+	}
+
+	// Verify resources exist before kill
+	if _, err := client.CoreV1().ConfigMaps("test-ns").Get(ctx, "fracta-config-kill-me", metav1.GetOptions{}); err != nil {
+		t.Fatalf("ConfigMap should exist before Kill: %v", err)
+	}
+	if _, err := client.CoreV1().Secrets("test-ns").Get(ctx, "fracta-auth-kill-me", metav1.GetOptions{}); err != nil {
+		t.Fatalf("Secret should exist before Kill: %v", err)
 	}
 
 	if err := b.Kill(ctx, "kill-me"); err != nil {
 		t.Fatalf("Kill: %v", err)
 	}
 
-	// Job should be deleted
-	_, err = client.BatchV1().Jobs("test-ns").Get(ctx, "fracta-agent-kill-me", metav1.GetOptions{})
-	if err == nil {
-		t.Error("Job should be deleted after Kill")
+	// All resources should be deleted
+	if _, err := client.BatchV1().Jobs("test-ns").Get(ctx, "fracta-agent-kill-me", metav1.GetOptions{}); !apierrors.IsNotFound(err) {
+		t.Errorf("Job should be NotFound after Kill, got: %v", err)
+	}
+	if _, err := client.CoreV1().ConfigMaps("test-ns").Get(ctx, "fracta-config-kill-me", metav1.GetOptions{}); !apierrors.IsNotFound(err) {
+		t.Errorf("ConfigMap should be NotFound after Kill, got: %v", err)
+	}
+	if _, err := client.CoreV1().Secrets("test-ns").Get(ctx, "fracta-auth-kill-me", metav1.GetOptions{}); !apierrors.IsNotFound(err) {
+		t.Errorf("Secret should be NotFound after Kill, got: %v", err)
+	}
+}
+
+func TestKubernetesBackend_Kill_NoConfigMap(t *testing.T) {
+	client := fake.NewSimpleClientset()
+	b := NewKubernetesBackend(client, "test-ns", KubernetesJobConfig{})
+	ctx := context.Background()
+
+	_, err := b.Spawn(ctx, SpawnOpts{
+		ID:    "kill-bare",
+		Image: "fracta/agent:latest",
+	})
+	if err != nil {
+		t.Fatalf("Spawn: %v", err)
+	}
+
+	if err := b.Kill(ctx, "kill-bare"); err != nil {
+		t.Fatalf("Kill should not error for bare spawn: %v", err)
+	}
+}
+
+func TestKubernetesBackend_Kill_JobGone_StillCleansResources(t *testing.T) {
+	client := fake.NewSimpleClientset()
+	b := NewKubernetesBackend(client, "test-ns", KubernetesJobConfig{})
+	ctx := context.Background()
+
+	_, err := b.Spawn(ctx, SpawnOpts{
+		ID:             "kill-orphan",
+		Image:          "fracta/agent:latest",
+		ConfigSnapshot: "settings: true\n",
+		AuthSecretData: map[string][]byte{"token": []byte("secret")},
+	})
+	if err != nil {
+		t.Fatalf("Spawn: %v", err)
+	}
+
+	// Simulate Job already gone (TTL or manual delete)
+	if err := client.BatchV1().Jobs("test-ns").Delete(ctx, "fracta-agent-kill-orphan", metav1.DeleteOptions{}); err != nil {
+		t.Fatalf("pre-delete Job: %v", err)
+	}
+
+	// Kill returns ErrNotFound for the Job...
+	err = b.Kill(ctx, "kill-orphan")
+	if !errors.Is(err, ErrNotFound) {
+		t.Fatalf("Kill should return ErrNotFound when Job is gone, got: %v", err)
+	}
+
+	// ...but ConfigMap and Secret should still be cleaned up
+	if _, err := client.CoreV1().ConfigMaps("test-ns").Get(ctx, "fracta-config-kill-orphan", metav1.GetOptions{}); !apierrors.IsNotFound(err) {
+		t.Errorf("ConfigMap should be cleaned even when Job is gone, got: %v", err)
+	}
+	if _, err := client.CoreV1().Secrets("test-ns").Get(ctx, "fracta-auth-kill-orphan", metav1.GetOptions{}); !apierrors.IsNotFound(err) {
+		t.Errorf("Secret should be cleaned even when Job is gone, got: %v", err)
 	}
 }
 
@@ -1228,7 +1298,7 @@ func TestSpawn_InitContainer(t *testing.T) {
 	ctx := context.Background()
 
 	_, err := b.Spawn(ctx, SpawnOpts{
-		ID:             "init-test",
+		ID: "init-test",
 		WorkspaceFiles: []WorkspaceArtifact{
 			{ConfigMapKey: "CLAUDE.md", DestPath: "CLAUDE.md", Content: "do stuff"},
 			{ConfigMapKey: "dot-claude--settings.json", DestPath: ".claude/settings.json", Content: "{}"},
@@ -2015,4 +2085,4 @@ func mountNames(ms []corev1.VolumeMount) []string {
 		out = append(out, m.Name)
 	}
 	return out
-}
+} 

@@ -14,21 +14,21 @@ import (
 	"github.com/darkquasar/fracta/internal/model"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
 )
 
 const (
-	defaultNamespace         = "fracta"
-	defaultPVCMountPath      = "/workspace"
-	configMapMountPath       = "/etc/fracta"
-	configMapKey             = "agent-config.yaml"
-	defaultAuthSecretMount   = "/var/run/fracta-auth"
-	labelApp                 = "fracta"
-	labelAgentID             = "fracta-agent-id"
+	defaultNamespace       = "fracta"
+	defaultPVCMountPath    = "/workspace"
+	configMapMountPath     = "/etc/fracta"
+	configMapKey           = "agent-config.yaml"
+	defaultAuthSecretMount = "/var/run/fracta-auth"
+	labelApp               = "fracta"
+	labelAgentID           = "fracta-agent-id"
 )
 
 var _ Backend = (*KubernetesBackend)(nil)
@@ -548,19 +548,33 @@ func (b *KubernetesBackend) Spawn(ctx context.Context, opts SpawnOpts) (AgentHan
 	}, nil
 }
 
-// Kill deletes a K8s Job and its pods.
+// Kill deletes a K8s Job and its associated ConfigMap and Secret.
 func (b *KubernetesBackend) Kill(ctx context.Context, id string) error {
 	jobName := fmt.Sprintf("fracta-agent-%s", id)
+	ns := b.namespace
 	propagation := metav1.DeletePropagationForeground
 
-	err := b.client.BatchV1().Jobs(b.namespace).Delete(ctx, jobName, metav1.DeleteOptions{
+	jobErr := b.client.BatchV1().Jobs(ns).Delete(ctx, jobName, metav1.DeleteOptions{
 		PropagationPolicy: &propagation,
 	})
-	if err != nil {
-		if apierrors.IsNotFound(err) {
+
+	// Best-effort cleanup of associated ConfigMap and Secret.
+	// Always attempt regardless of Job deletion result — the Job may already
+	// be gone (TTL, manual delete) while resources remain orphaned.
+	configMapName := fmt.Sprintf("fracta-config-%s", id)
+	if err := b.client.CoreV1().ConfigMaps(ns).Delete(ctx, configMapName, metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
+		_ = err
+	}
+	authSecretName := fmt.Sprintf("fracta-auth-%s", id)
+	if err := b.client.CoreV1().Secrets(ns).Delete(ctx, authSecretName, metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
+		_ = err
+	}
+
+	if jobErr != nil {
+		if apierrors.IsNotFound(jobErr) {
 			return fmt.Errorf("runtime/k8s: job %s: %w", jobName, ErrNotFound)
 		}
-		return fmt.Errorf("runtime/k8s: deleting job %s: %w", jobName, err)
+		return fmt.Errorf("runtime/k8s: deleting job %s: %w", jobName, jobErr)
 	}
 	return nil
 }
@@ -1170,4 +1184,4 @@ func buildResourceRequirements(r *ResourceRequirements) corev1.ResourceRequireme
 	}
 
 	return reqs
-}
+} 

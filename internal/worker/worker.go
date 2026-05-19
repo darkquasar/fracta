@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -20,10 +21,10 @@ import (
 	"github.com/darkquasar/fracta/internal/auth/credentials"
 	"github.com/darkquasar/fracta/internal/config"
 	"github.com/darkquasar/fracta/internal/events"
+	"github.com/darkquasar/fracta/internal/fractalog"
 	"github.com/darkquasar/fracta/internal/host"
 	"github.com/darkquasar/fracta/internal/hostadapter"
 	"github.com/darkquasar/fracta/internal/model"
-	"github.com/darkquasar/fracta/internal/fractalog"
 	"github.com/darkquasar/fracta/internal/orchestrator"
 	"github.com/darkquasar/fracta/internal/queue"
 	"github.com/darkquasar/fracta/internal/runtime"
@@ -37,14 +38,14 @@ type Worker struct {
 	Queue         queue.MissionQueue
 	Store         state.Store
 	Registry      host.HostRegistry
-	Config        *config.Config              // worker's own config for host env resolution
-	Backend       runtime.Backend             // from cp.Backend (LocalBackend or KubernetesBackend)
+	Config        *config.Config               // worker's own config for host env resolution
+	Backend       runtime.Backend              // from cp.Backend (LocalBackend or KubernetesBackend)
 	Stager        credentials.CredentialStager // for rehydrating staged credentials (nil = no staging)
-	Events        events.Bus                  // optional lifecycle event bus
-	Lifecycle     *agentlifecycle.Writer      // lifecycle transition coordinator
-	WorkspaceBase string                      // base directory for ephemeral workspaces
+	Events        events.Bus                   // optional lifecycle event bus
+	Lifecycle     *agentlifecycle.Writer       // lifecycle transition coordinator
+	WorkspaceBase string                       // base directory for ephemeral workspaces
 	PollInterval  time.Duration
-	remoteBusURL  string                      // CP URL for remote event publishing (K8s split mode)
+	remoteBusURL  string // CP URL for remote event publishing (K8s split mode)
 	logger        *slog.Logger
 }
 
@@ -214,7 +215,7 @@ func (w *Worker) executeMission(ctx context.Context, m *queue.Mission) error {
 		e.MissionID = m.ID
 		e.Attrs = map[string]string{
 			"mission_id": fmt.Sprintf("%d", m.ID),
-			"runtime":  spec.Resolution.RuntimeType,
+			"runtime":    spec.Resolution.RuntimeType,
 		}
 	})
 
@@ -412,7 +413,7 @@ func (w *Worker) executeMission(ctx context.Context, m *queue.Mission) error {
 		e.Attrs = map[string]string{
 			"mission_id": fmt.Sprintf("%d", m.ID),
 			"model":      spec.Resolution.Model,
-			"runtime":  spec.Resolution.RuntimeType,
+			"runtime":    spec.Resolution.RuntimeType,
 		}
 	})
 
@@ -499,6 +500,21 @@ func (w *Worker) executeMission(ctx context.Context, m *queue.Mission) error {
 	go w.emitHeartbeats(missionCtx, m.AgentTask, m.ID, spec.Resolution.RuntimeType, hbInterval)
 
 	waitErr := handle.Wait()
+
+	// Clean up K8s resources (Job, ConfigMap, Secret) on cancellation.
+	// Context cancellation alone does not delete K8s resources — the Job
+	// keeps running. For LocalBackend, the process is already dead and
+	// Kill returns ErrNotFound, which is non-fatal.
+	if waitErr != nil && missionCtx.Err() != nil {
+		killCtx, killCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		if killErr := w.Backend.Kill(killCtx, m.AgentTask); killErr != nil {
+			if !errors.Is(killErr, runtime.ErrNotFound) {
+				w.logger.Warn("post-cancel resource cleanup failed", "task", m.AgentTask, "error", killErr)
+			}
+		}
+		killCancel()
+	}
+
 	stdout, _ := io.ReadAll(handle.Output())
 
 	// Emit wire-level detail events via host adapter (message.completed, tool events).
@@ -627,9 +643,9 @@ func (w *Worker) emitHeartbeats(ctx context.Context, task string, missionID int6
 				Task:      task,
 				MissionID: missionID,
 				Attrs: map[string]string{
-					"runtime": runtimeType,
-					"phase":     "executing",
-					"uptime_s":  fmt.Sprintf("%d", uptime),
+					"runtime":  runtimeType,
+					"phase":    "executing",
+					"uptime_s": fmt.Sprintf("%d", uptime),
 				},
 			})
 		}
@@ -728,4 +744,4 @@ func (w *Worker) transitionWorkerToTerminal(ctx context.Context, task string, st
 	if err != nil && err != agentlifecycle.ErrTransitionSkipped {
 		w.logger.Warn("lifecycle transition failed", "task", task, "status", status, "error", err)
 	}
-}
+} 
