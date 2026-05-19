@@ -1,9 +1,7 @@
 ---
 title: Building from source
-description: Local builds, Makefile targets, version stamping
+description: Local builds, Makefile targets, and version stamping for the Go binary and Python sidecar.
 ---
-
-# Building from source
 
 Fracta is a single Go binary plus a Python strategy-runner sidecar. The Go binary is the only thing you need to build for most development work — the Python sidecar runs separately and only matters when you're testing strategy execution.
 

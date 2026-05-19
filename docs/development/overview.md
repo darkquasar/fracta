@@ -1,9 +1,7 @@
 ---
-title: Development Overview
-description: Building, testing, and releasing fracta from source
+title: Development
+description: Building, testing, and releasing fracta from source.
 ---
-
-# Development
 
 This section covers everything you need to work on fracta itself: building the binary, running the test suite, the CI pipeline that runs on every push, and the release process for cutting tagged versions.
 

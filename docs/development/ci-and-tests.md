@@ -1,9 +1,7 @@
 ---
 title: CI and tests
-description: GitHub Actions CI pipeline and how to reproduce failures locally
+description: GitHub Actions CI pipeline for fracta — what runs, why it runs, and how to reproduce failures locally.
 ---
-
-# CI and tests
 
 Every push to `main` and every pull request runs through a CI pipeline that exercises the full Go build and test suite. This page documents what runs, why it runs, and how to reproduce CI failures on your laptop.
 
