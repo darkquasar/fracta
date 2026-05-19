@@ -1,0 +1,17 @@
+Fracta
+Copyright 2026 Diego Perez
+
+This product is licensed under the Functional Source License, Version 1.1,
+Apache License 2.0 future grant (FSL-1.1-ALv2). See the LICENSE file for the
+full text of the license terms, including the Permitted Purpose, Competing
+Use definition, and the future Apache-2.0 conversion.
+
+For commercial licensing inquiries, see COMMERCIAL.md or contact
+diego.perez@quasarops.com.
+
+For the project's full licensing history, see LICENSE-HISTORY.md.
+
+This product includes software developed by third parties under their
+own licenses. See the dependency licenses bundled with any distributed
+binary, or the upstream repositories for each dependency in go.mod and
+strategies/requirements.txt, for the applicable terms.
