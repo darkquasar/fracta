@@ -1,9 +1,7 @@
 ---
-title: Kubernetes Runbook
-description: Operations reference for the kubernetes deployment mode
+title: Local K8s Mode
+description: Operations reference — run fracta against Docker Desktop, kind, minikube, or k3d for development and testing.
 ---
-
-# Local K8s Mode
 
 Run  fracta with a local Kubernetes cluster for development and testing. The default Makefile path targets Docker Desktop Kubernetes, but repo-built image loading can also target kind, minikube, or k3d. Agents spawn as K8s Jobs, the gateway proxies MCP tools, and state lives in Postgres.
 

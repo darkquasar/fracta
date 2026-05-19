@@ -1,9 +1,7 @@
 ---
-title: Kubernetes Quickstart
-description: Run fracta against a local kubernetes cluster
+title: Quickstart, Kubernetes Mode
+description: Deploy fracta to a Kubernetes cluster — control plane and gateway as Deployments, agents as Jobs.
 ---
-
-# Quickstart: Kubernetes Mode
 
 Fracta deploys to a Kubernetes cluster. The control plane and gateway run as Deployments, agents spawn as K8s Jobs, and the control plane is exposed to the host as a Kubernetes Service. On the host, the thin client connects to that Service — the **golden path** is to run `fracta serve` as an MCP server in your AI CLI's config so your CLI talks MCP to it and it talks HTTP to the in-cluster control plane. The same thin client is also usable from the command line (`fracta spawn`, `fracta list`, …) when you want operator-style access without going through an AI CLI.
 

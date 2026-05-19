@@ -1,9 +1,7 @@
 ---
-title: Local Process Quickstart
-description: Run fracta on your machine in under ten minutes
+title: Quickstart, Local Process Mode
+description: Everything runs on your machine — control plane daemon, gateway, agents as local processes, SQLite for state.
 ---
-
-# Quickstart: Local Process Mode
 
 Everything runs on your machine: a control plane daemon, a gateway subprocess, agents as local processes, and SQLite for state. This is the simplest way to try fracta.
 

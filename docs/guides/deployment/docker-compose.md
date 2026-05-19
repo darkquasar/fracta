@@ -1,9 +1,7 @@
 ---
-title: Docker Compose Quickstart
-description: Run fracta in a self-contained docker compose stack
+title: Quickstart, Docker Compose Mode
+description: Run the full fracta stack in containers — control plane, gateway, strategy runner, Postgres, FalkorDB.
 ---
-
-# Quickstart: Docker Compose Mode
 
 Docker Compose runs the full fracta stack in containers: control plane, gateway, strategy runner, Postgres, FalkorDB. Your machine runs only a thin client. MCP backend servers (Elastic, Vendor, your own) are added by extending the scaffolded compose file.
 

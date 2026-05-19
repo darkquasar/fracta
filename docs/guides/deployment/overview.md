@@ -1,9 +1,7 @@
 ---
 title: Deployment Modes
-description: Architecture for local-process, docker-compose, and kubernetes modes
+description: Three deployment modes — local-process, docker-compose, kubernetes — sharing the same thin-client architecture.
 ---
-
-# Deployment Modes
 
 Fracta runs in three deployment modes. All modes share the same thin-client architecture: the CLI and MCP server always connect to the control plane via HTTP. Modes differ in where components run and what infrastructure is needed.
 
