@@ -3,6 +3,11 @@
   "theme": "mint",
   "name": "Fracta",
   "description": "Swarm intelligence engine: parallel agents explore, a graph captures, deterministic strategies execute.",
+  "favicon": "/favicons/favicon.ico",
+  "logo": {
+    "light": "/logo/fracta-logo-light.png",
+    "dark": "/logo/fracta-logo-dark.png"
+  },
   "colors": {
     "primary": "#5B6CFF",
     "light": "#8BA0FF",
