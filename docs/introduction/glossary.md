@@ -3,8 +3,6 @@ title: Glossary
 description: Terms you'll encounter in the fracta docs
 ---
 
-# Glossary
-
 ## Agent
 A spawned AI task with its own worktree, state entry, and mailbox.
 

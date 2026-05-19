@@ -1,9 +1,7 @@
 ---
 title: What is Fracta?
-description: "Swarm intelligence orchestration and strategy building for AI agents: the system materialization of the explore/automate pattern."
+description: Swarm intelligence orchestration for AI agents — turning open-ended exploration into reproducible, high-performance automation.
 ---
-
-# What is Fracta?
 
 Swarm intelligence orchestration and strategy engine for AI agents. Fracta turns open-ended agent exploration into high-performance, deterministic automation, turning the unstructured discoveries of your AI workforce into repeatable, high-performance logic.
 

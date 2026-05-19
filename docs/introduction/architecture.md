@@ -1,11 +1,7 @@
 ---
 title: Architecture
-description: The three-process model behind fracta
+description: Four cooperating processes, plus one git worktree per active agent.
 ---
-
-# Architecture
-
-Fracta runs as four cooperating processes, plus one git worktree per active agent.
 
 ```mermaid
 flowchart LR
