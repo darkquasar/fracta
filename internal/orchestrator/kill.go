@@ -73,8 +73,20 @@ func (o *Orchestrator) Kill(task string, keepFiles bool) error {
 			o.cleanupAgent(ctx, agent, keepFiles)
 		}
 
+	case model.StatusIdle:
+		// Idle stream agent — kill the stream pod, transition, cleanup.
+		if agent.Mode == "stream" {
+			o.cleanupStreamPod(task)
+		}
+		meta.Reason = "killed while idle"
+		o.transitionAgentToTerminal(ctx, task, model.StatusStopped, meta)
+		o.cleanupAgent(ctx, agent, keepFiles)
+
 	default:
-		// Already terminal — transition then clean up.
+		// Already terminal — retry K8s resource cleanup (may have been missed by prior path).
+		if agent.Mode == "stream" {
+			o.cleanupStreamPod(task)
+		}
 		meta.Reason = "killed"
 		o.transitionAgentToTerminal(ctx, task, agent.Status, meta)
 		o.cleanupAgent(ctx, agent, keepFiles)
@@ -107,4 +119,4 @@ func (o *Orchestrator) cleanupAgent(ctx context.Context, agent *model.AgentEntry
 
 	logFile := filepath.Join(o.Root, model.FractaDir, model.LogsDir, agent.Task+".log")
 	os.Remove(logFile)
-}
+} 

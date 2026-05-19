@@ -524,3 +524,134 @@ func (s *contextCheckingStore) UpdateAgentStatus(ctx context.Context, task strin
 	}
 	return s.mockStore.UpdateAgentStatus(ctx, task, status, output)
 }
+
+// --- Stream backend mocks ---
+
+type mockStreamBackend struct {
+	mu     sync.Mutex
+	killed []string
+}
+
+func (m *mockStreamBackend) SpawnStreamPod(_ context.Context, _ runtime.StreamPodOpts) (*runtime.StreamPodInfo, error) {
+	return nil, fmt.Errorf("not implemented in mock")
+}
+
+func (m *mockStreamBackend) KillStreamPod(_ context.Context, id string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.killed = append(m.killed, id)
+	return nil
+}
+
+func (m *mockStreamBackend) killedPods() []string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	result := make([]string, len(m.killed))
+	copy(result, m.killed)
+	return result
+}
+
+type mockStreamBackendErr struct {
+	err error
+}
+
+func (m *mockStreamBackendErr) SpawnStreamPod(_ context.Context, _ runtime.StreamPodOpts) (*runtime.StreamPodInfo, error) {
+	return nil, nil
+}
+
+func (m *mockStreamBackendErr) KillStreamPod(_ context.Context, _ string) error {
+	return m.err
+}
+
+// --- Stream reaper tests ---
+
+func TestReaper_KillsExpiredStreamAgent(t *testing.T) {
+	store := &mockStore{state: model.State{Agents: []model.AgentEntry{
+		{Task: "stream-exp", Status: model.StatusRunning, Mode: "stream", StartTime: time.Now().Add(-2 * time.Hour)},
+		{Task: "batch-exp", Status: model.StatusRunning, Mode: "", StartTime: time.Now().Add(-2 * time.Hour)},
+	}}}
+	backend := &mockBackend{}
+	sb := &mockStreamBackend{}
+	r := NewReaper(store, backend, config.ReaperConfig{MaxAge: dur(1 * time.Hour), Interval: dur(100 * time.Millisecond)})
+	r.SetStreamBackend(sb)
+
+	r.reap()
+
+	if pods := sb.killedPods(); len(pods) != 1 || pods[0] != "stream-exp" {
+		t.Errorf("KillStreamPod = %v, want [stream-exp]", pods)
+	}
+	if killed := backend.killedAgents(); len(killed) != 1 || killed[0] != "batch-exp" {
+		t.Errorf("Kill = %v, want [batch-exp]", killed)
+	}
+}
+
+func TestReaper_KillsIdleStreamAgent(t *testing.T) {
+	store := &mockStore{state: model.State{Agents: []model.AgentEntry{
+		{Task: "idle-stream", Status: model.StatusIdle, Mode: "stream", StartTime: time.Now().Add(-2 * time.Hour)},
+		{Task: "idle-batch", Status: model.StatusIdle, Mode: "", StartTime: time.Now().Add(-2 * time.Hour)},
+	}}}
+	backend := &mockBackend{}
+	sb := &mockStreamBackend{}
+	r := NewReaper(store, backend, config.ReaperConfig{MaxAge: dur(1 * time.Hour), Interval: dur(100 * time.Millisecond)})
+	r.SetStreamBackend(sb)
+
+	r.reap()
+
+	if pods := sb.killedPods(); len(pods) != 1 || pods[0] != "idle-stream" {
+		t.Errorf("KillStreamPod = %v, want [idle-stream]", pods)
+	}
+	if killed := backend.killedAgents(); len(killed) != 0 {
+		t.Errorf("Kill should not be called for idle batch, got %v", killed)
+	}
+}
+
+func TestReaper_NoTransitionWithoutStreamBackend(t *testing.T) {
+	store := &mockStore{state: model.State{Agents: []model.AgentEntry{
+		{Task: "no-sb", Status: model.StatusRunning, Mode: "stream", StartTime: time.Now().Add(-2 * time.Hour)},
+	}}}
+	r := NewReaper(store, &mockBackend{}, config.ReaperConfig{MaxAge: dur(1 * time.Hour), Interval: dur(100 * time.Millisecond)})
+
+	r.reap()
+
+	agent, _ := store.FindAgent(context.Background(), "no-sb")
+	if agent != nil && agent.Status == model.StatusStopped {
+		t.Error("should NOT transition without streamBackend")
+	}
+}
+
+func TestReaper_BackstopCleansFailedStreamAgent(t *testing.T) {
+	store := &mockStore{state: model.State{Agents: []model.AgentEntry{
+		{Task: "failed-old", Status: model.StatusFailed, Mode: "stream", StartTime: time.Now().Add(-1 * time.Hour)},
+		{Task: "failed-recent", Status: model.StatusFailed, Mode: "stream", StartTime: time.Now().Add(-2 * time.Minute)},
+		{Task: "failed-batch", Status: model.StatusFailed, Mode: "", StartTime: time.Now().Add(-1 * time.Hour)},
+	}}}
+	backend := &mockBackend{}
+	sb := &mockStreamBackend{}
+	r := NewReaper(store, backend, config.ReaperConfig{Interval: dur(100 * time.Millisecond)})
+	r.SetStreamBackend(sb)
+
+	r.reap()
+
+	pods := sb.killedPods()
+	if len(pods) != 1 || pods[0] != "failed-old" {
+		t.Errorf("backstop should only clean failed-old (past grace), got %v", pods)
+	}
+	if killed := backend.killedAgents(); len(killed) != 0 {
+		t.Errorf("batch backend Kill should not be called for failed agents, got %v", killed)
+	}
+}
+
+func TestReaper_ToleratesErrNotFound(t *testing.T) {
+	store := &mockStore{state: model.State{Agents: []model.AgentEntry{
+		{Task: "gone", Status: model.StatusRunning, Mode: "stream", StartTime: time.Now().Add(-2 * time.Hour)},
+	}}}
+	r := NewReaper(store, &mockBackend{}, config.ReaperConfig{MaxAge: dur(1 * time.Hour), Interval: dur(100 * time.Millisecond)})
+	r.SetStreamBackend(&mockStreamBackendErr{err: runtime.ErrNotFound})
+
+	r.reap()
+
+	agent, _ := store.FindAgent(context.Background(), "gone")
+	if agent == nil || agent.Status != model.StatusStopped {
+		t.Errorf("should transition even with ErrNotFound, got %v", agent)
+	}
+} 

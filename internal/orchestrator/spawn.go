@@ -689,6 +689,10 @@ func (o *Orchestrator) SpawnStream(task, contractContent, baseBranch, spawnModel
 	return nil
 }
 
+func isTerminal(s model.AgentStatus) bool {
+	return s == model.StatusStopped || s == model.StatusFailed || s == model.StatusCompleted
+}
+
 // cleanupStreamPod kills the backing K8s pod if the backend supports stream pods.
 // No-op for local backends. Ignores ErrNotFound (pod may already be gone).
 func (o *Orchestrator) cleanupStreamPod(task string) {
@@ -818,11 +822,12 @@ func (o *Orchestrator) collectStreamInit(task, runtimeType string, session host.
 	go func() {
 		<-session.Done()
 		registry.Remove(task)
+		o.cleanupStreamPod(task)
 		ctx := context.Background()
 		agent, err := o.Store.FindAgent(ctx, task)
-		if err == nil && agent != nil && agent.Status != model.StatusFailed {
+		if err == nil && agent != nil && !isTerminal(agent.Status) {
 			o.transitionAgentToTerminal(ctx, task, model.StatusFailed, TerminalMeta{
-				Reason:   "stream process exited unexpectedly",
+				Reason:      "stream process exited unexpectedly",
 				RuntimeType: runtimeType,
 			})
 		}
@@ -1113,4 +1118,4 @@ func BuildConfigSnapshot(cfg *config.Config) (string, error) {
 		return "", fmt.Errorf("marshaling config snapshot: %w", err)
 	}
 	return string(data), nil
-}
+} 

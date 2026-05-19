@@ -106,6 +106,9 @@ func NewControlPlane(cfg *config.Config, root string) (*ControlPlane, error) {
 
 	// Build reaper (needed as admission checker for lifecycle writer).
 	reaper := NewReaper(store, backend, cfg.Reaper)
+	if sb, ok := backend.(runtime.StreamBackend); ok {
+		reaper.SetStreamBackend(sb)
+	}
 	if q != nil {
 		reaper.SetQueue(q)
 	}
@@ -535,4 +538,4 @@ func buildAdmissionStores(store state.Store, profile Profile) (objective.Objecti
 	default:
 		return nil, nil, nil
 	}
-}
+} 

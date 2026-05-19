@@ -4,6 +4,7 @@ package controlplane
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -26,6 +27,7 @@ import (
 type Reaper struct {
 	store          state.Store
 	backend        runtime.Backend
+	streamBackend  runtime.StreamBackend        // optional — for stream pod cleanup
 	queue          queue.MissionQueue          // optional — nil when queue not configured
 	mailbox        mailbox.Mailbox             // optional — for terminal queued agent cleanup
 	objectiveStore objective.ObjectiveStore     // optional — for objective timeout enforcement
@@ -54,6 +56,11 @@ func NewReaper(store state.Store, backend runtime.Backend, cfg config.ReaperConf
 // SetQueue configures the queue for the reaper. Must be called before Start().
 func (r *Reaper) SetQueue(q queue.MissionQueue) {
 	r.queue = q
+}
+
+// SetStreamBackend configures the stream backend for stream pod cleanup. Must be called before Start().
+func (r *Reaper) SetStreamBackend(sb runtime.StreamBackend) {
+	r.streamBackend = sb
 }
 
 // SetMailbox configures the mailbox for the reaper. Must be called before Start().
@@ -179,7 +186,10 @@ func (r *Reaper) reap() {
 			continue
 		}
 
-		if agent.Status != model.StatusRunning {
+		// Eligibility: Running agents (all modes) + Idle stream agents.
+		eligible := agent.Status == model.StatusRunning ||
+			(agent.Mode == "stream" && agent.Status == model.StatusIdle)
+		if !eligible {
 			continue
 		}
 
@@ -195,6 +205,8 @@ func (r *Reaper) reap() {
 		reason := "max_age"
 		r.logger.Info("killing expired agent",
 			"agent", agent.Task,
+			"mode", agent.Mode,
+			"status", agent.Status,
 			"age", now.Sub(agent.StartTime).Round(time.Second),
 			"max_age", maxAge,
 		)
@@ -204,8 +216,25 @@ func (r *Reaper) reap() {
 			if r.queue != nil && agent.MissionID != 0 {
 				r.queue.Cancel(ctx, agent.MissionID)
 			}
+		} else if agent.Mode == "stream" {
+			if r.streamBackend == nil {
+				r.logger.Warn("stream agent expired but no stream backend configured",
+					"agent", agent.Task,
+				)
+				continue
+			}
+			killCtx, killCancel := context.WithTimeout(context.Background(), 10*time.Second)
+			killErr := r.streamBackend.KillStreamPod(killCtx, agent.Task)
+			killCancel()
+			if killErr != nil && !errors.Is(killErr, runtime.ErrNotFound) {
+				r.logger.Error("failed to kill stream pod",
+					"agent", agent.Task,
+					"error", killErr,
+				)
+				continue
+			}
 		} else {
-			// Direct-spawn agent — kill via backend (existing path).
+			// Direct-spawn batch agent — kill via backend (existing path).
 			killCtx, killCancel := context.WithTimeout(context.Background(), 10*time.Second)
 			killErr := r.backend.Kill(killCtx, agent.Task)
 			killCancel()
@@ -224,6 +253,29 @@ func (r *Reaper) reap() {
 
 	// Check objective timeouts in the same cycle.
 	r.reapObjectiveTimeouts()
+
+	// Backstop: clean up stream resources for Failed stream agents.
+	// If session.Done() didn't fire (e.g., connection stayed open after logical failure),
+	// resources leak. This sweep catches them after a grace period.
+	// NOTE: Uses StartTime as proxy since AgentEntry has no failure timestamp.
+	// This means agents that ran longer than failedStreamGrace before failing
+	// get swept immediately — acceptable since KillStreamPod is idempotent.
+	const failedStreamGrace = 5 * time.Minute
+	if r.streamBackend != nil {
+		for _, agent := range st.Agents {
+			if agent.Mode != "stream" || agent.Status != model.StatusFailed {
+				continue
+			}
+			if now.Sub(agent.StartTime) <= failedStreamGrace {
+				continue
+			}
+			killCtx, killCancel := context.WithTimeout(context.Background(), 10*time.Second)
+			if err := r.streamBackend.KillStreamPod(killCtx, agent.Task); err != nil && !errors.Is(err, runtime.ErrNotFound) {
+				r.logger.Warn("failed stream backstop cleanup failed", "agent", agent.Task, "error", err)
+			}
+			killCancel()
+		}
+	}
 }
 
 // reapObjectiveTimeouts checks open objectives for wall-clock TTL expiration.
@@ -339,4 +391,4 @@ type MaxConcurrentError struct {
 
 func (e *MaxConcurrentError) Error() string {
 	return fmt.Sprintf("max concurrent agents (%d) reached", e.Limit)
-}
+} 
