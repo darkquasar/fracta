@@ -3,7 +3,19 @@ title: Contributing
 description: How to work on fracta itself
 ---
 
-# Contributing
+## Licensing of contributions
+
+Fracta is source-available under [FSL-1.1-ALv2](/introduction/licensing). Contributions follow the **inbound = outbound** rule: by submitting a Pull Request, you license your contribution to the project (and to all downstream users) under the same FSL-1.1-ALv2 terms the project itself is released under.
+
+You retain copyright in the lines you author. The license you grant the project is broad — perpetual, royalty-free, sublicensable — and is sufficient for the project to continue under FSL indefinitely, including granting commercial licenses to third parties and the automatic Apache-2.0 conversion two years after each release.
+
+Practical mechanics:
+
+- The repo's [PR template](https://github.com/darkquasar/fracta/blob/main/.github/PULL_REQUEST_TEMPLATE.md) auto-populates a licensing acknowledgement checkbox in every new PR. **Maintainers will not merge PRs where this checkbox is unchecked.**
+- This is not a separate Contributor License Agreement — it's the inbound = outbound rule made explicit at the point of submission.
+- The full text of the contribution licensing terms lives in [CONTRIBUTING.md](https://github.com/darkquasar/fracta/blob/main/CONTRIBUTING.md) at the repo root.
+
+For licensing questions about your intended *use* of Fracta (rather than contributions to it), see the [Licensing page](/introduction/licensing).
 
 ## Project layout
 
@@ -95,6 +107,10 @@ Fracta uses spec-first development. Feature specs live in a peer repo at `../fra
 Look at any `done-*` directory under `fracta-specs/` for a worked example — `done-43-config-mcp-server-management/` is recent and exercises the full pattern.
 
 ## Pull requests
+
+### PR template and licensing checkbox
+
+The repo's [PR template](https://github.com/darkquasar/fracta/blob/main/.github/PULL_REQUEST_TEMPLATE.md) auto-populates when you open a Pull Request. It includes a required licensing-acknowledgement checkbox (see [Licensing of contributions](#licensing-of-contributions) above). Maintainers will not merge a PR while that checkbox is unchecked. If your PR was opened in a way that bypassed the template, edit the PR description to include the checkbox line manually.
 
 ### Branch naming
 
