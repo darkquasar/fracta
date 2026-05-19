@@ -165,6 +165,26 @@ Less common but worth knowing:
 3. **Test depends on time/timezone**: CI runs UTC; your machine probably doesn't. Check for hardcoded timezone assumptions.
 4. **Flaky test**: re-run the failed CI job. If it passes, the test has a race or timing issue. Open an issue and fix the test rather than retrying.
 
+## GitHub Actions upkeep
+
+The actions used in `ci.yml` and `release.yml` ship as standalone projects with their own release cycles. Periodically (~quarterly) check for upstream deprecations:
+
+```bash
+# Show which @v<n> tags each action in the workflows is pinned to
+grep -rh "uses:" .github/workflows/ | sort -u
+```
+
+What to watch for:
+
+- **Node.js runtime deprecations.** GitHub Actions runners deprecate Node.js major versions on an ~18-month cadence. Each deprecation is announced via a warning on the workflow run summary ("Node.js NN actions are deprecated"). When you see one, find the corresponding action's latest major (e.g. `actions/setup-python@v6` runs Node 24) and bump.
+- **SHA pins vs floating majors.** SHA pins (`@<long-sha>`) are immutable and supply-chain-resistant but require manual bumps. Floating majors (`@v6`) auto-receive patch/minor updates within the major. The repo currently uses floating majors uniformly across `actions/checkout`, `actions/setup-go`, `actions/setup-python`, `docker/*`, and `softprops/action-gh-release`. Pick one and stick with it.
+
+History so far:
+
+| Date | Action | What changed |
+|---|---|---|
+| 2026-05 | `actions/setup-python` | Bumped from v5-era SHA pin to `@v6` to silence Node 20 deprecation warning. |
+
 ## Future enhancements
 
 Things not yet in CI that may be added later:
@@ -173,5 +193,6 @@ Things not yet in CI that may be added later:
 - **Coverage reporting** — `go test -coverprofile`, upload to Codecov or similar.
 - **Benchmark drift detection** — run `go test -bench` on PRs and compare to baseline.
 - **Integration tests against a real FalkorDB / Postgres** — would require service containers in the CI workflow.
+- **Race detector** — see [Known issue: `-race` is currently disabled](#known-issue--race-is-currently-disabled) above.
 
 These are conscious trade-offs: every additional CI step adds runtime and maintenance burden. The current pipeline catches the vast majority of regressions without becoming the bottleneck.

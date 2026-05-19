@@ -43,7 +43,7 @@ jobs:
       # committed. Fails the PR if they disagree, so we don't merge a state
       # the post-merge workflow would then immediately overwrite.
       - name: Set up Python (for catalogue drift check)
-        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b
+        uses: actions/setup-python@v6
         with:
           python-version: '3.12'
 

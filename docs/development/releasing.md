@@ -77,15 +77,24 @@ The push triggers the release workflow within seconds.
 # List recent runs
 gh run list --workflow=release.yml --limit 5
 
-# Follow the most recent run live
+# Follow the most recent run live (note: this will block for ~25-30 min
+# because the multi-arch Docker job dominates total time)
 gh run watch
+
+# Or poll a specific job non-interactively — useful for the long Docker build
+gh run view --job=<docker-job-id> --repo darkquasar/fracta
 ```
 
-A successful run takes ~5-8 minutes:
+A successful run takes **~25-30 minutes end-to-end**, dominated by the multi-arch Docker build under QEMU. The other jobs are fast:
 
-- Build job: ~2-3 minutes per platform (parallel)
-- Docker job: ~3-5 minutes (multi-arch is slower due to QEMU emulation)
-- Release job: under a minute (just attaches artifacts)
+- Build job: ~2 minutes per platform (4 platforms run in parallel)
+- Package scaffolds: under 10 seconds
+- Release job: under 30 seconds (waits on build + scaffolds, then attaches artifacts; doesn't wait on Docker)
+- Docker job: **~25-30 minutes** — `node:20-slim` base + apt-get + npm install of three CLIs + uv sync of Python deps, all re-run under emulated arm64. This is the long pole.
+
+The release page on GitHub publishes as soon as the binaries land (~3-4 minutes in). The Docker image lags behind for the rest of the run. Operators wanting to confirm the binary release can stop watching at that point; operators needing the new image must wait for the Docker job.
+
+If you see `Build and push` sitting at 15+ minutes, that is expected — see baseline timings in past Release runs (`gh run list --workflow=release.yml`).
 
 ### 5. Verify the release
 
@@ -222,7 +231,7 @@ gh run list --workflow=ci.yml --limit 5
 git tag -a v0.1.0 -m "v0.1.0"
 git push origin v0.1.0
 
-# 3. Watch the release workflow run (~5–8 min)
+# 3. Watch the release workflow run (~25–30 min end-to-end; Docker is the long pole)
 gh run watch
 
 # 4. Verify the GitHub Release
