@@ -3,8 +3,6 @@ title: Event Bus
 description: Internal event buses, sinks, and lifecycle events
 ---
 
-# Event Bus
-
 ## Overview
 
 Fracta has an internal in-process event bus in `internal/events`.

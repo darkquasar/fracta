@@ -1,11 +1,7 @@
 ---
 title: fracta.yaml
-description: Full schema reference for fracta's configuration file
+description: Schema for the project-root fracta.yaml — connections, auth, agents, runtimes, MCP servers.
 ---
-
-# fracta.yaml
-
-The `fracta.yaml` file in your project root configures connections, auth, agents, runtimes, and MCP servers.
 
 ## Top-level sections
 

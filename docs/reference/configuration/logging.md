@@ -3,8 +3,6 @@ title: Logging
 description: Structured logging configuration and component registry
 ---
 
-# Logging
-
 ## Overview
 
 Fracta uses Go's `log/slog` for structured JSON logging, wrapped by the `internal/fractalog` package. All log output includes a `"component"` tag identifying the subsystem that emitted it.
