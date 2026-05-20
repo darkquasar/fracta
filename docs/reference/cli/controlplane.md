@@ -3,8 +3,6 @@ title: fracta controlplane
 description: Start, stop, or check status of the local fracta control plane daemon.
 ---
 
-# fracta controlplane
-
 ```
 Start, stop, or check status of the local fracta control plane daemon.
 

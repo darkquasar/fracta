@@ -1,9 +1,7 @@
 ---
-title: fracta mcp (deprecated alias)
+title: "`fracta mcp` (deprecated alias)"
 description: One-release deprecation alias for the relocated MCP commands.
 ---
-
-# `fracta mcp` (deprecated alias)
 
 The top-level `fracta mcp <verb>` group has moved to `fracta config mcp auth
 <verb>` in spec-43. The old paths are preserved as a deprecation alias for

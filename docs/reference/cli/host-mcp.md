@@ -1,9 +1,7 @@
 ---
 title: fracta host-mcp
-description: Start an MCP server on stdio that exposes lifecycle tools (spawn, list,
+description: Start an MCP server on stdio that exposes lifecycle tools through the ControlPlaneClient abstraction.
 ---
-
-# fracta host-mcp
 
 ```
 Start an MCP server on stdio that exposes lifecycle tools (spawn, list,

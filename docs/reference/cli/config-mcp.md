@@ -1,9 +1,7 @@
 ---
 title: fracta config mcp
-description: Fetch the MCP server catalog and inject servers into deployment configs.
+description: Entry point for MCP catalog management and per-mode server wiring.
 ---
-
-# fracta config mcp
 
 `fracta config mcp` is the entry point for catalog management and per-mode
 server wiring. It is part of the broader `fracta config` umbrella for

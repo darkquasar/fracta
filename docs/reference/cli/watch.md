@@ -3,8 +3,6 @@ title: fracta watch
 description: Connect to the control plane and stream live events for the given agent.
 ---
 
-# fracta watch
-
 ```
 Connect to the control plane and stream live events for the given agent.
 Events are displayed as they arrive. Use --since to replay from a specific event ID.

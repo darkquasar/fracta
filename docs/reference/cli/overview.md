@@ -3,8 +3,6 @@ title: CLI Overview
 description: Every fracta command at a glance
 ---
 
-# CLI Overview
-
 | Command | Purpose |
 |---|---|
 | [`fracta init`](/reference/cli/init) | Initialize `.fracta` in a git repo |

@@ -3,8 +3,6 @@ title: fracta worker
 description: Runs one or more worker loops that pull missions from the configured queue and execute them using the host registry.
 ---
 
-# fracta worker
-
 ```
 Runs one or more worker loops that pull missions from the configured queue and execute them using the host registry.
 

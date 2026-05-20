@@ -1,9 +1,7 @@
 ---
 title: fracta init
-description: Initialize fracta in the current git repository by materializing a scaffold
+description: Materialize a deployment scaffold (local, docker-compose, or k8s) into the current git repository.
 ---
-
-# fracta init
 
 Materializes one of three deployment scaffolds (`local`, `docker-compose`,
 `k8s`) into the current git repository. The first invocation drops a
