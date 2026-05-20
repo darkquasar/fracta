@@ -239,9 +239,10 @@ func TestListTools_Filter(t *testing.T) {
 
 	require.NoError(t, store.UpsertServer(ctx, registry.Server{Name: "filter-srv", CreatedBy: "test"}))
 	require.NoError(t, store.ReplaceDiscoveredTools(ctx, "filter-srv", []registry.Tool{
-		{ServerName: "filter-srv", ToolName: "on", Enabled: true},
-		{ServerName: "filter-srv", ToolName: "off", Enabled: false},
+		{ServerName: "filter-srv", ToolName: "on"},
+		{ServerName: "filter-srv", ToolName: "off"},
 	}))
+	require.NoError(t, store.SetToolEnabled(ctx, "filter-srv", "off", false))
 
 	enabled := true
 	got, err := store.ListTools(ctx, registry.ToolFilter{ServerName: "filter-srv", Enabled: &enabled})
