@@ -3,32 +3,45 @@ title: What is Fracta?
 description: Swarm intelligence orchestration for AI agents — turning open-ended exploration into reproducible, high-performance automation.
 ---
 
-Swarm intelligence orchestration and strategy engine for AI agents. Fracta turns open-ended agent exploration into high-performance, deterministic automation, turning the unstructured discoveries of your AI workforce into repeatable, high-performance logic.
+Fracta is a Swarm Intelligence Orchestration and Strategy Engine for AI agents. Fracta turns open-ended agent exploration into high-performance, deterministic automation, turning the unstructured discoveries of your AI workforce into repeatable, high-performance logic.
 
 ## How does Fracta achieve this
 
-**Agents handle exploration**: parallel reasoning, open-ended investigation, deciding what to look at next. **Strategies handle automation**: deterministic Python pipelines that encode reproducible analytics on top of what the swarm has discovered. The graph in the middle is more than a shared world model, it carries **ontologies**: nodes and edges that declare which entity types exist, which relationships are valid, and which dynamics are allowed. Ontologies are seeded upfront and extended at runtime as agents discover new shapes; strategies can rely on those guarantees when they query.
+- **Concurrent Agent Exploration**: Parallel reasoning, open-ended investigation, deciding what to look at next.
+- **Strategies for Automation**: Deterministic Python pipelines that encode reproducible analytics on top of what the swarm has discovered. Powered by DuckDB and Parquet to make it blazing fast.
+- **Graph-based Shared World Model**: The graph is more than a shared world model, it carries **ontologies**, nodes and edges that declare which entity types exist, which relationships are valid, and which dynamics are allowed. Ontologies are seeded upfront and extended at runtime as agents discover new shapes; strategies can rely on those guarantees when they query.
+- **MCP Tool Gateway**: Shared tool layer with granular control over allowed/denied tools, concurrency guaranteed (many agents can use the same tool through a single gateway).
 
-That split is the headline. Reasoning loops are non-deterministic by design: sampling, context, model version all drift. Strategies are how you encode the *deterministic* parts of an investigation (counts, joins, correlations, sliding windows, map-reduce, automation logic, detection rules, composable analytics, etc.) so they run reproducibly, in milliseconds. The mechanism that makes this possible is the **MCP gateway**: a native MCP server that exposes the same tool catalog to *two client modes*. Agents drive it through an LLM, and strategies drive it through deterministic Python. Same tools, same trust boundary, no LLM in the loop on the strategy side.
+## Why Fracta? The Problem We Are Solving
 
-Four pillars: the **agent swarm** (explore), the **MCP gateway** (the dual-client tool layer that enrols new MCP servers and accepts parallel concurrent connections, unattended), the **knowledge graph** (capture, with ontologies governing what shapes are valid), and the **strategy framework** (automate). The agent runtime is whatever AI CLI you already use: Claude Code, Codex, OpenCode today. The architecture has nothing coding-specific about it. Use it for security investigations, ops triage, data exploration, code refactors, anything where you want many agents reasoning in parallel and deterministic logic running on top of what they find.
+AI agents excel at open-ended exploration, but they struggle with efficiency and reproducibility once a task becomes routine, and systematic swarm operation and discoverability. Fracta was built to solve the friction of transitioning from "agentic discovery" to "production-grade automation" (MISSING HERE: swarm aspect)
 
-## The problem
+### The Limits of Current Approaches
 
-Working with a single AI agent is linear. You ask, you wait, you review, you ask again. When you have ten related tasks, you do them ten times in sequence, even though most of them don't depend on each other.
+- **Token Waste & Drift**: Once an agent discovers a "happy path" (a successful sequence of actions), repeating that path using traditional prompt engineering or standard harnesses (like agents.md, claude.md, or custom system instructions) is incredibly inefficient. It still relies on non-deterministic LLM interpretation, risking output drift and consuming copious amounts of tokens just to do the exact same job twice.
+- **The Complexity Ceiling of Visual Automation**: On the other end of the spectrum, you can encode deterministic paths using visual workflow tools (like n8n). However, as these automations reach high levels of complexity, they become tangled, impossible to debug, and exceptionally difficult to version-control or share with other developers.
 
-The bottleneck isn't the model. It's the orchestration around it.
+### The Fracta Solution
 
-Four concrete frictions:
+Fracta resolves this tension by allowing you to easily encode agentic reasoning into deterministic, reproducible paths that operate at scale.
 
-- **Context-switching tax.** Every time you swap tasks, the agent loses its working memory. You re-explain the codebase, the conventions, the constraints. With ten tasks, that's ten warm-ups.
-- **No visibility into long-running work.** When an agent is mid-investigation or running a long refactor, you either babysit the terminal or come back later and read scrollback. There's no live status, no "what is it doing right now," no way to peek without disrupting.
-- **No shared knowledge between runs.** Agent A discovers something useful (a flaky test, a hidden dependency, an undocumented API). Agent B starts cold and has to discover it again.
-- **Burning tokens on deterministic work.** Counting rows, joining tables, deduplicating, computing percentiles, correlating events across sources: none of this needs a language model. But when you ask an agent to "find anomalies in this dataset," the LLM ends up doing arithmetic in-context, slowly and expensively, with the answer changing run to run because of sampling.
+- **🐍 Strategies as Pure Python DAGs**: We encode deterministic paths into Python strategies. These run reliably without LLM interpretation, saving tokens and guaranteeing reproducible outcomes.
+- **🛠️ Unified Tooling**: These deterministic strategies leverage the exact same MCP tools that the AI agents use during their non-deterministic exploration. You do not need to build your tools twice.
+- **⚡ High-Performance State Transfer**: To bridge the gap between agents and strategies, Fracta uses high-performance DuckDB and Parquet as staging databases. These act as the ultra-fast communication medium and data handoff point between open-ended exploration and rigid execution.
+- **🤝 Agnostic & Shareable Contracts**: Strategies are built around a strict contract, making them portable and shareable. Because infrastructure varies, each user can simply attach their own `binding.yaml` to a strategy. This satisfies the contract requirements based on the specific nuances of their unique environment, without needing to rewrite the core logic.
 
-## How fracta solves it
+### Agents as a Programmable Compute Layer
 
-The headline above is the framing: explore (agents) and automate (strategies) joined by a shared world model in the graph. Here's how each piece is materialized.
+Fracta fundamentally shifts how we view AI agents. It treats them as a programmable compute layer rather than standalone tools.
+
+Fracta does not care which agentic runtimes (Claude, OpenAI, local models) are doing the work in the backend. Instead, it provides the robust infrastructure to support them:
+
+- A shared bus for standardized logging.
+- A shared messaging pipeline (inbox, intention, broadcast).
+- A shared graph database to continuously encode the state of the world.
+- A shared strategy execution engine.
+
+**The Result**: You can deploy hundreds or thousands of containerized agent pods at any given time. They can run concurrently, solve independent missions, communicate securely with each other, and update the global state of the world in real-time.
 
 ### Explore: the agent swarm
 
@@ -59,6 +72,10 @@ Fracta ships with one default ontology, a **tool-discovery ontology** that lets 
 
 Deterministic Python pipelines run against the graph and staged Parquet tables. The staging itself happens through the **gateway in its strategy client mode**: when a strategy runs, the gateway pulls rows directly from each declared MCP backend into Parquet, and DuckDB picks up from there. A strategy that joins two tables and correlates events runs in milliseconds, returns the same answer byte-for-byte every time, and burns zero LLM tokens. Strategies are versioned, composable, and portable across environments: you publish `contract.yaml` + `strategy.py`, and your environment supplies the `binding.yaml` that maps the contract's abstract tables to concrete data sources.
 
+### In practice
+
+An agent investigates a security event, calls `strategy_run(name="event_correlation", params={...})`, gets back a structured table of related events from the past 24 hours, and reasons about *that*, instead of asking the LLM to manually correlate raw logs. The strategy framework supports hunt, detection, enrichment, correlation, and traversal categories out of the box. See the [Strategies section](/strategies/overview) for authoring details.
+
 ## Core capabilities
 
 | Command | What it does |
@@ -79,41 +96,6 @@ Every agent runs in its own workspace, isolated from every other agent. The shap
 - **Docker Compose / Kubernetes**: a per-agent directory under `/workspace/agents/<task>`. No git branches, no merge; agents commit and push (or hand off via files) to integrate.
 
 In every mode you can run ten agents on the same project without them stepping on each other. Git-aware merge semantics only light up in local-process mode. See [Architecture](/introduction/architecture#agent-workspaces) for the full table.
-
-## Why Fracta? The Problem We Are Solving
-
-AI agents excel at open-ended exploration, but they struggle with efficiency and reproducibility once a task becomes routine. Fracta was built to solve the friction of transitioning from "agentic discovery" to "production-grade automation."
-
-### The Limits of Current Approaches
-
-- **Token Waste & Drift**: Once an agent discovers a "happy path" (a successful sequence of actions), repeating that path using traditional prompt engineering or standard harnesses (like agents.md, claude.md, or custom system instructions) is incredibly inefficient. It still relies on non-deterministic LLM interpretation, risking output drift and consuming copious amounts of tokens just to do the exact same job twice.
-- **The Complexity Ceiling of Visual Automation**: On the other end of the spectrum, you can encode deterministic paths using visual workflow tools (like n8n). However, as these automations reach high levels of complexity, they become tangled, impossible to debug, and exceptionally difficult to version-control or share with other developers.
-
-### The Fracta Solution
-
-Fracta resolves this tension by allowing you to easily encode agentic reasoning into deterministic, reproducible paths that operate at scale.
-
-- **🐍 Strategies as Pure Python DAGs**: We encode deterministic paths into Python strategies. These run reliably without LLM interpretation, saving tokens and guaranteeing reproducible outcomes.
-- **🛠️ Unified Tooling**: These deterministic strategies leverage the exact same MCP tools that the AI agents use during their non-deterministic exploration. You do not need to build your tools twice.
-- **⚡ High-Performance State Transfer**: To bridge the gap between agents and strategies, Fracta uses high-performance DuckDB and Parquet as staging databases. These act as the ultra-fast communication medium and data handoff point between open-ended exploration and rigid execution.
-- **🤝 Agnostic & Shareable Contracts**: Strategies are built around a strict contract, making them portable and shareable. Because infrastructure varies, each user can simply attach their own `binding.yaml` to a strategy. This satisfies the contract requirements based on the specific nuances of their unique environment, without needing to rewrite the core logic.
-
-### Agents as a Programmable Compute Layer
-
-Fracta fundamentally shifts how we view AI agents. It treats them as a programmable compute layer rather than standalone tools.
-
-Fracta does not care which agentic runtimes (Claude, OpenAI, local models) are doing the work in the backend. Instead, it provides the robust infrastructure to support them:
-
-- A shared bus for standardized logging.
-- A shared messaging pipeline (inbox, intention, broadcast).
-- A shared graph database to continuously encode the state of the world.
-- A shared strategy execution engine.
-
-**The Result**: You can deploy hundreds or thousands of containerized agent pods at any given time. They can run concurrently, solve independent missions, communicate securely with each other, and update the global state of the world in real-time.
-
-### In practice
-
-An agent investigates a security event, calls `strategy_run(name="event_correlation", params={...})`, gets back a structured table of related events from the past 24 hours, and reasons about *that*, instead of asking the LLM to manually correlate raw logs. The strategy framework supports hunt, detection, enrichment, correlation, and traversal categories out of the box. See the [Strategies section](/strategies/overview) for authoring details.
 
 ## Who is fracta for
 

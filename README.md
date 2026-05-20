@@ -8,8 +8,6 @@
 
 # Fracta: A Swarm Intelligence Engine
 
-> Source-available under the [Functional Source License v1.1 (FSL-1.1-ALv2)](./LICENSE). Internal use is free for any organization. Hosted-service offerings and other competing commercial uses require a commercial license — see [COMMERCIAL.md](./COMMERCIAL.md).
-
 Fracta is the system materialization of the explore/exploit pattern for AI agents.
 
 Reasoning loops are inherently non-deterministic, as sampling, context, and model versions naturally drift. Fracta bridges the gap between open-ended AI reasoning and rigid, reproducible analytics by splitting the workload into exploration (agents discovering context) and exploitation (strategies running deterministic logic on those discoveries).
