@@ -1,9 +1,7 @@
 ---
 title: MCP Catalog Workflow
-description: Operator guide for fracta's MCP server catalog — fetch, commit, add, remove.
+description: Operator narrative for the MCP server catalog — when to use which verb, what gets committed, and org-private catalogs.
 ---
-
-# MCP Catalog Workflow
 
 Fracta ships a curated catalog of MCP server definitions and a `fracta config mcp` command suite that turns them into per-mode deployment config. This page is the operator narrative: when to use which verb, what gets committed where, and how org-private catalogs fit in.
 
