@@ -1,9 +1,7 @@
 ---
 title: Swarm Overview
-description: Parallel AI agents, isolated workspaces, shared mailbox — the swarm pillar
+description: The exploration stage of fracta's three-stage arc — parallel AI agents in isolated workspaces with a shared mailbox.
 ---
-
-# Swarm Overview
 
 The swarm is the *exploration* stage of Fracta's three-stage arc. Parallel AI agents — each running an AI CLI like Claude Code, Codex, or OpenCode — work in their own isolated workspaces, coordinate through a shared MCP gateway and mailbox, and feed their discoveries into the knowledge graph that the [Strategies](/strategies/overview) layer runs against.
 

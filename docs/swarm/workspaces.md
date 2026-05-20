@@ -1,9 +1,7 @@
 ---
 title: Workspaces
-description: Per-agent workspaces — git worktrees, directory workspaces, and what each mode supports
+description: Per-agent workspaces — git worktrees, directory workspaces, and what each deployment mode supports.
 ---
-
-# Workspaces
 
 Every agent runs in its own per-agent workspace. The shape of that workspace depends on the deployment mode, and that shape determines which capabilities are available — most notably, whether `fracta merge` is meaningful.
 

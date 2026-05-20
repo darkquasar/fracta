@@ -1,11 +1,7 @@
 ---
 title: Spawning Agents
-description: How agents are launched, what shapes their behavior, and the lifecycle states they pass through
+description: How agents are launched, what shapes their behavior, and the lifecycle states they pass through.
 ---
-
-# Spawning Agents
-
-`fracta spawn` is the entry point. This page covers what happens when you call it, the inputs that shape the agent's behavior, and the lifecycle states the orchestrator tracks.
 
 > First time spawning an agent? Start with the [first agent quickstart](/getting-started/first-agent) — it walks you through one end-to-end. The page below is the reference.
 

@@ -1,9 +1,7 @@
 ---
 title: Control Plane
-description: The orchestrator that spawns, supervises, and reaps agents
+description: The orchestrator behind the swarm — spawns, supervises, and reaps agents over HTTP and MCP.
 ---
-
-# Control Plane
 
 The control plane is the orchestrator behind the swarm. It listens on port 9090 and exposes both an HTTP API and an MCP server. Every `fracta` CLI command, and every agent that calls a `fracta_*` MCP tool, ultimately goes through it.
 

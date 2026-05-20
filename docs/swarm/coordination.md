@@ -1,9 +1,7 @@
 ---
 title: Coordination
-description: Mailbox, intent, peek — how agents stay aligned without colliding
+description: Three lightweight mechanisms — mailbox, declared intent, non-disruptive peeks — that keep isolated agents aligned.
 ---
-
-# Coordination
 
 Agents in the swarm work in isolation by default — that's the point of per-agent workspaces. But they're not deaf to each other. Three lightweight mechanisms keep them aligned: the mailbox, declared intent, and non-disruptive peeks.
 
