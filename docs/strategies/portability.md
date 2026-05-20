@@ -1,11 +1,7 @@
 ---
 title: Portability
-description: Why strategies are split into a publishable artifact and an environment-specific binding
+description: Strategies are two things glued together at runtime — a publishable artifact and an environment-specific binding.
 ---
-
-# Portability
-
-A strategy is two things glued together at runtime:
 
 - **The publishable artifact** — `contract.yaml` + `strategy.py`. These describe *what* the strategy needs and *what* it computes. They are environment-agnostic by design.
 - **The environment binding** — `binding.yaml`. This describes *how* to fetch the data the contract asks for, in *your* particular environment.

@@ -3,8 +3,6 @@ title: Strategy Contracts
 description: The contract.yaml schema and parameters
 ---
 
-# Strategy Contracts
-
 ## Overview
 
 A contract (`contract.yaml`) declares what a strategy needs to run: its parameters, required tables with column schemas, graph dependencies, and optional discovery hints. Contracts are the interface between strategy authors and the data-staging layer — they describe _what_ data is needed without specifying _how_ to fetch it.

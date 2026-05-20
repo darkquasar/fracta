@@ -3,8 +3,6 @@ title: Response Adapters
 description: Parsing non-standard tool responses
 ---
 
-# Response Adapters
-
 ## Overview
 
 Response adapters parse non-standard MCP tool output into structured rows for Parquet staging. They are used with `fetch_mode: mcp_client` when a tool returns output that isn't plain JSON, CSV, or NDJSON.

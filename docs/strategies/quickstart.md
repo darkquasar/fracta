@@ -1,9 +1,7 @@
 ---
 title: Quick Start
-description: Build a minimal strategy end-to-end — contract, code, and binding
+description: Build a minimal strategy end-to-end — contract.yaml, strategy.py, and binding.yaml.
 ---
-
-# Quick Start
 
 A strategy is three files. Two of them — `contract.yaml` and `strategy.py` — are the **publishable, environment-agnostic artifact**. The third — `binding.yaml` — is what binds the strategy to *your* environment. Two teams can share a strategy by sharing the first two files; each team writes its own binding to point at its own MCP backends.
 

@@ -3,8 +3,6 @@ title: Strategy Bindings
 description: The binding.yaml schema and fetch modes
 ---
 
-# Strategy Bindings
-
 ## Overview
 
 A binding (`binding.yaml`) maps a contract's abstract tables to concrete data sources. It tells the resolver _how_ to fetch each table: which backend, which MCP tool, what arguments, and how to parse the response.

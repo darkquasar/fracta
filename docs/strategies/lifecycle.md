@@ -1,11 +1,7 @@
 ---
-title: Lifecycle
-description: Discovery, hot reload, governance status, and the dual-container split
+title: Strategy Lifecycle
+description: How strategies get found, deployed, updated, and graduated from exploratory work to validated production assets.
 ---
-
-# Strategy Lifecycle
-
-How strategies get found, deployed, updated, and graduated from exploratory work to validated production assets.
 
 ## Discovery
 

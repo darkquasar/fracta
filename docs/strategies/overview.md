@@ -1,9 +1,7 @@
 ---
-title: Strategies
-description: DAG-based investigation pipelines run by the python sidecar
+title: Strategy Developer Guide
+description: Reusable Python DAG pipelines run inside a sidecar process — DuckDB is the engine.
 ---
-
-# Strategy Developer Guide
 
 Strategies are reusable Python DAG pipelines that run inside a sidecar process. **DuckDB is the engine.** Data staged from MCP backends lands as Parquet, gets loaded into a per-run DuckDB instance, and every `@step` reads through `ctx.duckdb`. Joins, aggregations, and correlations happen at native speed in columnar storage — no LLM, no per-row Python loops. Strategies return structured results.
 

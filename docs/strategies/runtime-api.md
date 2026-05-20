@@ -1,11 +1,7 @@
 ---
 title: Strategy Runtime API
-description: The StrategyContext fields and capabilities available inside @step methods
+description: The StrategyContext object passed to every @step method — its fields and capabilities.
 ---
-
-# Strategy Runtime API
-
-Every `@step` method receives a `ctx` (StrategyContext) object. This page documents each field and how to use it effectively.
 
 ## ctx.duckdb — Columnar Data Engine
 
