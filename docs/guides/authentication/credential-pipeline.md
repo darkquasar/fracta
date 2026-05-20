@@ -1,11 +1,7 @@
 ---
 title: Credential Pipeline
-description: How fracta resolves and binds credentials for agents and tools
+description: Canonical reference for fracta auth — how credentials are resolved and bound for agents and tools.
 ---
-
-# Credential Pipeline
-
-This is the canonical reference for  Fracta auth configuration.
 
 The credential pipeline handles authentication for both local-process agents and K8s agents. It uses a three-layer model:
 

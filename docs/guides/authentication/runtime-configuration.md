@@ -1,9 +1,7 @@
 ---
-title: Runtime Configuration
-description: Configuring claude, codex, and opencode runtimes
+title: Runtime Configuration Guide
+description: Configuring claude, codex, and opencode runtimes — auth wiring for local and K8s deployments.
 ---
-
-# Runtime Configuration Guide
 
 Fracta supports multiple LLM runtimes: **Claude**, **Codex**, and **OpenCode**. This guide covers how to configure each runtime in `fracta.yaml`, how auth is wired for local and K8s deployments, and how to set up K8s manifests for non-Claude runtimes.
 

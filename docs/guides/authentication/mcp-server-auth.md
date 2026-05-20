@@ -1,11 +1,7 @@
 ---
 title: MCP Server Authentication
-description: Bearer, header, basic, and OAuth flows for remote MCP servers
+description: Authenticated remote MCP servers via the mcp_servers.*.remote.auth block in fracta.yaml.
 ---
-
-# MCP Server Authentication
-
-Fracta supports authenticated remote MCP servers through the `mcp_servers.*.remote.auth` block in `fracta.yaml`.
 
 This document covers authentication for MCP backend servers such as Notion, Raindrop, Elasticsearch, and internal HTTP MCP services. It is separate from LLM runtime authentication for Claude, Codex, or OpenCode. For runtime credentials, see [credential-pipeline.md](/guides/authentication/credential-pipeline).
 
