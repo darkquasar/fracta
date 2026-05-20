@@ -3,8 +3,6 @@ title: fracta graph
 description: Knowledge graph management commands
 ---
 
-# fracta graph
-
 ```
 Knowledge graph management commands
 

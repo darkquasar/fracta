@@ -3,8 +3,6 @@ title: fracta spawn
 description: Spawn a new agent with a dedicated worktree
 ---
 
-# fracta spawn
-
 ```
 Spawn a new agent with a dedicated worktree
 

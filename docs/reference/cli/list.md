@@ -3,8 +3,6 @@ title: fracta list
 description: List all agents
 ---
 
-# fracta list
-
 ```
 List all agents
 

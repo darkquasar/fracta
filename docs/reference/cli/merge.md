@@ -3,8 +3,6 @@ title: fracta merge
 description: Merge an agent's feature branch into the current branch (non-destructive)
 ---
 
-# fracta merge
-
 ```
 Merge an agent's feature branch into the current branch (non-destructive)
 

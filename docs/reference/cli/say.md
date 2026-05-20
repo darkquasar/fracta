@@ -3,8 +3,6 @@ title: fracta say
 description: Send a follow-up message to an agent, resuming its session
 ---
 
-# fracta say
-
 ```
 Send a follow-up message to an agent, resuming its session
 

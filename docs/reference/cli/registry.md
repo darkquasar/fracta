@@ -3,8 +3,6 @@ title: fracta registry
 description: Manage the MCP server registry
 ---
 
-# fracta registry
-
 ```
 Manage the MCP server registry
 

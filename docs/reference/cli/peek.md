@@ -3,8 +3,6 @@ title: fracta peek
 description: Peek at an agent's log output
 ---
 
-# fracta peek
-
 ```
 Peek at an agent's log output
 

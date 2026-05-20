@@ -3,8 +3,6 @@ title: fracta kill
 description: Kill an agent, removing its worktree and state
 ---
 
-# fracta kill
-
 ```
 Kill an agent, removing its worktree and state
 

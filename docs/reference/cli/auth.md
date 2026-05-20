@@ -3,8 +3,6 @@ title: fracta auth
 description: Auth credential pipeline commands
 ---
 
-# fracta auth
-
 ```
 Auth credential pipeline commands
 

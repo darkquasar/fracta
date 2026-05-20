@@ -3,8 +3,6 @@ title: fracta serve
 description: Start fracta as an MCP server
 ---
 
-# fracta serve
-
 ```
 Start fracta as an MCP server
 
