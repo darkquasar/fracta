@@ -13,6 +13,9 @@ var peekCmd = &cobra.Command{
 	Short: "Peek at an agent's log output",
 	Args:  cobra.ExactArgs(1),
 	RunE:  runPeek,
+	Annotations: map[string]string{
+		RequiresFractaYAMLAnnotation: "true",
+	},
 }
 
 func init() {

@@ -26,18 +26,24 @@ type InitOpts struct {
 }
 
 // Init initializes a fracta project at root by materializing the requested
-// scaffold tree. It verifies the directory is a git repo, runs prereq
+// scaffold tree. For local-process scaffolds it verifies the directory is a
+// git repo (worktrees need a git store); kubernetes and docker-compose
+// scaffolds run agents as Jobs/services and don't need .git. It runs prereq
 // checks for the chosen scaffold, walks the source tree (honoring the
 // conflict policy), initializes a SQLite state.db for KindLocal, and ensures
 // .gitignore has the standard fracta entries.
 //
 // Caller is responsible for closing opts.Source.
 func Init(root string, opts InitOpts) (scaffolds.Result, error) {
-	// Verify this is a git repo.
-	gitCheck := exec.Command("git", "rev-parse", "--git-dir")
-	gitCheck.Dir = root
-	if err := gitCheck.Run(); err != nil {
-		return scaffolds.Result{}, fmt.Errorf("current directory is not a git repository")
+	// Verify this is a git repo, but only for the local scaffold. Kubernetes
+	// and docker-compose deployments don't use git worktrees, so requiring a
+	// .git store there would be a false-positive (spec-49 §1).
+	if opts.Scaffold == scaffolds.KindLocal {
+		gitCheck := exec.Command("git", "rev-parse", "--git-dir")
+		gitCheck.Dir = root
+		if err := gitCheck.Run(); err != nil {
+			return scaffolds.Result{}, fmt.Errorf("local-process scaffolds require a git repository at %s; run 'git init' first or pick --scaffold k8s|docker-compose", root)
+		}
 	}
 
 	// Check kind-specific dependencies.

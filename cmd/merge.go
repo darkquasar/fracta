@@ -13,6 +13,9 @@ var mergeCmd = &cobra.Command{
 	Short: "Merge an agent's feature branch into the current branch (non-destructive)",
 	Args:  cobra.ExactArgs(1),
 	RunE:  runMerge,
+	Annotations: map[string]string{
+		RequiresFractaYAMLAnnotation: "true",
+	},
 }
 
 func init() {

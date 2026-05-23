@@ -15,6 +15,9 @@ var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all agents",
 	RunE:  runList,
+	Annotations: map[string]string{
+		RequiresFractaYAMLAnnotation: "true",
+	},
 }
 
 func init() {

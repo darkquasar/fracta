@@ -15,6 +15,9 @@ var killCmd = &cobra.Command{
 	Short: "Kill an agent, removing its worktree and state",
 	Args:  cobra.ExactArgs(1),
 	RunE:  runKill,
+	Annotations: map[string]string{
+		RequiresFractaYAMLAnnotation: "true",
+	},
 }
 
 func init() {

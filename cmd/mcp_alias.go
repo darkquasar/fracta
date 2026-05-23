@@ -21,6 +21,9 @@ Replacement table:
   fracta mcp logout <server>      -> fracta config mcp auth logout <server>
   fracta mcp auth-status [server] -> fracta config mcp auth status [server]
   fracta mcp export <server>      -> fracta config mcp auth export <server>`,
+	Annotations: map[string]string{
+		RequiresFractaYAMLAnnotation: "true",
+	},
 }
 
 var mcpAliasLoginCmd = &cobra.Command{

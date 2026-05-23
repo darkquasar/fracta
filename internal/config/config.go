@@ -819,6 +819,28 @@ func (c *Config) ResolvedProfile() string {
 	return "local"
 }
 
+// IsDockerCompose reports whether the project at root is scaffolded as
+// docker-compose. ResolvedProfile() only distinguishes local vs kubernetes;
+// docker-compose projects share runtime.backend = "local" but ship a
+// docker-compose.yml on disk. This helper is the disambiguator.
+func (c *Config) IsDockerCompose(root string) bool {
+	if root == "" {
+		return false
+	}
+	candidates := []string{
+		filepath.Join(root, "deployment", "docker-compose.yml"),
+		filepath.Join(root, "docker-compose.yml"),
+		filepath.Join(root, "deployment", "docker-compose.yaml"),
+		filepath.Join(root, "docker-compose.yaml"),
+	}
+	for _, p := range candidates {
+		if _, err := os.Stat(p); err == nil {
+			return true
+		}
+	}
+	return false
+}
+
 // DefaultRuntime returns a RuntimeConfig for local development.
 func DefaultRuntime() RuntimeConfig {
 	return RuntimeConfig{

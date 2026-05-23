@@ -15,6 +15,9 @@ This is designed for use as an MCP server in host tool configurations
 (e.g. Claude Desktop, IDE plugins). It provides the same lifecycle
 semantics as the CLI but via MCP tool calls.`,
 	RunE: runHostMCP,
+	Annotations: map[string]string{
+		RequiresFractaYAMLAnnotation: "true",
+	},
 }
 
 func init() {

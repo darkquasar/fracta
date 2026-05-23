@@ -27,6 +27,9 @@ Events are displayed as they arrive. Use --since to replay from a specific event
 Press Ctrl-C to stop.`,
 	Args: cobra.ExactArgs(1),
 	RunE: runWatch,
+	Annotations: map[string]string{
+		RequiresFractaYAMLAnnotation: "true",
+	},
 }
 
 func init() {

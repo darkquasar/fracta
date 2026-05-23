@@ -18,6 +18,9 @@ var registryCmd = &cobra.Command{
 	Short:      "Manage the MCP server registry (deprecated: use 'fracta debug registry')",
 	Hidden:     true,
 	Deprecated: "use 'fracta debug registry' instead",
+	Annotations: map[string]string{
+		RequiresFractaYAMLAnnotation: "true",
+	},
 }
 
 var registryListCmd = &cobra.Command{

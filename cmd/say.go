@@ -14,6 +14,9 @@ var sayCmd = &cobra.Command{
 	Short: "Send a follow-up message to an agent, resuming its session",
 	Args:  cobra.MinimumNArgs(2),
 	RunE:  runSay,
+	Annotations: map[string]string{
+		RequiresFractaYAMLAnnotation: "true",
+	},
 }
 
 func init() {
