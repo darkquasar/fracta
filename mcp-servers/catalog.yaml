@@ -33,3 +33,5 @@ servers:
     path: noteplan/server.yaml
   - id: tana
     path: tana/server.yaml
+  - id: concept-extractor
+    path: concept-extractor/server.yaml

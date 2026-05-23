@@ -1,0 +1,52 @@
+id: concept-extractor
+name: Concept Extractor MCP
+category: nlp
+status: candidate
+description: >-
+  KeyBERT, GLiNER (zero-shot NER), and spaCy exposed as MCP tools for
+  concept and entity extraction. Used by the knowledge-garden strategy
+  family (spec-41) as the smart-classifier alternative to n-gram heuristics.
+upstream:
+  type: first_party
+  url: https://github.com/darkquasar/fracta-mcp-servers
+auth:
+  modes:
+    - none
+  notes: |
+    No auth at the MCP layer. The fracta gateway provides per-agent
+    policy and observability; this server trusts the gateway envelope.
+variants:
+  container:
+    image: ghcr.io/darkquasar/fracta-mcp-servers/concept-extractor:latest
+    image_owner: fracta
+    transport: streamable-http
+    service_url: http://concept-extractor.fracta.svc:8000/mcp
+support:
+  local_process: not_supported
+  docker_compose: supported
+  kubernetes: supported
+docker:
+  dockerfile: ""
+  build_target: ""
+  load_target: ""
+verification:
+  tested_on: ""
+  smoke_test: list_tools
+  expected_tools_contains:
+    - keybert_extract_tool
+    - gliner_extract_tool
+    - spacy_extract_tool
+notes: |
+  Image built and published by github.com/darkquasar/fracta-mcp-servers
+  (servers/concept-extractor/). fracta consumes the published GHCR image
+  only — fracta does not own the Dockerfile.
+
+  This is the first catalog entry whose `image_owner` is `fracta` but whose
+  Dockerfile lives outside the fracta repo. `docker.dockerfile` is left
+  empty to signal "no local build" to the Makefile auto-discovery; the
+  image must be pulled from GHCR.
+
+  Default models (override via env on the container):
+    CONCEPT_EXTRACTOR_KEYBERT_BACKBONE = all-MiniLM-L6-v2
+    CONCEPT_EXTRACTOR_GLINER_MODEL     = urchade/gliner_medium-v2.1
+    CONCEPT_EXTRACTOR_SPACY_MODEL      = en_core_web_sm
