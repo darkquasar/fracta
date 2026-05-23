@@ -57,3 +57,43 @@ jobs:
         # (fracta-owned, fixable), and (2) a race in the go-keyring v0.2.8 mock
         # provider used by internal/oauth tests (third-party, not our bug).
         # Both are tracked for fix; in the meantime we run vanilla tests.
+
+  postgres-integration:
+    name: Postgres integration tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # ubuntu-latest ships with a real Docker daemon and the default
+      # 'bridge' network already created, so testcontainers-go works
+      # out of the box. Postgres-tagged tests use testcontainers to
+      # spin up ephemeral databases per package.
+      - name: Run postgres-tagged Go tests
+        run: go test -tags postgres ./... -count=1 -timeout 10m
+
+  strategies-pytest:
+    name: Strategies pytest
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Sync strategies env
+        working-directory: strategies
+        run: uv sync --frozen
+
+      - name: Run pytest
+        working-directory: strategies
+        run: uv run pytest
