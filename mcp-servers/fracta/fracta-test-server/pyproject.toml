@@ -1,0 +1,9 @@
+[project]
+name = "fracta-test-server"
+version = "0.1.0"
+description = "Minimal streamable-HTTP MCP server for fracta gateway/policy testing"
+requires-python = ">=3.11"
+dependencies = [
+    "mcp[cli]>=1.2.0",
+    "uvicorn>=0.30",
+]
