@@ -392,3 +392,36 @@ func TestInit_DockerComposeScaffoldNoGit_Succeeds(t *testing.T) {
 		t.Errorf("fracta.yaml not written: %v", err)
 	}
 }
+
+// TestInit_K8sGatewayConfigMapHasNoDummyBackends confirms the scaffolded
+// gateway ConfigMap ships with an empty mcp_servers.servers map and no
+// dangling references to absent secrets. Spec-49 follow-up: operators
+// populate via `fracta config mcp add` rather than removing scaffolded
+// dummies by hand.
+func TestInit_K8sGatewayConfigMapHasNoDummyBackends(t *testing.T) {
+	if _, err := exec.LookPath("kubectl"); err != nil {
+		t.Skip("kubectl not installed; skipping k8s scaffold test")
+	}
+	root := setupGitRepo(t)
+	if _, err := Init(root, InitOpts{Scaffold: scaffolds.KindK8s}); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+
+	data, err := os.ReadFile(filepath.Join(root, "deployment/k8s/manifests/fracta-gateway.yaml"))
+	if err != nil {
+		t.Fatalf("read gateway manifest: %v", err)
+	}
+	content := string(data)
+
+	// Must declare an empty servers map.
+	if !strings.Contains(content, "servers: {}") {
+		t.Errorf("gateway ConfigMap should declare empty 'servers: {}'; got:\n%s", content)
+	}
+
+	// Must NOT reference the old dummies.
+	for _, dummy := range []string{"elastic-mcp-secrets", "fracta-mcp-notion", "vendor-mcp.fracta.svc", "elastic-mcp.fracta.svc"} {
+		if strings.Contains(content, dummy) {
+			t.Errorf("gateway manifest still references stripped dummy %q", dummy)
+		}
+	}
+}
