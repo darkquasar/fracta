@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/darkquasar/fracta/internal/config"
 	"github.com/darkquasar/fracta/internal/graph"
 	"github.com/darkquasar/fracta/internal/mcpclient"
 	"github.com/mark3labs/mcp-go/mcp"
@@ -125,8 +126,8 @@ func TestCatalog_ReturnsSortedSnapshot(t *testing.T) {
 	gw := &Gateway{
 		catalog: map[string]CatalogEntry{
 			"vendor.search_alerts": {ServerName: "vendor", OriginalName: "search_alerts"},
-			"elastic.search":      {ServerName: "elastic", OriginalName: "search"},
-			"elastic.esql":        {ServerName: "elastic", OriginalName: "esql"},
+			"elastic.search":       {ServerName: "elastic", OriginalName: "search"},
+			"elastic.esql":         {ServerName: "elastic", OriginalName: "esql"},
 		},
 	}
 
@@ -149,8 +150,8 @@ func TestCatalog_ReturnsSortedSnapshot(t *testing.T) {
 func TestToolsByServer_GroupsCorrectly(t *testing.T) {
 	gw := &Gateway{
 		catalog: map[string]CatalogEntry{
-			"elastic.search":      {ServerName: "elastic", OriginalName: "search"},
-			"elastic.esql":        {ServerName: "elastic", OriginalName: "esql"},
+			"elastic.search":       {ServerName: "elastic", OriginalName: "search"},
+			"elastic.esql":         {ServerName: "elastic", OriginalName: "esql"},
 			"vendor.search_alerts": {ServerName: "vendor", OriginalName: "search_alerts"},
 		},
 	}
@@ -355,5 +356,108 @@ func TestGateway_SetReconcilerActive(t *testing.T) {
 	gw.SetReconcilerActive(false)
 	if gw.reconcilerActive {
 		t.Error("reconcilerActive should be false after SetReconcilerActive(false)")
+	}
+}
+
+func TestPolicyStateSnapshot_NoPoliciesNoRegistry(t *testing.T) {
+	gw := &Gateway{
+		catalog: map[string]CatalogEntry{
+			"alpha.one": {ServerName: "alpha", OriginalName: "one"},
+			"alpha.two": {ServerName: "alpha", OriginalName: "two"},
+		},
+	}
+
+	st := gw.PolicyStateSnapshot(false)
+	if st.HasPolicies || st.HasRegistryStore {
+		t.Errorf("expected neither policies nor registry, got %+v", st)
+	}
+	if st.CatalogSize != 2 {
+		t.Errorf("catalog size = %d, want 2", st.CatalogSize)
+	}
+	if st.VisibleSetBuilt {
+		t.Error("VisibleSetBuilt should be false when visibleSet is nil")
+	}
+	if st.VisibleCount != 0 || st.DeniedByPolicy != 0 || st.DisabledByRegistry != 0 {
+		t.Errorf("counts should be zero when visibleSet not built: %+v", st)
+	}
+	if len(st.Tools) != 0 {
+		t.Error("tools must be empty when verbose=false")
+	}
+}
+
+func TestPolicyStateSnapshot_PoliciesAppliedAndVerbose(t *testing.T) {
+	policies := map[string]*config.ToolPolicy{
+		"elastic": {Deny: []string{"esql"}},
+	}
+	gw := &Gateway{
+		catalog: map[string]CatalogEntry{
+			"elastic.search": {ServerName: "elastic", OriginalName: "search"},
+			"elastic.esql":   {ServerName: "elastic", OriginalName: "esql"},
+		},
+		toolPolicies: policies,
+		visibleSet: map[string]bool{
+			"elastic.search": true,
+			"elastic.esql":   false,
+		},
+		visibleGen: 42,
+	}
+
+	st := gw.PolicyStateSnapshot(true)
+	if !st.HasPolicies {
+		t.Error("HasPolicies should be true")
+	}
+	if st.Generation != 42 {
+		t.Errorf("generation = %d, want 42", st.Generation)
+	}
+	if st.VisibleCount != 1 {
+		t.Errorf("visible = %d, want 1", st.VisibleCount)
+	}
+	if st.DeniedByPolicy != 1 {
+		t.Errorf("denied_by_policy = %d, want 1", st.DeniedByPolicy)
+	}
+	if st.DisabledByRegistry != 0 {
+		t.Errorf("disabled_by_registry = %d, want 0 (only policy denies, registry not involved)", st.DisabledByRegistry)
+	}
+	if len(st.Policies) != 1 || st.Policies[0].Server != "elastic" {
+		t.Errorf("policies summary missing or wrong: %+v", st.Policies)
+	}
+	if len(st.Tools) != 2 {
+		t.Fatalf("tools = %d, want 2 (verbose)", len(st.Tools))
+	}
+	// Tools sorted by namespaced name; elastic.esql first.
+	if st.Tools[0].NamespacedName != "elastic.esql" || st.Tools[0].Visible {
+		t.Errorf("tools[0] wrong: %+v", st.Tools[0])
+	}
+	if st.Tools[0].Reason != "denied_by_policy" {
+		t.Errorf("expected reason denied_by_policy, got %q", st.Tools[0].Reason)
+	}
+	if st.Tools[1].NamespacedName != "elastic.search" || !st.Tools[1].Visible {
+		t.Errorf("tools[1] wrong: %+v", st.Tools[1])
+	}
+}
+
+func TestPolicyStateSnapshot_RegistryDisabledTool(t *testing.T) {
+	// Policy allows everything; registry has disabled one tool (its entry in
+	// visibleSet is false even though no policy denies it).
+	gw := &Gateway{
+		catalog: map[string]CatalogEntry{
+			"alpha.one": {ServerName: "alpha", OriginalName: "one"},
+			"alpha.two": {ServerName: "alpha", OriginalName: "two"},
+		},
+		visibleSet: map[string]bool{
+			"alpha.one": true,
+			"alpha.two": false, // disabled in registry
+		},
+	}
+
+	st := gw.PolicyStateSnapshot(false)
+	if st.VisibleCount != 1 {
+		t.Errorf("visible = %d, want 1", st.VisibleCount)
+	}
+	if st.DeniedByPolicy != 0 {
+		t.Errorf("denied_by_policy = %d, want 0", st.DeniedByPolicy)
+	}
+	if st.DisabledByRegistry != 1 {
+		t.Errorf("disabled_by_registry = %d, want 1", st.DisabledByRegistry)
 	}
 }

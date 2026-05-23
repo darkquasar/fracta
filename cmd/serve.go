@@ -123,7 +123,7 @@ type resolvedConfig struct {
 	graphName  string // FalkorDB graph name (default: fracta_knowledge)
 	runtime    config.RuntimeConfig
 	fullConfig *config.Config // full parsed config, nil when no config file
-	eventBus   events.Bus    // optional; wired after control plane init
+	eventBus   events.Bus     // optional; wired after control plane init
 }
 
 func resolveConfig() (*resolvedConfig, error) {
@@ -519,6 +519,12 @@ func runServeControlPlaneAPI(rc *resolvedConfig, log *slog.Logger) error {
 		}
 		cpAPIServerOpts = append(cpAPIServerOpts, cpapi.WithSSE(cp.SSEHub, cp.EventStore, er, cp.SnapshotStore))
 	}
+	// Operator debug proxy: enabled when gateway.url is set, so thin-client
+	// operators can read /debug/policy via the CP API they already talk to.
+	if cpConfig.Gateway.URL != "" {
+		cpAPIServerOpts = append(cpAPIServerOpts, cpapi.WithGatewayProxy(cpConfig.Gateway.URL))
+		log.Info("debug proxy enabled", "gateway", cpConfig.Gateway.URL)
+	}
 	cpAPIServer := cpapi.NewHTTPServer(listenAddr, cpClient, cpAPIServerOpts...)
 	if err := cpAPIServer.Start(); err != nil {
 		return fmt.Errorf("starting control-plane API: %w", err)
@@ -660,6 +666,9 @@ func runServeGateway(rc *resolvedConfig, log *slog.Logger) error {
 			}
 			if len(policies) > 0 {
 				gw.SetToolPolicies(policies)
+				log.Info("gateway tool policies configured", "policy_count", len(policies))
+			} else {
+				log.Info("gateway has no tool policies configured (all tools allowed)")
 			}
 		}
 
@@ -1005,4 +1014,4 @@ func (a *oauthStoreAdapter) GetClientRegistration(ctx context.Context, server st
 		ClientID:     reg.ClientID,
 		ClientSecret: reg.ClientSecret,
 	}, nil
-} 
+}

@@ -70,4 +70,46 @@ func TestMatchesAny(t *testing.T) {
 			}
 		})
 	}
-} 
+}
+
+func TestPolicySummary(t *testing.T) {
+	t.Run("nil and empty return nil", func(t *testing.T) {
+		if got := PolicySummary(nil); got != nil {
+			t.Errorf("nil input: got %v, want nil", got)
+		}
+		if got := PolicySummary(map[string]*config.ToolPolicy{}); got != nil {
+			t.Errorf("empty map: got %v, want nil", got)
+		}
+	})
+
+	t.Run("nil entries skipped", func(t *testing.T) {
+		got := PolicySummary(map[string]*config.ToolPolicy{"alpha": nil})
+		if len(got) != 0 {
+			t.Errorf("nil entry should be skipped, got %v", got)
+		}
+	})
+
+	t.Run("sorted by server name with deny and allow_only", func(t *testing.T) {
+		policies := map[string]*config.ToolPolicy{
+			"zeta":  {Deny: []string{"x"}},
+			"alpha": {AllowOnly: []string{"a", "b"}, Deny: []string{"c"}},
+			"mid":   {AllowOnly: []string{"m"}},
+		}
+		got := PolicySummary(policies)
+		if len(got) != 3 {
+			t.Fatalf("got %d summaries, want 3", len(got))
+		}
+		if got[0].Server != "alpha" || got[1].Server != "mid" || got[2].Server != "zeta" {
+			t.Errorf("not sorted by server: %v", []string{got[0].Server, got[1].Server, got[2].Server})
+		}
+		if got[0].AllowOnly[0] != "a" || got[0].AllowOnly[1] != "b" || got[0].Deny[0] != "c" {
+			t.Errorf("alpha fields wrong: %+v", got[0])
+		}
+		if len(got[1].Deny) != 0 || got[1].AllowOnly[0] != "m" {
+			t.Errorf("mid fields wrong: %+v", got[1])
+		}
+		if got[2].Deny[0] != "x" || len(got[2].AllowOnly) != 0 {
+			t.Errorf("zeta fields wrong: %+v", got[2])
+		}
+	})
+}

@@ -95,6 +95,7 @@ func (g *Gateway) SetRegistryStore(store registry.Store) {
 	g.mu.Lock()
 	g.registryStore = store
 	g.mu.Unlock()
+	g.logger.Info("registry store attached")
 }
 
 // SetToolPolicies sets the per-server tool policies from config.
@@ -102,6 +103,32 @@ func (g *Gateway) SetToolPolicies(policies map[string]*config.ToolPolicy) {
 	g.mu.Lock()
 	g.toolPolicies = policies
 	g.mu.Unlock()
+
+	var serverNames []string
+	var denyTotal, allowOnlyTotal int
+	for name, p := range policies {
+		if p == nil {
+			continue
+		}
+		serverNames = append(serverNames, name)
+		denyTotal += len(p.Deny)
+		allowOnlyTotal += len(p.AllowOnly)
+	}
+	sort.Strings(serverNames)
+	g.logger.Info("tool policies loaded",
+		"servers", len(serverNames),
+		"server_names", serverNames,
+		"deny_total", denyTotal,
+		"allow_only_total", allowOnlyTotal,
+	)
+	for _, name := range serverNames {
+		p := policies[name]
+		g.logger.Debug("tool policy detail",
+			"server", name,
+			"deny", p.Deny,
+			"allow_only", p.AllowOnly,
+		)
+	}
 }
 
 // BuildVisibleSet computes the set of namespaced tool names that are visible
@@ -144,9 +171,13 @@ func (g *Gateway) BuildVisibleSet(ctx context.Context) {
 	}
 
 	newSet := make(map[string]bool, len(catalogSnapshot))
+	var visibleCount, deniedByPolicy, disabledByRegistry int
 	for nsName, entry := range catalogSnapshot {
 		policy := policies[entry.ServerName]
 		policyAllowed := PolicyAllowed(policy, entry.OriginalName)
+		if !policyAllowed {
+			deniedByPolicy++
+		}
 
 		enabled := true
 		if store != nil {
@@ -154,7 +185,13 @@ func (g *Gateway) BuildVisibleSet(ctx context.Context) {
 				enabled = e
 			}
 		}
+		if !enabled {
+			disabledByRegistry++
+		}
 		newSet[nsName] = enabled && policyAllowed
+		if newSet[nsName] {
+			visibleCount++
+		}
 	}
 
 	g.mu.Lock()
@@ -163,6 +200,24 @@ func (g *Gateway) BuildVisibleSet(ctx context.Context) {
 		g.visibleSet = newSet
 	}
 	g.mu.Unlock()
+
+	g.logger.Info("visible set rebuilt",
+		"generation", gen,
+		"catalog_total", len(catalogSnapshot),
+		"visible", visibleCount,
+		"denied_by_policy", deniedByPolicy,
+		"disabled_by_registry", disabledByRegistry,
+		"has_policies", len(policies) > 0,
+		"has_registry", store != nil,
+	)
+}
+
+// enforcementConfigured reports whether the gateway has any source of
+// visibility enforcement attached (registry store or tool policies).
+func (g *Gateway) enforcementConfigured() bool {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	return g.registryStore != nil || len(g.toolPolicies) > 0
 }
 
 // IsToolVisible returns whether a namespaced tool is in the visible set AND
@@ -358,6 +413,16 @@ func (g *Gateway) proxyHandler(serverName, toolName string) server.ToolHandlerFu
 			return mcp.NewToolResultError(fmt.Sprintf("tool %q is not available in your current scope", nsName)), nil
 		}
 
+		// Emit an allowed event so absence of proxy_rejected vs. proxy_allowed
+		// disambiguates "policy passed" from "policy never loaded". Only emit
+		// when enforcement is configured to keep logs quiet on unenforced clusters.
+		if g.enforcementConfigured() {
+			g.emitProxyEvent("proxy_allowed", "allowed", nsName, agentTask, map[string]string{
+				"server": serverName,
+				"tool":   toolName,
+			})
+		}
+
 		start := time.Now()
 		result, err := g.pool.CallToolRaw(ctx, serverName, toolName, req.GetArguments())
 		duration := time.Since(start)
@@ -401,6 +466,97 @@ func (g *Gateway) emitProxyEvent(action, outcome, resource, agentTask string, at
 	e.Task = agentTask
 	e.Attrs = attrs
 	g.events.Emit(context.Background(), e)
+}
+
+// ToolVisibility is a per-tool entry in a verbose PolicyState response.
+type ToolVisibility struct {
+	NamespacedName string `json:"namespaced_name"`
+	Server         string `json:"server"`
+	Tool           string `json:"tool"`
+	Visible        bool   `json:"visible"`
+	Reason         string `json:"reason,omitempty"` // populated when not visible
+}
+
+// PolicyState is a read-only snapshot of the gateway's policy / visibility
+// state. Returned by the /debug/policy endpoint and the `fracta debug
+// gateway policy` CLI for live introspection.
+type PolicyState struct {
+	HasRegistryStore   bool                  `json:"has_registry_store"`
+	HasPolicies        bool                  `json:"has_policies"`
+	CatalogSize        int                   `json:"catalog_size"`
+	VisibleSetBuilt    bool                  `json:"visible_set_built"`
+	VisibleCount       int                   `json:"visible_count"`
+	DeniedByPolicy     int                   `json:"denied_by_policy"`
+	DisabledByRegistry int                   `json:"disabled_by_registry"`
+	Generation         uint64                `json:"generation"`
+	Policies           []PolicyServerSummary `json:"policies"`
+	Tools              []ToolVisibility      `json:"tools,omitempty"` // populated when verbose
+}
+
+// PolicyStateSnapshot returns the current policy/visibility state. When
+// verbose is true, the snapshot also includes a per-tool entry with the
+// reason a tool is not visible (denied_by_policy, disabled_by_registry,
+// or not_in_visible_set).
+func (g *Gateway) PolicyStateSnapshot(verbose bool) PolicyState {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+
+	st := PolicyState{
+		HasRegistryStore: g.registryStore != nil,
+		HasPolicies:      len(g.toolPolicies) > 0,
+		CatalogSize:      len(g.catalog),
+		VisibleSetBuilt:  g.visibleSet != nil,
+		Generation:       g.visibleGen,
+		Policies:         PolicySummary(g.toolPolicies),
+	}
+
+	if g.visibleSet != nil {
+		for nsName, entry := range g.catalog {
+			visible, found := g.visibleSet[nsName]
+			isVisible := found && visible
+			if isVisible {
+				st.VisibleCount++
+			}
+			policy := g.toolPolicies[entry.ServerName]
+			policyAllowed := PolicyAllowed(policy, entry.OriginalName)
+			if !policyAllowed {
+				st.DeniedByPolicy++
+			}
+			// A tool is "disabled by registry" when policy allows it but the
+			// visible set still excludes it — implying the registry marked it
+			// disabled (or it's absent from the visible set entirely).
+			if policyAllowed && !isVisible {
+				st.DisabledByRegistry++
+			}
+			if verbose {
+				tv := ToolVisibility{
+					NamespacedName: nsName,
+					Server:         entry.ServerName,
+					Tool:           entry.OriginalName,
+					Visible:        isVisible,
+				}
+				if !isVisible {
+					switch {
+					case !policyAllowed:
+						tv.Reason = "denied_by_policy"
+					case !found:
+						tv.Reason = "not_in_visible_set"
+					default:
+						tv.Reason = "disabled_by_registry"
+					}
+				}
+				st.Tools = append(st.Tools, tv)
+			}
+		}
+	}
+
+	if verbose {
+		sort.Slice(st.Tools, func(i, j int) bool {
+			return st.Tools[i].NamespacedName < st.Tools[j].NamespacedName
+		})
+	}
+
+	return st
 }
 
 // Catalog returns a sorted snapshot of all registered proxied tools.
@@ -655,4 +811,4 @@ func (g *Gateway) GetTool(namespacedName string) (json.RawMessage, bool) {
 	}
 	data, _ := json.Marshal(e)
 	return data, true
-} 
+}
