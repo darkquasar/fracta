@@ -16,6 +16,9 @@ These verbs moved from 'fracta mcp <verb>' to 'fracta config mcp auth <verb>'
 in spec-43. The old top-level form is preserved as a deprecation alias for
 one minor release. The hyphenated 'auth-status' is renamed to 'status' on
 the new path.`,
+	Annotations: map[string]string{
+		RequiresFractaYAMLAnnotation: "true",
+	},
 }
 
 var configMcpAuthLoginCmd = &cobra.Command{
