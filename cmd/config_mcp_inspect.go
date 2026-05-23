@@ -19,6 +19,9 @@ var configMcpInspectCmd = &cobra.Command{
 	Short: "Show full per-server metadata from the local catalog.",
 	Args:  cobra.ExactArgs(1),
 	RunE:  runConfigMcpInspect,
+	Annotations: map[string]string{
+		RequiresFractaYAMLAnnotation: "true",
+	},
 }
 
 func init() {

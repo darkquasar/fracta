@@ -37,6 +37,9 @@ If <root>/mcp-servers/ is missing or empty, errors with remediation pointing
 at 'fracta config mcp fetch'.`,
 	Args: cobra.NoArgs,
 	RunE: runConfigMcpList,
+	Annotations: map[string]string{
+		RequiresFractaYAMLAnnotation: "true",
+	},
 }
 
 func init() {
