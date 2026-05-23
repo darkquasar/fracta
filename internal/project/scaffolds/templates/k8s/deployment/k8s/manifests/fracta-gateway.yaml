@@ -32,24 +32,10 @@ data:
       url: http://fracta-gateway.fracta.svc:8080
       listen: ":8080"
 
+    # MCP backends — populate with `fracta config mcp add <server> --target-deployment k8s`.
+    # See docs: guides/mcp-server-examples for worked configs (OAuth, env_token, SSE).
     mcp_servers:
-      servers:
-        elastic:
-          remote:
-            url: http://elastic-mcp.fracta.svc:3000/mcp
-            transport: streamable-http
-        vendor:
-          remote:
-            url: http://vendor-mcp.fracta.svc:3000/sse
-            transport: sse
-        notion:
-          remote:
-            url: https://mcp.notion.com/mcp
-            transport: streamable-http
-            auth:
-              type: oauth
-              token_file: /run/secrets/fracta-mcp-notion/token.json
-              client_registration_file: /run/secrets/fracta-mcp-notion/client-registration.json
+      servers: {}
 
     strategy:
       dir: /opt/fracta/strategies
@@ -111,16 +97,6 @@ spec:
                 secretKeyRef:
                   name: postgres-secrets
                   key: password
-            - name: ELASTIC_URL
-              valueFrom:
-                secretKeyRef:
-                  name: elastic-mcp-secrets
-                  key: url
-            - name: ELASTIC_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: elastic-mcp-secrets
-                  key: api-key
             - name: FALKORDB_URL
               value: "redis://falkordb.fracta.svc:6379"
           readinessProbe:
@@ -150,9 +126,6 @@ spec:
               mountPath: /workspace
             - name: strategy-socket
               mountPath: /tmp
-            - name: notion-oauth
-              mountPath: /run/secrets/fracta-mcp-notion
-              readOnly: true
 
         - name: strategy-runner
           image: ghcr.io/darkquasar/fracta:latest
@@ -209,9 +182,6 @@ spec:
             claimName: fracta-workspace
         - name: strategy-socket
           emptyDir: {}
-        - name: notion-oauth
-          secret:
-            secretName: fracta-mcp-notion
 ---
 apiVersion: v1
 kind: Service

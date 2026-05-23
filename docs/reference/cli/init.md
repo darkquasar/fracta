@@ -1,13 +1,19 @@
 ---
 title: fracta init
-description: Materialize a deployment scaffold (local, docker-compose, or k8s) into the current git repository.
+description: Materialize a deployment scaffold (local, docker-compose, or k8s) into the current directory.
 ---
 
 Materializes one of three deployment scaffolds (`local`, `docker-compose`,
-`k8s`) into the current git repository. The first invocation drops a
-complete deployment tree in your project root; re-running with the same
-scaffold is idempotent. Switching scaffolds in an existing project is
-refused — see [Switching modes](#switching-modes) below.
+`k8s`) into the current directory. The first invocation drops a complete
+deployment tree in your project root; re-running with the same scaffold is
+idempotent. Switching scaffolds in an existing project is refused — see
+[Switching modes](#switching-modes) below.
+
+Only `--scaffold local` requires the directory to be a git repository (the
+local backend uses git worktrees to isolate agent runs). `--scaffold k8s`
+and `--scaffold docker-compose` run agents as Kubernetes Jobs or compose
+services and do **not** need a `.git` directory; you can `fracta init
+--scaffold k8s` in a fresh empty folder.
 
 ```
 Initialize fracta in the current git repository by materializing a scaffold.
@@ -80,11 +86,13 @@ or defaults to `0644`.
 
 `fracta init` also:
 
-- Verifies the directory is a git repo (errors otherwise).
+- Verifies the directory is a git repo **only for `--scaffold local`**
+  (the local backend uses worktrees). Compose and k8s scaffolds skip this
+  check; they run agents as services / Jobs, so `.git` is irrelevant.
 - Checks scaffold-specific dependencies via `prereq.EnsureDepsFor(kind)`:
-  `local` needs `git`; `docker-compose` needs `git` + `docker` + the
-  `docker compose` plugin; `k8s` needs `git` + `kubectl` (warns if no
-  current kube-context, doesn't fail).
+  `local` needs `git`; `docker-compose` needs `docker` + the
+  `docker compose` plugin; `k8s` needs `kubectl` (warns if no current
+  kube-context, doesn't fail).
 - Initializes `.fracta/state.db` (SQLite) for `local` scaffolds only.
   Compose and k8s use postgres-backed state in their deployed services.
 - Appends `.fracta/` and `.worktrees/` to `.gitignore` if not already

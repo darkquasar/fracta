@@ -79,7 +79,9 @@
               "guides/authentication/mcp-server-auth"
             ]
           },
-          "guides/mcp-catalog"
+          "guides/mcp-catalog",
+          "guides/mcp-server-examples",
+          "guides/gateway-tool-policy"
         ]
       },
       {
@@ -103,6 +105,7 @@
               "reference/cli/host-mcp",
               "reference/cli/auth",
               "reference/cli/config-mcp",
+              "reference/cli/debug",
               "reference/cli/mcp",
               "reference/cli/registry",
               "reference/cli/graph"
