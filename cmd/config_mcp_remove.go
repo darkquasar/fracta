@@ -29,6 +29,9 @@ mcp_servers block. --keep-config preserves the fracta.yaml block but still
 removes the generated artifacts.`,
 	Args: cobra.ExactArgs(1),
 	RunE: runConfigMcpRemove,
+	Annotations: map[string]string{
+		RequiresFractaYAMLAnnotation: "true",
+	},
 }
 
 func init() {

@@ -37,6 +37,9 @@ that aren't in the new source are removed). With --merge, local-only entries
 are preserved; entries present in both are replaced by the remote.`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runConfigMcpFetch,
+	Annotations: map[string]string{
+		RequiresFractaYAMLAnnotation: "true",
+	},
 }
 
 func init() {

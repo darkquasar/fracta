@@ -15,6 +15,9 @@ import (
 var configMcpToolCmd = &cobra.Command{
 	Use:   "tool",
 	Short: "Manage individual MCP server tools (enable, disable, list, policy).",
+	Annotations: map[string]string{
+		RequiresFractaYAMLAnnotation: "true",
+	},
 }
 
 var configMcpToolEnableCmd = &cobra.Command{
