@@ -2,6 +2,7 @@
        spike-build spike-load spike-test \
        docker-build docker-load \
        vendor-mcp-build vendor-mcp-load \
+       mcp-build-all mcp-load-all \
        k8s-teardown \
        k8s-secrets k8s-refresh-auth k8s-status k8s-smoke \
        k8s-ensure-image \
@@ -52,14 +53,60 @@ docker-build:
 docker-load:
 	$(call load_k8s_image,$(DOCKER_IMAGE):$(DOCKER_TAG))
 
-VENDOR_MCP_IMAGE ?= fracta/vendor-mcp
-VENDOR_MCP_TAG ?= latest
+# --- MCP server images (auto-discovered) ---
+#
+# Every `mcp-servers/<vendor>/[<server>/]Dockerfile` becomes a pair of
+# targets `mcp-build/<key>` and `mcp-load/<key>`, where <key> is the path
+# under `mcp-servers/` with `/` replaced by `-`.
+#
+#   mcp-servers/vendor/Dockerfile                    -> key: vendor
+#   mcp-servers/fracta/fracta-test-server/Dockerfile -> key: fracta-fracta-test-server
+#
+# Image name: $(MCP_IMAGE_PREFIX)-<key>:$(MCP_IMAGE_TAG).
+# Build context is the directory containing the Dockerfile, so each server
+# can `COPY` its own files without leaking the rest of the repo.
+
+MCP_IMAGE_PREFIX ?= fracta/mcp
+MCP_IMAGE_TAG ?= latest
+MCP_DOCKERFILES := $(shell find mcp-servers -name Dockerfile 2>/dev/null)
+
+mcp_image_key = $(subst /,-,$(patsubst mcp-servers/%/Dockerfile,%,$(1)))
+
+define mcp_image_rules
+mcp-build/$(call mcp_image_key,$(1)):
+	docker build -f $(1) -t $(MCP_IMAGE_PREFIX)-$(call mcp_image_key,$(1)):$(MCP_IMAGE_TAG) $(dir $(1))
+
+mcp-load/$(call mcp_image_key,$(1)):
+	$$(call load_k8s_image,$(MCP_IMAGE_PREFIX)-$(call mcp_image_key,$(1)):$(MCP_IMAGE_TAG))
+
+.PHONY: mcp-build/$(call mcp_image_key,$(1)) mcp-load/$(call mcp_image_key,$(1))
+endef
+
+$(foreach df,$(MCP_DOCKERFILES),$(eval $(call mcp_image_rules,$(df))))
+
+mcp-build-all: $(foreach df,$(MCP_DOCKERFILES),mcp-build/$(call mcp_image_key,$(df)))
+mcp-load-all:  $(foreach df,$(MCP_DOCKERFILES),mcp-load/$(call mcp_image_key,$(df)))
+
+# Backwards-compatible shims for the old `vendor-mcp-*` names (still
+# referenced by k8s-secrets and external docs). They delegate to the
+# auto-generated targets, which only exist when
+# `mcp-servers/vendor/Dockerfile` is present.
+VENDOR_MCP_IMAGE ?= $(MCP_IMAGE_PREFIX)-vendor
+VENDOR_MCP_TAG ?= $(MCP_IMAGE_TAG)
 
 vendor-mcp-build:
-	docker build -f mcp-servers/vendor/Dockerfile -t $(VENDOR_MCP_IMAGE):$(VENDOR_MCP_TAG) .
+	@if [ ! -f mcp-servers/vendor/Dockerfile ]; then \
+	  echo "vendor-mcp-build: mcp-servers/vendor/Dockerfile is missing — add a Dockerfile under mcp-servers/vendor/ or use one of: $(foreach df,$(MCP_DOCKERFILES),mcp-build/$(call mcp_image_key,$(df)))"; \
+	  exit 1; \
+	fi
+	$(MAKE) mcp-build/vendor
 
 vendor-mcp-load:
-	$(call load_k8s_image,$(VENDOR_MCP_IMAGE):$(VENDOR_MCP_TAG))
+	@if [ ! -f mcp-servers/vendor/Dockerfile ]; then \
+	  echo "vendor-mcp-load: mcp-servers/vendor/Dockerfile is missing"; \
+	  exit 1; \
+	fi
+	$(MAKE) mcp-load/vendor
 
 # --- K8s targets ---
 

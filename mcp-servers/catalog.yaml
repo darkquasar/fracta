@@ -7,6 +7,8 @@ status_values:
 servers:
   - id: fracta
     path: fracta/server.yaml
+  - id: fracta-test-server
+    path: fracta/fracta-test-server/server.yaml
   - id: elastic
     path: elastic/server.yaml
   - id: readwise
