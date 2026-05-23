@@ -27,6 +27,10 @@ var spawnCmd = &cobra.Command{
 	Use:   "spawn",
 	Short: "Spawn a new agent with a dedicated worktree",
 	RunE:  runSpawn,
+	Annotations: map[string]string{
+		RequiresFractaYAMLAnnotation:  "true",
+		RequiresGitWorktreeAnnotation: "true",
+	},
 }
 
 func init() {

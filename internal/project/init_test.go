@@ -351,4 +351,44 @@ func TestFixupWorkspacePVC_NoPlaceholder(t *testing.T) {
 	if string(data) != content {
 		t.Errorf("file should be unchanged; got:\n%s", string(data))
 	}
-} 
+}
+
+// TestInit_LocalScaffoldNoGit_Fails covers spec-49 §1: local-mode init still
+// requires a git store because the local backend uses worktrees.
+func TestInit_LocalScaffoldNoGit_Fails(t *testing.T) {
+	root := t.TempDir() // NOT a git repo
+
+	_, err := Init(root, InitOpts{Scaffold: scaffolds.KindLocal})
+	if err == nil {
+		t.Fatal("expected error from Init on non-git dir with KindLocal")
+	}
+	if !strings.Contains(err.Error(), "local-process scaffolds require a git repository") {
+		t.Errorf("unexpected error message: %v", err)
+	}
+}
+
+// TestInit_K8sScaffoldNoGit_Succeeds covers spec-49 §1: k8s init runs without
+// .git because agents run as Jobs, not git worktrees.
+func TestInit_K8sScaffoldNoGit_Succeeds(t *testing.T) {
+	root := t.TempDir() // NOT a git repo
+
+	if _, err := Init(root, InitOpts{Scaffold: scaffolds.KindK8s}); err != nil {
+		t.Fatalf("Init with KindK8s should succeed without git: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "fracta.yaml")); err != nil {
+		t.Errorf("fracta.yaml not written: %v", err)
+	}
+}
+
+// TestInit_DockerComposeScaffoldNoGit_Succeeds covers spec-49 §1: compose
+// init runs without .git because agents run as compose services.
+func TestInit_DockerComposeScaffoldNoGit_Succeeds(t *testing.T) {
+	root := t.TempDir() // NOT a git repo
+
+	if _, err := Init(root, InitOpts{Scaffold: scaffolds.KindDockerCompose}); err != nil {
+		t.Fatalf("Init with KindDockerCompose should succeed without git: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "fracta.yaml")); err != nil {
+		t.Errorf("fracta.yaml not written: %v", err)
+	}
+}

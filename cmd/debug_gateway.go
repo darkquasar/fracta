@@ -129,12 +129,12 @@ func resolveCPAPIBaseURL() (string, error) {
 	if debugGatewayCPURL != "" {
 		return validateGatewayURL(debugGatewayCPURL)
 	}
-	root, _ := FindProjectRoot("")
-	cfg, err := loadConfigOrDefault(root)
-	if err == nil && cfg != nil && cfg.ControlPlaneAPI.URL != "" {
-		return validateGatewayURL(cfg.ControlPlaneAPI.URL)
+	if root, err := FindProjectRoot(""); err == nil {
+		if cfg, err := loadConfigOrDefault(root); err == nil && cfg != nil && cfg.ControlPlaneAPI.URL != "" {
+			return validateGatewayURL(cfg.ControlPlaneAPI.URL)
+		}
 	}
-	return "", fmt.Errorf("no control-plane API URL configured")
+	return "", fmt.Errorf("no control-plane API URL: pass --cp-url or run from a fracta project with control_plane_api.url configured")
 }
 
 func resolveGatewayBaseURL() (string, error) {
@@ -144,14 +144,12 @@ func resolveGatewayBaseURL() (string, error) {
 	if env := os.Getenv("FRACTA_GATEWAY_URL"); env != "" {
 		return validateGatewayURL(env)
 	}
-
-	root, _ := FindProjectRoot("")
-	cfg, err := loadConfigOrDefault(root)
-	if err == nil && cfg != nil && cfg.Gateway.URL != "" {
-		return validateGatewayURL(cfg.Gateway.URL)
+	if root, err := FindProjectRoot(""); err == nil {
+		if cfg, err := loadConfigOrDefault(root); err == nil && cfg != nil && cfg.Gateway.URL != "" {
+			return validateGatewayURL(cfg.Gateway.URL)
+		}
 	}
-
-	return "", fmt.Errorf("no gateway URL: pass --gateway-url, set FRACTA_GATEWAY_URL, or configure gateway.url in fracta.yaml")
+	return "", fmt.Errorf("no gateway URL: pass --gateway-url, set FRACTA_GATEWAY_URL, or run from a fracta project with gateway.url configured")
 }
 
 func validateGatewayURL(raw string) (string, error) {

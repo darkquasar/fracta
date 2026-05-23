@@ -19,6 +19,9 @@ var (
 var authCmd = &cobra.Command{
 	Use:   "auth",
 	Short: "Auth credential pipeline commands",
+	Annotations: map[string]string{
+		RequiresFractaYAMLAnnotation: "true",
+	},
 }
 
 var authDiagnoseCmd = &cobra.Command{

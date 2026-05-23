@@ -11,6 +11,9 @@ import (
 var graphCmd = &cobra.Command{
 	Use:   "graph",
 	Short: "Knowledge graph management commands",
+	Annotations: map[string]string{
+		RequiresFractaYAMLAnnotation: "true",
+	},
 }
 
 var (
