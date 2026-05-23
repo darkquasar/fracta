@@ -17,3 +17,6 @@ __pycache__/
 /fracta
 /bin/fracta
 go.work.sum
+
+# Local work-in-progress notes (not tracked).
+summary.md

@@ -2,11 +2,13 @@
 
 This directory is fracta's catalog for MCP servers that can be wired into local-process, Docker Compose, or Kubernetes deployments.
 
-Each MCP has its own subdirectory:
+Each MCP lives under a vendor directory and contributes the same three files:
 
 - `server.yaml` is the structured source of truth for auth, transports, launch modes, Docker ownership, support status, and smoke-test expectations.
 - `README.md` explains the operational setup for a human.
 - `Dockerfile` lives beside the server metadata only when fracta owns the image.
+
+Vendors with a single server place those files directly under `<vendor>/` (e.g. `elastic/server.yaml`). Vendors shipping multiple servers nest each one in its own subdirectory: `<vendor>/<server>/server.yaml` (e.g. `fracta/fracta-test-server/`). The root Makefile auto-discovers any `Dockerfile` under `mcp-servers/` at any depth.
 
 `catalog.yaml` is the top-level index of all cataloged MCPs.
 
@@ -23,6 +25,7 @@ Each MCP has its own subdirectory:
 | MCP server key | Category | Status | Local-process mode | Docker Compose | Kubernetes | Auth shape | Notes |
 |---|---|---|---|---|---|---|---|
 | `fracta` | first-party | `tested` | fracta binary over stdio | `fracta/agent:latest` | `fracta/agent:latest` | fracta gateway token | First-party platform MCP surface. |
+| `fracta-test-server` | testing | `tested` | not supported | repo-built image | repo-built image | none | Streamable-HTTP mock server for gateway policy/observability tests. Image lives in `fracta/fracta-test-server/Dockerfile`. |
 | `elastic` | security | `tested` | `podman run ... docker.elastic.co/mcp/elasticsearch stdio` | public image | public image | env token | External vendor image. |
 | `vendor` | security | `tested` | `uvx` from VendorSecurity GitHub repo | repo-built image | repo-built image | env token | Image lives in `vendor/Dockerfile`. |
 | `readwise` | knowledge | `documented` | `mcp-remote` proxy | blocked/pending | blocked/pending | OAuth | Official hosted MCP; native fracta path needs gateway OAuth. |

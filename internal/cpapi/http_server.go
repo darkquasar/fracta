@@ -29,12 +29,22 @@ type httpServerOptions struct {
 	eventStore    *events.EventStore
 	eventReader   state.EventReader
 	snapshotStore *events.SnapshotStore
+	gatewayURL    string
 }
 
 // WithCredentialStager registers a CredentialStager for the staging API endpoint.
 // When set, POST /api/v1/credentials/stage is enabled.
 func WithCredentialStager(stager credentials.CredentialStager) HTTPServerOption {
 	return func(o *httpServerOptions) { o.stager = stager }
+}
+
+// WithGatewayProxy enables the operator debug proxy at
+// GET /api/v1/debug/gateway-policy. The CP API forwards each request to
+// <gatewayURL>/debug/policy and returns the response verbatim. Use the
+// in-cluster gateway Service URL (e.g. "http://fracta-gateway.fracta.svc:8080").
+// When unset, the route is not registered.
+func WithGatewayProxy(gatewayURL string) HTTPServerOption {
+	return func(o *httpServerOptions) { o.gatewayURL = gatewayURL }
 }
 
 // WithSSE sets the SSEHub and EventStore for the watch endpoint.
@@ -104,6 +114,15 @@ func NewHTTPServer(listenAddr string, client ControlPlaneClient, opts ...HTTPSer
 		sh := &stagingHandler{stager: options.stager}
 		mux.HandleFunc("POST /api/v1/credentials/stage", sh.handleStageCredential)
 		mux.HandleFunc("GET /api/v1/credentials/stage/{ref}", sh.handleFetchStagedCredential)
+	}
+
+	// Operator debug proxy (optional — only when gateway URL is provided).
+	// Forwards GET /api/v1/debug/gateway-policy → GET <gateway>/debug/policy
+	// so thin-client operators can read gateway policy state without needing
+	// cluster-internal DNS or kubectl port-forward.
+	if options.gatewayURL != "" {
+		dh := newDebugProxyHandler(options.gatewayURL)
+		mux.HandleFunc("GET /api/v1/debug/gateway-policy", dh.handleGatewayPolicy)
 	}
 
 	return &HTTPServer{

@@ -1,0 +1,35 @@
+id: fracta-test-server
+name: Fracta Test MCP Server
+category: testing
+status: tested
+description: Minimal streamable-HTTP MCP server for exercising fracta gateway tool-policy enforcement and observability surfaces.
+upstream:
+  type: first_party
+  url: https://github.com/darkquasar/fracta
+auth:
+  modes:
+    - none
+  notes: No auth. Intended for local clusters only; never deploy alongside production traffic.
+variants:
+  container:
+    image: fracta/mcp-fracta-fracta-test-server:latest
+    image_owner: fracta
+    transport: streamable-http
+    service_url: http://fracta-test-server.fracta.svc:8000/mcp
+support:
+  local_process: not_supported
+  docker_compose: supported
+  kubernetes: supported
+docker:
+  dockerfile: mcp-servers/fracta/fracta-test-server/Dockerfile
+  build_target: mcp-build/fracta-fracta-test-server
+  load_target: mcp-load/fracta-fracta-test-server
+verification:
+  tested_on: "2026-05-23"
+  smoke_test: list_tools
+notes: |
+  Exposes four tools chosen to drive gateway PolicyState scenarios:
+    ping              -> visible
+    echo              -> visible
+    forbidden_action  -> denied_by_policy (deny list)
+    restricted_action -> denied_by_policy (excluded from allow_only)

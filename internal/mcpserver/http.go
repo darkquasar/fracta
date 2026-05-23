@@ -26,9 +26,13 @@ const mcpReadyWaitTimeout = 90 * time.Second
 // /readyz responds 200 only after readyCh closes (readiness).
 // Pass nil for readyCh to make all endpoints immediately available.
 //
+// debugHandlers optionally registers extra read-only HTTP handlers (e.g.
+// /debug/policy). Keys are URL paths; values are handlers. Pass nil to
+// register no extra endpoints. Keeps gateway-internal types out of http.go.
+//
 // The server also exposes /healthz and /readyz for K8s probes and performs
 // graceful shutdown on SIGTERM/SIGINT.
-func serveHTTP(mcp *server.MCPServer, addr string, readyCh <-chan struct{}) error {
+func serveHTTP(mcp *server.MCPServer, addr string, readyCh <-chan struct{}, debugHandlers map[string]http.HandlerFunc) error {
 	if readyCh == nil {
 		ch := make(chan struct{})
 		close(ch)
@@ -89,6 +93,12 @@ func serveHTTP(mcp *server.MCPServer, addr string, readyCh <-chan struct{}) erro
 		}
 	})
 
+	// Optional read-only debug endpoints (e.g. /debug/policy). The map is
+	// supplied by the caller so http.go stays free of gateway-internal types.
+	for path, h := range debugHandlers {
+		mux.HandleFunc(path, h)
+	}
+
 	srv := &http.Server{
 		Addr:    addr,
 		Handler: mux,
@@ -119,4 +129,4 @@ func serveHTTP(mcp *server.MCPServer, addr string, readyCh <-chan struct{}) erro
 		}
 		return nil
 	}
-} 
+}

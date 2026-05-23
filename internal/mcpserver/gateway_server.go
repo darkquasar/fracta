@@ -2,6 +2,8 @@ package mcpserver
 
 import (
 	"context"
+	"encoding/json"
+	"net/http"
 	"time"
 
 	"fmt"
@@ -270,7 +272,32 @@ func (gs *GatewayServer) Serve() error {
 	if gs.mcpPool != nil {
 		defer gs.mcpPool.Close()
 	}
-	return serveHTTP(gs.mcp, gs.listenAddr, readyCh)
+
+	debugHandlers := map[string]http.HandlerFunc{}
+	if gs.gateway != nil {
+		debugHandlers["/debug/policy"] = gs.handleDebugPolicy
+	}
+	return serveHTTP(gs.mcp, gs.listenAddr, readyCh, debugHandlers)
+}
+
+// handleDebugPolicy returns a JSON snapshot of the gateway's tool-policy and
+// visibility state. Supports ?verbose=1 to include a per-tool breakdown with
+// the reason each non-visible tool was filtered. No auth — same exposure
+// model as /healthz and /readyz.
+func (gs *GatewayServer) handleDebugPolicy(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	verbose := r.URL.Query().Get("verbose") == "1"
+	state := gs.gateway.PolicyStateSnapshot(verbose)
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(state); err != nil {
+		fractalog.Component("gateway-server").Warn("debug/policy encode failed", "error", err)
+	}
 }
 
 func (gs *GatewayServer) emitReadyEvent() {
@@ -280,4 +307,4 @@ func (gs *GatewayServer) emitReadyEvent() {
 	e.Detail = fmt.Sprintf("listen=%s", gs.listenAddr)
 	e.Attrs = map[string]string{"status": "ready"}
 	gs.events.Emit(context.Background(), e)
-} 
+}

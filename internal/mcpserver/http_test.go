@@ -14,6 +14,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/darkquasar/fracta/internal/config"
+	"github.com/darkquasar/fracta/internal/gateway"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/stretchr/testify/assert"
@@ -304,6 +306,95 @@ func TestGatewayHTTP_ToolsList(t *testing.T) {
 	}
 }
 
+func TestGatewayServer_HandleDebugPolicy(t *testing.T) {
+	gw := gateway.New(nil, nil)
+	gw.SetToolPolicies(map[string]*config.ToolPolicy{
+		"elastic": {Deny: []string{"esql"}},
+	})
+	gs := &GatewayServer{gateway: gw}
+
+	t.Run("GET returns 200 with policy summary", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/debug/policy", nil)
+		w := httptest.NewRecorder()
+		gs.handleDebugPolicy(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
+
+		var st gateway.PolicyState
+		require.NoError(t, json.NewDecoder(w.Body).Decode(&st))
+		assert.True(t, st.HasPolicies, "HasPolicies must be true after SetToolPolicies")
+		require.Len(t, st.Policies, 1)
+		assert.Equal(t, "elastic", st.Policies[0].Server)
+		assert.Equal(t, []string{"esql"}, st.Policies[0].Deny)
+		assert.Empty(t, st.Tools, "verbose off should omit per-tool list")
+	})
+
+	t.Run("verbose=1 includes tools field shape", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/debug/policy?verbose=1", nil)
+		w := httptest.NewRecorder()
+		gs.handleDebugPolicy(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		// Catalog is empty (no tools registered), so Tools slice stays empty;
+		// just confirm the handler accepts the verbose param without error.
+		var st gateway.PolicyState
+		require.NoError(t, json.NewDecoder(w.Body).Decode(&st))
+		assert.True(t, st.HasPolicies)
+	})
+
+	t.Run("POST rejected as method not allowed", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/debug/policy", nil)
+		w := httptest.NewRecorder()
+		gs.handleDebugPolicy(w, req)
+		assert.Equal(t, http.StatusMethodNotAllowed, w.Code)
+	})
+}
+
+func TestServeHTTP_DebugHandlersRegistered(t *testing.T) {
+	mcpSrv := newTestMCPServer()
+
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	addr := listener.Addr().String()
+	listener.Close()
+
+	debug := map[string]http.HandlerFunc{
+		"/debug/probe": func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = io.WriteString(w, `{"ok":true}`)
+		},
+	}
+
+	errChan := make(chan error, 1)
+	go func() {
+		errChan <- serveHTTP(mcpSrv, addr, nil, debug)
+	}()
+
+	var resp *http.Response
+	for i := 0; i < 50; i++ {
+		resp, err = http.Get("http://" + addr + "/debug/probe")
+		if err == nil {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	require.NoError(t, err, "server didn't start in time")
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	body, _ := io.ReadAll(resp.Body)
+	assert.Equal(t, `{"ok":true}`, string(body))
+
+	p, err := os.FindProcess(os.Getpid())
+	require.NoError(t, err)
+	require.NoError(t, p.Signal(syscall.SIGINT))
+	select {
+	case <-errChan:
+	case <-time.After(5 * time.Second):
+		t.Fatal("serveHTTP did not shut down in time")
+	}
+}
+
 func TestServeHTTP_StartsAndServesHealth(t *testing.T) {
 	mcpSrv := newTestMCPServer()
 
@@ -316,7 +407,7 @@ func TestServeHTTP_StartsAndServesHealth(t *testing.T) {
 	// Start serveHTTP in a goroutine.
 	errChan := make(chan error, 1)
 	go func() {
-		errChan <- serveHTTP(mcpSrv, addr, nil)
+		errChan <- serveHTTP(mcpSrv, addr, nil, nil)
 	}()
 
 	// Wait for server to be ready.
@@ -355,7 +446,7 @@ func startTestHTTPServer(t *testing.T, readyCh <-chan struct{}) (string, func())
 
 	errChan := make(chan error, 1)
 	go func() {
-		errChan <- serveHTTP(mcpSrv, addr, readyCh)
+		errChan <- serveHTTP(mcpSrv, addr, readyCh, nil)
 	}()
 
 	// Wait for HTTP listener to be up.
