@@ -13,6 +13,7 @@ import (
 	"github.com/darkquasar/fracta/internal/mcpcatalog"
 	"github.com/darkquasar/fracta/internal/project/scaffolds"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 )
 
 var (
@@ -23,19 +24,41 @@ var (
 	addYesFlag              bool
 	addPullFlag             bool
 	addBuildFlag            bool
+
+	// Standalone-mode flags. Any one of these opts the command out of the
+	// "must be inside a fracta project" requirement (spec-49 §2.4). When set,
+	// the command uses the explicit target paths and skips project state.
+	addConfigPath        string
+	addComposeFile       string
+	addK8sManifestDir    string
+	addCatalogDirFlag    string
 )
 
 var configMcpAddCmd = &cobra.Command{
 	Use:   "add <server>",
-	Short: "Inject an MCP server into the current scaffold mode.",
+	Short: "Inject an MCP server into the current scaffold mode (or explicit targets).",
 	Long: `Renders the per-mode configuration for one MCP server and writes it
 to fracta.yaml, deployment/docker-compose.yml, and/or deployment/k8s/manifests/.
+
+By default 'add' operates on the surrounding fracta project (walks up for
+.fracta/) and derives the target mode from which scaffolds are enabled. To
+run outside a fracta project — e.g. when adding a backend to a remote
+deployment from a non-project directory — supply --target-deployment plus
+the relevant path flag(s):
+
+  fracta config mcp add fracta-test-server --target-deployment k8s \
+      --catalog-dir ~/GitHub/fracta/mcp-servers \
+      --k8s-manifest-dir /tmp/manifests
 
 A failed mutation rolls back to the pre-'add' state; the successful happy path
 leaves no .bak files. Re-running without --force errors when the per-mode
 entry already exists.`,
 	Args: cobra.ExactArgs(1),
 	RunE: runConfigMcpAdd,
+	// No project annotation: the RunE decides at call time whether project
+	// resolution is needed, based on which path flags are supplied. This is
+	// the same pattern spec-49 §2.4 calls out for the standalone-capable
+	// commands.
 }
 
 func init() {
@@ -54,17 +77,43 @@ func init() {
 	configMcpAddCmd.Flags().BoolVar(&addBuildFlag, "build", false,
 		"Eagerly 'docker build' (only if Dockerfile is fracta-owned).")
 
+	// Standalone-mode flags (spec-49 §2.4) — any one of them opts out of the
+	// project-walk-up and uses the explicit path instead.
+	configMcpAddCmd.Flags().StringVar(&addConfigPath, "config", "",
+		"Explicit fracta.yaml path (standalone mode; bypasses project walk-up for the fracta.yaml target).")
+	configMcpAddCmd.Flags().StringVar(&addComposeFile, "compose-file", "",
+		"Explicit docker-compose.yml path (standalone mode; for --target-deployment docker-compose).")
+	configMcpAddCmd.Flags().StringVar(&addK8sManifestDir, "k8s-manifest-dir", "",
+		"Explicit directory to write the k8s Deployment+Service into (standalone mode; for --target-deployment k8s).")
+	configMcpAddCmd.Flags().StringVar(&addCatalogDirFlag, "catalog-dir", "",
+		"Explicit path to the mcp-servers/ catalog (standalone mode; bypasses project walk-up for the catalog source).")
+
 	configMcpCmd.AddCommand(configMcpAddCmd)
 }
 
 func runConfigMcpAdd(cmd *cobra.Command, args []string) error {
 	serverID := args[0]
 
-	cat, err := mcpcatalog.LoadProjectCatalog(projectRoot)
-	if err != nil {
-		if errors.Is(err, mcpcatalog.ErrNoCatalog) {
-			return errNoCatalogRemediation
+	// Standalone mode is enabled when ANY explicit path flag is supplied.
+	// In standalone mode we never walk up for a fracta project; the operator
+	// is telling us exactly where the targets live. See spec-49 §2.4.
+	standalone := addConfigPath != "" || addComposeFile != "" || addK8sManifestDir != "" || addCatalogDirFlag != ""
+
+	// Resolve the project root only when not in standalone mode (the
+	// no-annotation persistent hook has already skipped its own lookup, so
+	// runtime resolution is up to us here). If projectRoot was already set
+	// (by tests or by --root), trust it without re-walking.
+	root := projectRoot
+	if !standalone && root == "" {
+		var err error
+		root, err = FindProjectRoot("")
+		if err != nil {
+			return fmt.Errorf("not a fracta project: %w (or supply --target-deployment plus one of --config / --compose-file / --k8s-manifest-dir / --catalog-dir to run standalone)", err)
 		}
+	}
+
+	cat, err := loadAddCatalog(root)
+	if err != nil {
 		return err
 	}
 
@@ -73,9 +122,22 @@ func runConfigMcpAdd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("server %q not found in catalog (run 'fracta config mcp fetch' to refresh)", serverID)
 	}
 
-	state, err := mcpcatalog.LoadProjectState(projectRoot)
-	if err != nil {
-		return fmt.Errorf("read project state: %w", err)
+	// Project state only exists when we're inside a project. In standalone
+	// mode we synthesize an empty state and force the operator to be explicit
+	// about --target-deployment.
+	var state *mcpcatalog.ProjectState
+	if standalone {
+		if addTargetDeploymentFlag == "" {
+			return fmt.Errorf("--target-deployment is required when running standalone (no project state to infer from)")
+		}
+		state = &mcpcatalog.ProjectState{
+			EnabledScaffolds: map[scaffolds.Kind]bool{},
+		}
+	} else {
+		state, err = mcpcatalog.LoadProjectState(root)
+		if err != nil {
+			return fmt.Errorf("read project state: %w", err)
+		}
 	}
 
 	mode, err := resolveAddMode(addTargetDeploymentFlag, state)
@@ -88,7 +150,10 @@ func runConfigMcpAdd(cmd *cobra.Command, args []string) error {
 			serverID, mode, supportKeyForCLI(mode), entry.SupportNote(mode))
 	}
 
-	if !state.EnabledScaffolds[mode] {
+	// The "scaffold must be enabled" check only makes sense inside a project.
+	// Standalone callers pre-declare intent via --target-deployment and own
+	// their target paths.
+	if !standalone && !state.EnabledScaffolds[mode] {
 		return fmt.Errorf("scaffold %s is not enabled in this project; run 'fracta init --scaffold %s' first", mode, mode)
 	}
 
@@ -97,7 +162,11 @@ func runConfigMcpAdd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("server %q has no variant suitable for target-deployment %s", serverID, mode)
 	}
 
-	plan, err := planAdd(projectRoot, entry, mode, variant, addForceFlag)
+	plan, err := planAddWithTargets(root, entry, mode, variant, addForceFlag, addTargets{
+		fractaYAML:     addConfigPath,
+		composeFile:    addComposeFile,
+		k8sManifestDir: addK8sManifestDir,
+	})
 	if err != nil {
 		return err
 	}
@@ -132,6 +201,38 @@ func runConfigMcpAdd(cmd *cobra.Command, args []string) error {
 
 	fmt.Fprintf(cmd.OutOrStdout(), "Added %q for target-deployment %s.\n", entry.ID, mode)
 	return nil
+}
+
+// addTargets bundles the optional explicit target paths used in standalone
+// mode. Empty fields fall back to the project-root convention inside planAdd.
+type addTargets struct {
+	fractaYAML     string
+	composeFile    string
+	k8sManifestDir string
+}
+
+// loadAddCatalog resolves which catalog to read: --catalog-dir wins, then
+// the project's mcp-servers/, then cwd/mcp-servers/. Mirrors the precedence
+// used by `manifest`. Inside a project (root != ""), tolerates a missing
+// project catalog and falls back to cwd.
+func loadAddCatalog(root string) (*mcpcatalog.Catalog, error) {
+	if addCatalogDirFlag != "" {
+		return mcpcatalog.LoadCatalog(os.DirFS(addCatalogDirFlag))
+	}
+	if root != "" {
+		cat, err := mcpcatalog.LoadProjectCatalog(root)
+		if err == nil {
+			return cat, nil
+		}
+		if !errors.Is(err, mcpcatalog.ErrNoCatalog) {
+			return nil, err
+		}
+	}
+	cwd, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+	return mcpcatalog.LoadCatalog(os.DirFS(filepath.Join(cwd, "mcp-servers")))
 }
 
 func resolveAddMode(flag string, state *mcpcatalog.ProjectState) (scaffolds.Kind, error) {
@@ -230,17 +331,47 @@ type addPlan struct {
 }
 
 func planAdd(root string, entry *mcpcatalog.Entry, mode scaffolds.Kind, variant string, force bool) (*addPlan, error) {
+	return planAddWithTargets(root, entry, mode, variant, force, addTargets{})
+}
+
+// planAddWithTargets is the standalone-capable form of planAdd. Empty fields
+// in targets fall back to the project-root convention. Used by runConfigMcpAdd
+// after spec-49 added the --config / --compose-file / --k8s-manifest-dir flags.
+func planAddWithTargets(root string, entry *mcpcatalog.Entry, mode scaffolds.Kind, variant string, force bool, targets addTargets) (*addPlan, error) {
+	fractaYAMLPath := targets.fractaYAML
+	if fractaYAMLPath == "" {
+		fractaYAMLPath = filepath.Join(root, "fracta.yaml")
+	}
+	composeFilePath := targets.composeFile
+	if composeFilePath == "" {
+		composeFilePath = filepath.Join(root, "deployment", "docker-compose.yml")
+	}
+	envExamplePath := filepath.Join(root, ".env.example")
+	if root == "" {
+		// Standalone — drop the .env.example side-effect (operator owns it).
+		envExamplePath = ""
+	}
+	k8sManifestPath := ""
+	k8sSecretPath := ""
+	if targets.k8sManifestDir != "" {
+		k8sManifestPath = filepath.Join(targets.k8sManifestDir, entry.ID+"-mcp.yaml")
+		k8sSecretPath = filepath.Join(targets.k8sManifestDir, entry.ID+"-mcp-secret.yaml")
+	} else if root != "" {
+		k8sManifestPath = filepath.Join(root, "deployment", "k8s", "manifests", entry.ID+"-mcp.yaml")
+		k8sSecretPath = filepath.Join(root, "deployment", "k8s", "manifests", entry.ID+"-mcp-secret.yaml")
+	}
+
 	p := &addPlan{
 		root:         root,
 		entry:        entry,
 		mode:         mode,
 		variant:      variant,
 		force:        force,
-		fractaYAML:   filepath.Join(root, "fracta.yaml"),
-		composeFile:  filepath.Join(root, "deployment", "docker-compose.yml"),
-		envExample:   filepath.Join(root, ".env.example"),
-		k8sManifestP: filepath.Join(root, "deployment", "k8s", "manifests", entry.ID+"-mcp.yaml"),
-		k8sSecretP:   filepath.Join(root, "deployment", "k8s", "manifests", entry.ID+"-mcp-secret.yaml"),
+		fractaYAML:   fractaYAMLPath,
+		composeFile:  composeFilePath,
+		envExample:   envExamplePath,
+		k8sManifestP: k8sManifestPath,
+		k8sSecretP:   k8sSecretPath,
 	}
 
 	opts := mcpcatalog.RenderOpts{
@@ -283,7 +414,7 @@ func planAdd(root string, entry *mcpcatalog.Entry, mode scaffolds.Kind, variant 
 				path:        p.fractaYAML, id: entry.ID, mode: mode, body: block,
 			},
 		}
-		if len(entry.Auth.EnvRequired) > 0 {
+		if len(entry.Auth.EnvRequired) > 0 && p.envExample != "" {
 			p.actions = append(p.actions, addAction{
 				kind:        "env-example",
 				description: "~ .env.example (append " + strings.Join(entry.Auth.EnvRequired, ", ") + ")",
@@ -291,6 +422,9 @@ func planAdd(root string, entry *mcpcatalog.Entry, mode scaffolds.Kind, variant 
 			})
 		}
 	case scaffolds.KindK8s:
+		if p.k8sManifestP == "" {
+			return nil, fmt.Errorf("k8s mode requires either a project root or --k8s-manifest-dir to write the Deployment+Service into")
+		}
 		manifest, err := entry.RenderK8sManifest(opts)
 		if err != nil {
 			return nil, fmt.Errorf("render k8s manifest: %w", err)
@@ -441,7 +575,9 @@ func applyAddAction(a addAction, force bool) error {
 			return fmt.Errorf("read %s: %w", a.path, err)
 		}
 		if root == nil {
-			root, _ = mcpcatalog.ReadFractaYAML(a.path)
+			// Standalone case: fracta.yaml doesn't exist yet. Start with an
+			// empty document node so UpsertMCPServer has something to mutate.
+			root = &yaml.Node{Kind: yaml.DocumentNode}
 		}
 		if err := mcpcatalog.UpsertMCPServer(root, a.id, a.mode, a.body, force); err != nil {
 			return err
@@ -451,6 +587,9 @@ func applyAddAction(a addAction, force bool) error {
 		root, err := mcpcatalog.ReadComposeYAML(a.path)
 		if err != nil && !os.IsNotExist(err) {
 			return fmt.Errorf("read %s: %w", a.path, err)
+		}
+		if root == nil {
+			root = &yaml.Node{Kind: yaml.DocumentNode}
 		}
 		if err := mcpcatalog.UpsertComposeService(root, a.serviceName, a.composeBody, force); err != nil {
 			return err
