@@ -14,12 +14,14 @@ Usage:
   fracta config mcp [command]
 
 Available Commands:
-  add         Inject an MCP server into the current scaffold mode
+  add         Inject an MCP server into the current scaffold mode (or explicit targets)
   auth        Manage credentials for OAuth-protected MCP servers
   fetch       Populate <root>/mcp-servers/ from a catalog source
   inspect     Show full per-server metadata
   list        List every MCP server in the local catalog
+  manifest    Emit deployment artifacts for an MCP backend from the catalog
   remove      Reverse 'add' for one server
+  tool        Manage individual MCP server tools (enable, disable, list, policy)
 ```
 
 ## Command tree
@@ -29,8 +31,14 @@ fracta config mcp
 ├── fetch [<source>]               populate <root>/mcp-servers/
 ├── list
 ├── inspect <server>
-├── add <server>
+├── add <server>                   write per-mode config + manifests
+├── manifest <server>              render-only — no writes, no project required
 ├── remove <server>
+├── tool
+│   ├── enable <server> <tool>
+│   ├── disable <server> <tool>
+│   ├── list
+│   └── policy
 └── auth
     ├── login <server>
     ├── logout <server>
@@ -175,6 +183,12 @@ Configured in this project:
 Performs the per-mode hand-edits operators do today, deterministically and
 idempotently, after explaining what running/building/pulling will be needed.
 
+By default `add` operates on the surrounding fracta project (walks up for
+`.fracta/`) and derives the target mode from which scaffolds are enabled. To
+run outside a fracta project — adding a backend to a remote deployment from a
+non-project directory — supply `--target-deployment` plus the relevant
+**standalone-mode** path flag(s) listed below.
+
 ```
 Flags:
   --target-deployment {local|docker-compose|k8s}    Default: only-enabled-mode if exactly
@@ -185,6 +199,12 @@ Flags:
   --yes                                             Skip the pull/build confirmation.
   --pull                                            Eagerly 'docker pull <image>' after scaffolding.
   --build                                           Eagerly 'docker build' (only if Dockerfile is fracta-owned).
+
+Standalone-mode flags (any one opts out of the project walk-up):
+  --config <fracta.yaml path>                       Target fracta.yaml; bypasses project walk-up.
+  --compose-file <docker-compose.yml path>          Target compose file; for --target-deployment docker-compose.
+  --k8s-manifest-dir <dir>                          Where to write <id>-mcp.yaml; for --target-deployment k8s.
+  --catalog-dir <mcp-servers/ path>                 Source catalog dir; bypasses project walk-up for the catalog.
 ```
 
 ### Per-mode write contract
@@ -209,6 +229,119 @@ For multi-file mutations (compose/k8s), each mutation writes a transient
 `.bak` immediately before applying, then removes it on success. On any
 failure, the rollback restores from `.bak` and removes newly-written files.
 Successful `add` leaves no `.bak` files.
+
+### Standalone mode
+
+When any of `--config`, `--compose-file`, `--k8s-manifest-dir`, or
+`--catalog-dir` is supplied, `add` runs in **standalone mode**: no project
+walk-up happens, and the project's scaffold state isn't consulted.
+
+In standalone mode:
+
+- `--target-deployment` is **required** (no project state to infer from).
+- The relevant path flag for the chosen mode must be supplied:
+
+  | Mode | Required flag |
+  |---|---|
+  | `local` | `--config <fracta.yaml path>` |
+  | `docker-compose` | `--compose-file <docker-compose.yml path>` (`--config` is also accepted for the `fracta.yaml` block) |
+  | `k8s` | `--k8s-manifest-dir <dir>` (and `--config` for the `fracta.yaml` block) |
+
+- The `.env.example` side-effect (compose mode) is dropped — the operator
+  owns env-var declaration when running standalone.
+
+Example: add `fracta-test-server` to a k8s deployment whose ConfigMap and
+manifests live in a separate directory:
+
+```bash
+fracta config mcp add fracta-test-server --target-deployment k8s \
+    --catalog-dir ~/GitHub/fracta/mcp-servers \
+    --k8s-manifest-dir /opt/fracta-deploy/k8s/manifests \
+    --config /opt/fracta-deploy/fracta.yaml \
+    --yes
+```
+
+Without any standalone flag, `add` falls back to the project-walk-up
+behaviour — useful when you're inside a fracta project and want the default
+paths.
+
+## `manifest <server>`
+
+Renders the deployment artifacts for an MCP backend from the catalog to
+stdout. Does **not** require a fracta project directory and does **not**
+write any files — pipe to `kubectl apply -f -`, paste into a compose file,
+or capture for review.
+
+```
+Usage: fracta config mcp manifest <server> [flags]
+
+Flags:
+  --variant <name>            Variant name (default: first variant supporting the chosen output).
+  --namespace <ns>            Kubernetes namespace (k8s output only; default: fracta).
+  --image <image:tag>         Override the variant's image (k8s/compose output only).
+  --catalog-dir <path>        Path to mcp-servers/ catalog
+                              (default: project's mcp-servers/, else cwd/mcp-servers).
+  -o, --output {k8s|compose|fracta-yaml}    Output format (default: k8s).
+```
+
+### Output formats
+
+| `-o` value | Emits | Variant must declare |
+|---|---|---|
+| `k8s` (default) | Deployment + Service YAML, ready for `kubectl apply -f -` | `image` |
+| `compose` | A single docker-compose `services.<id>-mcp:` block | `image` |
+| `fracta-yaml` | An `mcp_servers.servers.<id>:` snippet for `fracta.yaml` | `image` or `url` |
+
+### Examples
+
+Render a Deployment+Service for the bundled test server and apply it:
+
+```bash
+fracta config mcp manifest fracta-test-server \
+    --catalog-dir ~/GitHub/fracta/mcp-servers \
+    | kubectl apply -f -
+```
+
+Render a docker-compose service block for inline pasting:
+
+```bash
+fracta config mcp manifest elastic -o compose --image my-fork/elastic-mcp:v2
+```
+
+Render a `fracta.yaml` snippet to add to an existing project by hand:
+
+```bash
+fracta config mcp manifest notion -o fracta-yaml
+```
+
+### When to use `manifest` vs `add`
+
+| | `manifest` | `add` |
+|---|---|---|
+| Side effects | None — stdout only | Writes files; can be rolled back |
+| Project required | No | No (with standalone flags); yes (without) |
+| Idempotency | Trivial (pure function) | Yes — re-running is a no-op |
+| Use for | Inspection, CI templating, ad-hoc deploys | Committing config to a fracta project |
+
+If you find yourself piping `manifest` output into your editor repeatedly,
+that's a sign `add` (or `add` with standalone flags) is the right tool.
+
+## `tool`
+
+Per-tool enable/disable + policy inspection. See [Gateway Tool Policy](../../guides/gateway-tool-policy.md)
+for the operator narrative.
+
+```
+fracta config mcp tool enable <server> <tool>     Mark a tool enabled in the registry
+fracta config mcp tool disable <server> <tool>    Mark a tool disabled in the registry
+fracta config mcp tool list [--server <name>]     Show tools with enabled/policy/visible columns
+fracta config mcp tool policy [--server <name>]   Show effective tool_policy from fracta.yaml
+```
+
+`enable` / `disable` write to the registry store (postgres or sqlite,
+depending on the backend) — they're the imperative override for individual
+tools. The declarative path is `tool_policy:` in `fracta.yaml`; see the
+[gateway tool policy guide](../../guides/gateway-tool-policy.md).
 
 ## `remove <server>`
 
