@@ -35,7 +35,9 @@ func TestRingBufferSink_BroadcastsToSSE(t *testing.T) {
 	defer hub.Unsubscribe("agent-1", ch)
 
 	e := Event{ID: "e1", Task: "agent-1", Time: time.Now(), Action: "tool.started"}
-	sink.Handle(context.Background(), e)
+	if err := sink.Handle(context.Background(), e); err != nil {
+		t.Fatalf("sink.Handle: %v", err)
+	}
 
 	select {
 	case got := <-ch:
@@ -56,7 +58,9 @@ func TestRingBufferSink_GlobalSSEReceives(t *testing.T) {
 	defer hub.Unsubscribe("", ch)
 
 	e := Event{ID: "e1", Task: "agent-1", Time: time.Now(), Action: "heartbeat"}
-	sink.Handle(context.Background(), e)
+	if err := sink.Handle(context.Background(), e); err != nil {
+		t.Fatalf("sink.Handle: %v", err)
+	}
 
 	select {
 	case got := <-ch:
@@ -90,7 +94,9 @@ func TestRingBufferSink_IgnoresEmptyTask(t *testing.T) {
 	sink := NewRingBufferSink(store, hub)
 
 	e := Event{ID: "e1", Time: time.Now(), Action: "heartbeat"}
-	sink.Handle(context.Background(), e)
+	if err := sink.Handle(context.Background(), e); err != nil {
+		t.Fatalf("sink.Handle: %v", err)
+	}
 
 	if store.Len() != 0 {
 		t.Errorf("store should be empty for events without task")

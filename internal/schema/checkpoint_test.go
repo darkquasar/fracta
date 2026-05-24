@@ -38,7 +38,9 @@ func TestLoadCheckpointRules_ValidFile(t *testing.T) {
       description: "Hunt '{name}' is empty"
       suggested_action: "Link entities to hunt"
 `
-	os.WriteFile(filepath.Join(dir, "checkpoint.yaml"), []byte(yaml), 0o644)
+	if err := os.WriteFile(filepath.Join(dir, "checkpoint.yaml"), []byte(yaml), 0o644); err != nil {
+		t.Fatalf("write checkpoint.yaml: %v", err)
+	}
 
 	rules, err := LoadCheckpointRules(dir)
 	if err != nil {
@@ -95,7 +97,9 @@ func TestLoadCheckpointRules_EmptyName(t *testing.T) {
       description: test
       suggested_action: test
 `
-	os.WriteFile(filepath.Join(dir, "checkpoint.yaml"), []byte(yaml), 0o644)
+	if err := os.WriteFile(filepath.Join(dir, "checkpoint.yaml"), []byte(yaml), 0o644); err != nil {
+		t.Fatalf("write checkpoint.yaml: %v", err)
+	}
 
 	_, err := LoadCheckpointRules(dir)
 	if err == nil || !strings.Contains(err.Error(), "empty name") {
@@ -115,7 +119,9 @@ func TestLoadCheckpointRules_InvalidLayer(t *testing.T) {
       description: test
       suggested_action: test
 `
-	os.WriteFile(filepath.Join(dir, "checkpoint.yaml"), []byte(yaml), 0o644)
+	if err := os.WriteFile(filepath.Join(dir, "checkpoint.yaml"), []byte(yaml), 0o644); err != nil {
+		t.Fatalf("write checkpoint.yaml: %v", err)
+	}
 
 	_, err := LoadCheckpointRules(dir)
 	if err == nil || !strings.Contains(err.Error(), "invalid layer") {
@@ -135,7 +141,9 @@ func TestLoadCheckpointRules_InvalidSeverity(t *testing.T) {
       description: test
       suggested_action: test
 `
-	os.WriteFile(filepath.Join(dir, "checkpoint.yaml"), []byte(yaml), 0o644)
+	if err := os.WriteFile(filepath.Join(dir, "checkpoint.yaml"), []byte(yaml), 0o644); err != nil {
+		t.Fatalf("write checkpoint.yaml: %v", err)
+	}
 
 	_, err := LoadCheckpointRules(dir)
 	if err == nil || !strings.Contains(err.Error(), "invalid severity") {
@@ -155,7 +163,9 @@ func TestLoadCheckpointRules_EmptyQuery(t *testing.T) {
       description: test
       suggested_action: test
 `
-	os.WriteFile(filepath.Join(dir, "checkpoint.yaml"), []byte(yaml), 0o644)
+	if err := os.WriteFile(filepath.Join(dir, "checkpoint.yaml"), []byte(yaml), 0o644); err != nil {
+		t.Fatalf("write checkpoint.yaml: %v", err)
+	}
 
 	_, err := LoadCheckpointRules(dir)
 	if err == nil || !strings.Contains(err.Error(), "empty query") {

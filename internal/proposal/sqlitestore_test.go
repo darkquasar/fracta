@@ -42,7 +42,11 @@ func setupSQLiteStore(t *testing.T) *SQLiteStore {
 	if _, err := db.Exec(testSchema); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { db.Close() })
+	t.Cleanup(func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("close db: %v", err)
+		}
+	})
 	return NewSQLiteStore(db)
 }
 
@@ -81,7 +85,9 @@ func TestSQLiteStore_SubmitAndPending(t *testing.T) {
 		Rationale:     "outbound connection",
 		Priority:      1,
 	}
-	s.Submit(ctx, p2)
+	if err := s.Submit(ctx, p2); err != nil {
+		t.Fatalf("Submit p2: %v", err)
+	}
 
 	pending, err := s.PendingProposals(ctx)
 	if err != nil {
@@ -109,7 +115,9 @@ func TestSQLiteStore_Approve(t *testing.T) {
 		DedupeKey:     "test:approve",
 		Rationale:     "test",
 	}
-	s.Submit(ctx, p)
+	if err := s.Submit(ctx, p); err != nil {
+		t.Fatalf("Submit: %v", err)
+	}
 
 	if err := s.Approve(ctx, p.ID); err != nil {
 		t.Fatal(err)
@@ -132,7 +140,9 @@ func TestSQLiteStore_Reject(t *testing.T) {
 		DedupeKey:     "test:reject",
 		Rationale:     "test",
 	}
-	s.Submit(ctx, p)
+	if err := s.Submit(ctx, p); err != nil {
+		t.Fatalf("Submit: %v", err)
+	}
 
 	if err := s.Reject(ctx, p.ID, "budget exceeded"); err != nil {
 		t.Fatal(err)
@@ -154,7 +164,9 @@ func TestSQLiteStore_UpdateStatus(t *testing.T) {
 		DedupeKey:     "test:dedupe",
 		Rationale:     "test",
 	}
-	s.Submit(ctx, p)
+	if err := s.Submit(ctx, p); err != nil {
+		t.Fatalf("Submit: %v", err)
+	}
 
 	if err := s.UpdateStatus(ctx, p.ID, StatusDedupeHit); err != nil {
 		t.Fatal(err)
@@ -192,7 +204,9 @@ func TestSQLiteStore_EvidenceRoundTrip(t *testing.T) {
 		Rationale:     "test",
 		Evidence:      json.RawMessage(`{"key":"value","nested":{"a":1}}`),
 	}
-	s.Submit(ctx, p)
+	if err := s.Submit(ctx, p); err != nil {
+		t.Fatalf("Submit: %v", err)
+	}
 
 	pending, _ := s.PendingProposals(ctx)
 	if len(pending) != 1 {

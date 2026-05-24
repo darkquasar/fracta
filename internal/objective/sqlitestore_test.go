@@ -44,7 +44,11 @@ func setupSQLiteStore(t *testing.T) *SQLiteStore {
 	if _, err := db.Exec(testSchema); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { db.Close() })
+	t.Cleanup(func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("close db: %v", err)
+		}
+	})
 	return NewSQLiteStore(db)
 }
 
@@ -106,7 +110,9 @@ func TestSQLiteStore_Update(t *testing.T) {
 	ctx := context.Background()
 
 	o := &Objective{ID: "obj-2", Description: "initial"}
-	s.Create(ctx, o)
+	if err := s.Create(ctx, o); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
 
 	o.Description = "updated description"
 	o.Status = StatusAnswered
@@ -145,7 +151,9 @@ func TestSQLiteStore_IncrementCounters(t *testing.T) {
 	s := setupSQLiteStore(t)
 	ctx := context.Background()
 
-	s.Create(ctx, &Objective{ID: "obj-3"})
+	if err := s.Create(ctx, &Objective{ID: "obj-3"}); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
 
 	if err := s.IncrementMissionCount(ctx, "obj-3"); err != nil {
 		t.Fatal(err)
@@ -182,12 +190,20 @@ func TestSQLiteStore_ListByStatus(t *testing.T) {
 	s := setupSQLiteStore(t)
 	ctx := context.Background()
 
-	s.Create(ctx, &Objective{ID: "open-1"})
-	s.Create(ctx, &Objective{ID: "open-2"})
+	if err := s.Create(ctx, &Objective{ID: "open-1"}); err != nil {
+		t.Fatalf("Create open-1: %v", err)
+	}
+	if err := s.Create(ctx, &Objective{ID: "open-2"}); err != nil {
+		t.Fatalf("Create open-2: %v", err)
+	}
 	o3 := &Objective{ID: "answered-1"}
-	s.Create(ctx, o3)
+	if err := s.Create(ctx, o3); err != nil {
+		t.Fatalf("Create answered-1: %v", err)
+	}
 	o3.Status = StatusAnswered
-	s.Update(ctx, o3)
+	if err := s.Update(ctx, o3); err != nil {
+		t.Fatalf("Update o3: %v", err)
+	}
 
 	open, err := s.ListByStatus(ctx, StatusOpen)
 	if err != nil {

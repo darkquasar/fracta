@@ -250,16 +250,23 @@ func TestIntegration_ConcurrentKillAndCompletion_ExactlyOneTerminal(t *testing.T
 	var wg sync.WaitGroup
 	wg.Add(2)
 
+	// One goroutine MUST win and the other MUST report ErrTransitionSkipped.
+	// Both outcomes are expected; the assertion below confirms exactly one
+	// terminal event was emitted regardless of which side won.
 	go func() {
 		defer wg.Done()
-		w.MarkStopped(context.Background(), "race-agent", LifecycleMeta{Reason: "killed"})
+		if err := w.MarkStopped(context.Background(), "race-agent", LifecycleMeta{Reason: "killed"}); err != nil && err != ErrTransitionSkipped {
+			t.Errorf("MarkStopped: unexpected error: %v", err)
+		}
 	}()
 
 	go func() {
 		defer wg.Done()
-		w.MarkCompleted(context.Background(), "race-agent", ResultMeta{
+		if err := w.MarkCompleted(context.Background(), "race-agent", ResultMeta{
 			LastOutput: "done",
-		})
+		}); err != nil && err != ErrTransitionSkipped {
+			t.Errorf("MarkCompleted: unexpected error: %v", err)
+		}
 	}()
 
 	wg.Wait()
