@@ -1,0 +1,79 @@
+name: "highlight-distill"
+version: "1.0.0"
+description: >
+  Distill Readwise highlights into Highlight, Document, Concept, and Entity
+  nodes. Fan-out three concept-extraction MCPs (keybert, gliner, spacy) per
+  highlight in parallel, merge their outputs with the asymmetric-base scoring
+  algorithm (spec-41 §4.1.1), and route candidates to graph commit, DuckDB
+  staging, or discard based on the per-mention extraction_score.
+tags: [enrichment, knowledge-garden, readwise]
+params:
+  watermark_iso:
+    type: str
+    required: false
+    default: "1970-01-01T00:00:00Z"
+    description: "Pull only highlights with updated_at > watermark"
+  page_size:
+    type: int
+    required: false
+    default: 100
+    description: "Readwise pagination page size for the source binding"
+requires:
+  graph: true
+  tables:
+    recent_highlights:
+      description: "Recent Readwise highlights (pre-staged via binding)"
+      optional: false
+      columns:
+        highlight_id:
+          type: VARCHAR
+        book_id:
+          type: VARCHAR
+        book_title:
+          type: VARCHAR
+        author:
+          type: VARCHAR
+        text:
+          type: VARCHAR
+        note:
+          type: VARCHAR
+        tags:
+          type: VARCHAR
+        highlighted_at:
+          type: VARCHAR
+        updated_at:
+          type: VARCHAR
+    recent_documents:
+      description: "Recent Readwise documents/books (pre-staged via binding)"
+      optional: false
+      columns:
+        document_id:
+          type: VARCHAR
+        title:
+          type: VARCHAR
+        author:
+          type: VARCHAR
+        url:
+          type: VARCHAR
+        location:
+          type: VARCHAR
+        updated_at:
+          type: VARCHAR
+pinned_backend: readwise
+discovery:
+  description: >
+    Reads Readwise highlights + documents via the gateway-staged tables.
+    Calls three concept-extraction MCPs inline (not via source_bindings).
+  mcp_hints:
+    - tool: "readwise.list_highlights"
+      purpose: "Pull recent highlights since watermark"
+      stage_as: "recent_highlights"
+    - tool: "readwise.list_documents"
+      purpose: "Pull recent documents/books"
+      stage_as: "recent_documents"
+    - tool: "concept-keybert.keybert_extract_tool"
+      purpose: "Keyphrase extraction (within-doc rank tier)"
+    - tool: "concept-gliner.gliner_extract_tool"
+      purpose: "Typed-span extraction with calibrated sigmoid score"
+    - tool: "concept-spacy.spacy_extract_tool"
+      purpose: "NER + noun-chunk fallback (no score field)"

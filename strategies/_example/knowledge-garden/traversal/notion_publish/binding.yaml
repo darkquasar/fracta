@@ -1,0 +1,9 @@
+# notion-publish is a write strategy. It reads no DuckDB tables and
+# performs no pre-staged MCP fetches; all four Notion calls happen inline
+# inside strategy.py via ctx.mcp.call_tool. The empty source_bindings
+# block is deliberate.
+#
+# The spec-41 §4.4 `actions:` framework extension was dropped from scope.
+# Do NOT add an actions: block here — it is unsupported by the runtime.
+
+source_bindings: {}
