@@ -75,7 +75,7 @@ func init() {
 	serveCmd.Flags().StringVar(&serveListen, "listen", "", "HTTP listen address (e.g. ':8080'); only used with --transport http")
 	serveCmd.Flags().StringVar(&serveGraphAddr, "graph-addr", "", "FalkorDB address (e.g. localhost:6379). Enables graph tools when set.")
 	serveCmd.Flags().StringVar(&serveStrategyDir, "strategy-dir", "", "Path to strategy directory. Enables strategy tools when set.")
-	serveCmd.Flags().StringVar(&serveSchemaDir, "schema-dir", "", "Path to graph-schema/ directory. Loads schema and seeds graph at startup when set.")
+	serveCmd.Flags().StringVar(&serveSchemaDir, "schema-dir", "", "Schema URI or local path. URIs: embed://graph-schema/<family>, file:///abs/path/to/<family>. Bare paths are auto-wrapped as file:// with a deprecation log.")
 	serveCmd.Flags().StringVar(&serveBindingPath, "binding", "", "Path to binding.yaml for data source resolution.")
 	serveCmd.Flags().StringVar(&serveStrategySocketMode, "strategy-socket-mode", "", "Strategy runner socket mode: 'external' (connect to sidecar socket) or '' (spawn subprocess)")
 	serveCmd.Flags().StringVar(&serveAgentTask, "agent-task", "", "Agent task name (agent-mode only, set by worker)")
@@ -777,17 +777,18 @@ func (a *graphQuerierAdapter) Query(ctx context.Context, cypher string, params m
 }
 
 // loadMultiSchema loads and merges multiple schema sets from config entries,
-// returning the merged registry and aggregated checkpoint rules.
+// returning the merged registry and aggregated checkpoint rules. Each entry's
+// URI is resolved through internal/schema/resolve (embed://, file://, ...).
 func loadMultiSchema(entries []config.OntologySchemaEntry) (*schema.SchemaRegistry, []schema.CheckpointRule, error) {
 	log := fractalog.Component("serve")
 	sets := make([]*schema.SchemaSet, 0, len(entries))
 	for _, entry := range entries {
-		ss, err := schema.LoadSchemaSet(entry.Path)
+		ss, err := schema.LoadSchemaSetFromURI(entry.URI)
 		if err != nil {
-			return nil, nil, fmt.Errorf("loading schema set %q: %w", entry.Path, err)
+			return nil, nil, fmt.Errorf("loading schema set %q: %w", entry.URI, err)
 		}
 		sets = append(sets, ss)
-		log.Info("loaded schema set", "name", ss.Name, "version", ss.Version, "checkpoints", len(ss.Checkpoint))
+		log.Info("loaded schema set", "source", entry.URI, "name", ss.Name, "version", ss.Version, "checkpoints", len(ss.Checkpoint))
 	}
 
 	merged, err := schema.MergeSchemas(sets...)
@@ -818,6 +819,13 @@ func applySchemaToGraph(gc *graph.FalkorDBClient, reg *schema.SchemaRegistry) er
 		total++
 	}
 
+	for _, uc := range reg.GenerateConstraints() {
+		if err := gc.CreateUniqueConstraint(ctx, uc.Label, uc.Property); err != nil {
+			log.Warn("schema unique constraint (may already exist)", "error", err, "label", uc.Label, "property", uc.Property)
+		}
+		total++
+	}
+
 	for _, stmt := range reg.GenerateSeedCypher() {
 		if err := gc.Update(ctx, stmt, nil); err != nil {
 			return fmt.Errorf("seed statement: %w", err)
@@ -829,13 +837,27 @@ func applySchemaToGraph(gc *graph.FalkorDBClient, reg *schema.SchemaRegistry) er
 	return nil
 }
 
-// loadAndApplySchema loads graph-schema/ YAML files and applies indexes + seeds to FalkorDB.
-// Legacy path for --schema-dir flag.
-func loadAndApplySchema(gc *graph.FalkorDBClient, dir string) error {
+// loadAndApplySchema loads a single schema set and applies indexes + seeds
+// to FalkorDB. Driven by the --schema-dir CLI flag. Accepts either a URI
+// (embed://, file://) or a bare directory path — bare paths are wrapped as
+// file:// with a deprecation log.
+func loadAndApplySchema(gc *graph.FalkorDBClient, source string) error {
 	log := fractalog.Component("serve")
-	registry, err := schema.LoadSchema(dir)
-	if err != nil {
-		return fmt.Errorf("loading schema: %w", err)
+
+	var registry *schema.SchemaRegistry
+	if strings.Contains(source, "://") {
+		ss, err := schema.LoadSchemaSetFromURI(source)
+		if err != nil {
+			return fmt.Errorf("loading schema from %q: %w", source, err)
+		}
+		registry = ss.Registry
+	} else {
+		log.Warn("--schema-dir given a bare path; prefer URI form (file:///abs/path or embed://graph-schema/<family>)", "path", source)
+		r, err := schema.LoadSchema(source)
+		if err != nil {
+			return fmt.Errorf("loading schema: %w", err)
+		}
+		registry = r
 	}
 
 	ctx := context.Background()
@@ -844,6 +866,13 @@ func loadAndApplySchema(gc *graph.FalkorDBClient, dir string) error {
 	for _, stmt := range registry.GenerateIndexCypher() {
 		if err := gc.Update(ctx, stmt, nil); err != nil {
 			log.Warn("schema index statement (may already exist)", "error", err, "stmt", stmt)
+		}
+		total++
+	}
+
+	for _, uc := range registry.GenerateConstraints() {
+		if err := gc.CreateUniqueConstraint(ctx, uc.Label, uc.Property); err != nil {
+			log.Warn("schema unique constraint (may already exist)", "error", err, "label", uc.Label, "property", uc.Property)
 		}
 		total++
 	}

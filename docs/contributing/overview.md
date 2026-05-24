@@ -26,7 +26,7 @@ For licensing questions about your intended *use* of Fracta (rather than contrib
 | `internal/project/scaffolds/templates/{local,docker-compose,k8s}/` | Embedded scaffold sources for `fracta init --scaffold <mode>` — the files materialized into operator projects |
 | `mcp-servers/` | Canonical MCP server catalog (fetched by `fracta config mcp fetch`; spec-43) |
 | `strategies/` | Python DAG strategy runner |
-| `graph-schema/` | Knowledge graph node and edge schema |
+| `internal/schema/embedfs/graph-schema/` | Knowledge graph node and edge schema (baked into the binary via `//go:embed`; resolved at runtime as `embed://graph-schema/<family>`) |
 | `scripts/` | Helper scripts |
 | `docs/` | This documentation |
 

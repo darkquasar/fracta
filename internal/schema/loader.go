@@ -1,9 +1,11 @@
 package schema
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
-	"path/filepath"
+	"path"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -70,7 +72,10 @@ var validAuthorityCategories = map[string]bool{
 	"computed":   true,
 }
 
-// LoadSchema reads a graph-schema/ directory and returns a SchemaRegistry.
+// LoadSchema reads a graph-schema/ directory from the local filesystem and
+// returns a SchemaRegistry. Convenience wrapper around the fs.FS-aware path —
+// used by the legacy `--schema-dir` CLI flag and tests that want a one-shot
+// load. Prefer LoadSchemaSet for production code paths.
 func LoadSchema(dir string) (*SchemaRegistry, error) {
 	reg := &SchemaRegistry{
 		Nodes:     make(map[string]*NodeTypeDef),
@@ -78,41 +83,32 @@ func LoadSchema(dir string) (*SchemaRegistry, error) {
 		Semantics: make(map[string]*SemanticDef),
 	}
 
-	// 1. Read _meta.yaml
-	if _, err := loadMeta(dir, reg); err != nil {
+	fsys := os.DirFS(dir)
+	base := "."
+
+	if _, err := loadMeta(fsys, base, reg); err != nil {
 		return nil, err
 	}
-
-	// 2. Read semantics.yaml
-	if err := loadSemantics(dir, reg); err != nil {
+	if err := loadSemantics(fsys, base, reg); err != nil {
 		return nil, err
 	}
-
-	// 3. Read nodes/*.yaml
-	if err := loadNodeDir(filepath.Join(dir, "nodes"), "universal", reg); err != nil {
+	if err := loadNodeDir(fsys, path.Join(base, "nodes"), "universal", reg); err != nil {
 		return nil, err
 	}
-
-	// 4. Read particulars/*.yaml
-	if err := loadNodeDir(filepath.Join(dir, "particulars"), "particular", reg); err != nil {
+	if err := loadNodeDir(fsys, path.Join(base, "particulars"), "particular", reg); err != nil {
 		return nil, err
 	}
-
-	// 5. Read edges/*.yaml
-	if err := loadEdgeDir(filepath.Join(dir, "edges"), reg); err != nil {
+	if err := loadEdgeDir(fsys, path.Join(base, "edges"), reg); err != nil {
 		return nil, err
 	}
-
-	// 6. Cross-validate
 	if err := crossValidate(reg); err != nil {
 		return nil, err
 	}
-
 	return reg, nil
 }
 
-func loadMeta(dir string, reg *SchemaRegistry) (*yamlMeta, error) {
-	data, err := os.ReadFile(filepath.Join(dir, "_meta.yaml"))
+func loadMeta(fsys fs.FS, base string, reg *SchemaRegistry) (*yamlMeta, error) {
+	data, err := fs.ReadFile(fsys, path.Join(base, "_meta.yaml"))
 	if err != nil {
 		return nil, fmt.Errorf("reading _meta.yaml: %w", err)
 	}
@@ -127,8 +123,8 @@ func loadMeta(dir string, reg *SchemaRegistry) (*yamlMeta, error) {
 	return &meta, nil
 }
 
-func loadSemantics(dir string, reg *SchemaRegistry) error {
-	data, err := os.ReadFile(filepath.Join(dir, "semantics.yaml"))
+func loadSemantics(fsys fs.FS, base string, reg *SchemaRegistry) error {
+	data, err := fs.ReadFile(fsys, path.Join(base, "semantics.yaml"))
 	if err != nil {
 		return fmt.Errorf("reading semantics.yaml: %w", err)
 	}
@@ -151,10 +147,10 @@ func loadSemantics(dir string, reg *SchemaRegistry) error {
 	return nil
 }
 
-func loadNodeDir(dir, expectedLayer string, reg *SchemaRegistry) error {
-	entries, err := os.ReadDir(dir)
+func loadNodeDir(fsys fs.FS, dir, expectedLayer string, reg *SchemaRegistry) error {
+	entries, err := fs.ReadDir(fsys, dir)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, fs.ErrNotExist) {
 			return nil
 		}
 		return fmt.Errorf("reading %s: %w", dir, err)
@@ -163,10 +159,10 @@ func loadNodeDir(dir, expectedLayer string, reg *SchemaRegistry) error {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".yaml") {
 			continue
 		}
-		path := filepath.Join(dir, entry.Name())
-		data, err := os.ReadFile(path)
+		p := path.Join(dir, entry.Name())
+		data, err := fs.ReadFile(fsys, p)
 		if err != nil {
-			return fmt.Errorf("reading %s: %w", path, err)
+			return fmt.Errorf("reading %s: %w", p, err)
 		}
 		var yn yamlNode
 		if err := yaml.Unmarshal(data, &yn); err != nil {
@@ -209,10 +205,10 @@ func loadNodeDir(dir, expectedLayer string, reg *SchemaRegistry) error {
 	return nil
 }
 
-func loadEdgeDir(dir string, reg *SchemaRegistry) error {
-	entries, err := os.ReadDir(dir)
+func loadEdgeDir(fsys fs.FS, dir string, reg *SchemaRegistry) error {
+	entries, err := fs.ReadDir(fsys, dir)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, fs.ErrNotExist) {
 			return nil
 		}
 		return fmt.Errorf("reading %s: %w", dir, err)
@@ -221,10 +217,10 @@ func loadEdgeDir(dir string, reg *SchemaRegistry) error {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".yaml") {
 			continue
 		}
-		path := filepath.Join(dir, entry.Name())
-		data, err := os.ReadFile(path)
+		p := path.Join(dir, entry.Name())
+		data, err := fs.ReadFile(fsys, p)
 		if err != nil {
-			return fmt.Errorf("reading %s: %w", path, err)
+			return fmt.Errorf("reading %s: %w", p, err)
 		}
 		var ye yamlEdge
 		if err := yaml.Unmarshal(data, &ye); err != nil {
@@ -259,44 +255,50 @@ func loadEdgeDir(dir string, reg *SchemaRegistry) error {
 	return nil
 }
 
-// LoadSchemaSet reads a schema set directory (with _meta.yaml containing name/description),
-// loads the schema registry and optional checkpoint rules. Cross-validation is NOT
-// performed here because edge endpoints may reference nodes from other sets.
-// Use MergeSchemas for cross-set validation after loading all sets.
-func LoadSchemaSet(dir string) (*SchemaSet, error) {
+// LoadSchemaSet reads a schema set from the given fs.FS rooted at base,
+// loads the schema registry and optional checkpoint rules. Cross-validation
+// is NOT performed here because edge endpoints may reference nodes from other
+// sets. Use MergeSchemas for cross-set validation after loading all sets.
+//
+// To load from the local filesystem, wrap with os.DirFS:
+//
+//	LoadSchemaSet(os.DirFS("/path/to/graph-schema"), "core")
+//
+// To load from the embedded FS, use EmbeddedFS directly:
+//
+//	LoadSchemaSet(EmbeddedFS, "graph-schema/core")
+//
+// To load from a URI, see resolve.Parse + LoadSchemaSetFromURI.
+func LoadSchemaSet(fsys fs.FS, base string) (*SchemaSet, error) {
 	reg := &SchemaRegistry{
 		Nodes:     make(map[string]*NodeTypeDef),
 		Edges:     make(map[string]*EdgeTypeDef),
 		Semantics: make(map[string]*SemanticDef),
 	}
 
-	meta, err := loadMeta(dir, reg)
+	meta, err := loadMeta(fsys, base, reg)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := loadSemantics(dir, reg); err != nil {
+	if err := loadSemantics(fsys, base, reg); err != nil {
 		return nil, err
 	}
-	if err := loadNodeDir(filepath.Join(dir, "nodes"), "universal", reg); err != nil {
+	if err := loadNodeDir(fsys, path.Join(base, "nodes"), "universal", reg); err != nil {
 		return nil, err
 	}
-	if err := loadNodeDir(filepath.Join(dir, "particulars"), "particular", reg); err != nil {
+	if err := loadNodeDir(fsys, path.Join(base, "particulars"), "particular", reg); err != nil {
 		return nil, err
 	}
-	if err := loadEdgeDir(filepath.Join(dir, "edges"), reg); err != nil {
+	if err := loadEdgeDir(fsys, path.Join(base, "edges"), reg); err != nil {
 		return nil, err
 	}
 
-	// No cross-validation here — edges may reference nodes from other sets.
-	// MergeSchemas validates after union.
-
-	rules, err := LoadCheckpointRules(dir)
+	rules, err := LoadCheckpointRules(fsys, base)
 	if err != nil {
 		return nil, err
 	}
 
-	// Validate authority section if present.
 	authority := meta.Authority
 	if authority == nil {
 		authority = make(map[string][]string)

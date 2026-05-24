@@ -5,36 +5,28 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/darkquasar/fracta/internal/schema/embedfs"
 )
 
-// schemaBaseDir returns the absolute path to graph-schema/ in the project root.
-func schemaBaseDir(t *testing.T) string {
+// loadEmbeddedFamily loads a schema set out of EmbeddedFS by family name.
+// Family tests now route through the embed:// resolver chain — there is no
+// repo-root graph-schema/ directory to walk; the canonical location is
+// internal/schema/graph-schema/ which the //go:embed directive baked in.
+func loadEmbeddedFamily(t *testing.T, family string) *SchemaSet {
 	t.Helper()
-	dir, err := os.Getwd()
+	ss, err := LoadSchemaSet(embedfs.FS, "graph-schema/"+family)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("LoadSchemaSet(embed graph-schema/%s): %v", family, err)
 	}
-	root := filepath.Join(dir, "..", "..")
-	schemaPath := filepath.Join(root, "graph-schema")
-	if _, err := os.Stat(schemaPath); os.IsNotExist(err) {
-		t.Skipf("graph-schema/ not found at %s", schemaPath)
-	}
-	return schemaPath
+	return ss
 }
 
 // loadMergedSchema loads both core and threat-hunting schema sets and merges them.
 func loadMergedSchema(t *testing.T) *SchemaRegistry {
 	t.Helper()
-	base := schemaBaseDir(t)
-
-	coreSet, err := LoadSchemaSet(filepath.Join(base, "core"))
-	if err != nil {
-		t.Fatalf("LoadSchemaSet(core): %v", err)
-	}
-	thSet, err := LoadSchemaSet(filepath.Join(base, "threat-hunting"))
-	if err != nil {
-		t.Fatalf("LoadSchemaSet(threat-hunting): %v", err)
-	}
+	coreSet := loadEmbeddedFamily(t, "core")
+	thSet := loadEmbeddedFamily(t, "threat-hunting")
 
 	merged, err := MergeSchemas(coreSet, thSet)
 	if err != nil {
@@ -44,11 +36,7 @@ func loadMergedSchema(t *testing.T) *SchemaRegistry {
 }
 
 func TestLoadSchemaSet_Core(t *testing.T) {
-	base := schemaBaseDir(t)
-	ss, err := LoadSchemaSet(filepath.Join(base, "core"))
-	if err != nil {
-		t.Fatalf("LoadSchemaSet(core): %v", err)
-	}
+	ss := loadEmbeddedFamily(t, "core")
 	if ss.Name != "core" {
 		t.Errorf("Name = %q, want 'core'", ss.Name)
 	}
@@ -83,11 +71,7 @@ func TestLoadSchemaSet_Core(t *testing.T) {
 }
 
 func TestLoadSchemaSet_ThreatHunting(t *testing.T) {
-	base := schemaBaseDir(t)
-	ss, err := LoadSchemaSet(filepath.Join(base, "threat-hunting"))
-	if err != nil {
-		t.Fatalf("LoadSchemaSet(threat-hunting): %v", err)
-	}
+	ss := loadEmbeddedFamily(t, "threat-hunting")
 	if ss.Name != "threat-hunting" {
 		t.Errorf("Name = %q, want 'threat-hunting'", ss.Name)
 	}
@@ -426,15 +410,7 @@ func TestLoadSchema_InvalidEdgeEndpoint(t *testing.T) {
 }
 
 func TestLoadSchemaSet_GatewayFamily(t *testing.T) {
-	base := schemaBaseDir(t)
-	gwDir := filepath.Join(base, "fracta-mcp-gateway")
-	if _, err := os.Stat(gwDir); os.IsNotExist(err) {
-		t.Skipf("fracta-mcp-gateway not found at %s", gwDir)
-	}
-	ss, err := LoadSchemaSet(gwDir)
-	if err != nil {
-		t.Fatalf("LoadSchemaSet(fracta-mcp-gateway): %v", err)
-	}
+	ss := loadEmbeddedFamily(t, "fracta-mcp-gateway")
 	if ss.Name != "fracta-mcp-gateway" {
 		t.Errorf("Name = %q, want 'fracta-mcp-gateway'", ss.Name)
 	}
@@ -482,7 +458,7 @@ func TestLoadSchemaSet_AuthorityValidation(t *testing.T) {
 		), 0o644)
 		os.WriteFile(filepath.Join(dir, "semantics.yaml"), []byte("vocabulary: []\n"), 0o644)
 
-		_, err := LoadSchemaSet(dir)
+		_, err := LoadSchemaSet(os.DirFS(dir), ".")
 		if err == nil || !strings.Contains(err.Error(), "unknown category") {
 			t.Errorf("expected unknown category error, got: %v", err)
 		}
@@ -495,7 +471,7 @@ func TestLoadSchemaSet_AuthorityValidation(t *testing.T) {
 		), 0o644)
 		os.WriteFile(filepath.Join(dir, "semantics.yaml"), []byte("vocabulary: []\n"), 0o644)
 
-		_, err := LoadSchemaSet(dir)
+		_, err := LoadSchemaSet(os.DirFS(dir), ".")
 		if err == nil || !strings.Contains(err.Error(), "appears in both") {
 			t.Errorf("expected duplicate label error, got: %v", err)
 		}
@@ -508,7 +484,7 @@ func TestLoadSchemaSet_AuthorityValidation(t *testing.T) {
 		), 0o644)
 		os.WriteFile(filepath.Join(dir, "semantics.yaml"), []byte("vocabulary: []\n"), 0o644)
 
-		ss, err := LoadSchemaSet(dir)
+		ss, err := LoadSchemaSet(os.DirFS(dir), ".")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -522,20 +498,9 @@ func TestLoadSchemaSet_AuthorityValidation(t *testing.T) {
 }
 
 func TestMergedSchema_ThreeWay(t *testing.T) {
-	base := schemaBaseDir(t)
-
-	coreSet, err := LoadSchemaSet(filepath.Join(base, "core"))
-	if err != nil {
-		t.Fatalf("LoadSchemaSet(core): %v", err)
-	}
-	thSet, err := LoadSchemaSet(filepath.Join(base, "threat-hunting"))
-	if err != nil {
-		t.Fatalf("LoadSchemaSet(threat-hunting): %v", err)
-	}
-	gwSet, err := LoadSchemaSet(filepath.Join(base, "fracta-mcp-gateway"))
-	if err != nil {
-		t.Fatalf("LoadSchemaSet(fracta-mcp-gateway): %v", err)
-	}
+	coreSet := loadEmbeddedFamily(t, "core")
+	thSet := loadEmbeddedFamily(t, "threat-hunting")
+	gwSet := loadEmbeddedFamily(t, "fracta-mcp-gateway")
 
 	merged, err := MergeSchemas(coreSet, thSet, gwSet)
 	if err != nil {
@@ -552,11 +517,7 @@ func TestMergedSchema_ThreeWay(t *testing.T) {
 }
 
 func TestLoadSchemaSet_KnowledgeGarden(t *testing.T) {
-	base := schemaBaseDir(t)
-	ss, err := LoadSchemaSet(filepath.Join(base, "knowledge-garden"))
-	if err != nil {
-		t.Fatalf("LoadSchemaSet(knowledge-garden): %v", err)
-	}
+	ss := loadEmbeddedFamily(t, "knowledge-garden")
 	if ss.Name != "knowledge-garden" {
 		t.Errorf("Name = %q, want 'knowledge-garden'", ss.Name)
 	}

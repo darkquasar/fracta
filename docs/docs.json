@@ -134,7 +134,8 @@
             "pages": [
               "reference/configuration/fracta-yaml",
               "reference/configuration/mcp-servers-catalog",
-              "reference/configuration/logging"
+              "reference/configuration/logging",
+              "reference/configuration/ontology"
             ]
           },
           "reference/events"

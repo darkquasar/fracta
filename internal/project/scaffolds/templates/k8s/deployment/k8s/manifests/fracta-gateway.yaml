@@ -41,12 +41,16 @@ data:
       dir: /opt/fracta/strategies
       pool_size: 1
 
-    # ontology schemas are not mounted into the gateway pod yet.
-    # TODO: mount graph-schema/ via ConfigMap or PVC volume.
-    # ontology:
-    #   schemas:
-    #     - path: graph-schema/core
-    #     - path: graph-schema/threat-hunting
+    ontology:
+      schemas:
+        # embed:// resolves families baked into the fracta binary at compile time —
+        # no ConfigMap or PVC mount needed. For operator overrides, use
+        # file:///etc/fracta/graph-schema/<family> backed by a ConfigMap or PVC.
+        # See docs/reference/configuration/ontology.md.
+        - uri: embed://graph-schema/core
+        - uri: embed://graph-schema/threat-hunting
+        - uri: embed://graph-schema/fracta-mcp-gateway
+        - uri: embed://graph-schema/knowledge-garden
 ---
 apiVersion: apps/v1
 kind: Deployment
