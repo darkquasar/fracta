@@ -22,8 +22,8 @@ func init() {
 // In both cases the resolved base for fs.FS is "." (the family directory
 // itself is the root of the os.DirFS).
 type fileResolver struct {
-	uri  string
-	dir  string // local path on disk
+	uri string
+	dir string // local path on disk
 }
 
 func newFileResolver(u *url.URL) (Resolver, error) {
