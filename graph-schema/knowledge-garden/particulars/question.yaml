@@ -1,0 +1,25 @@
+label: Question
+layer: particular
+description: >
+  An open question prompted by content under study. Drives further reading
+  and links to Concepts that may eventually answer it.
+
+properties:
+  id:
+    type: string
+    required: true
+    unique: true
+  text:
+    type: string
+    required: true
+  status:
+    type: string
+    required: false
+    description: "Question state: open, exploring, answered, abandoned"
+  created_at:
+    type: string
+    required: false
+
+indexes:
+  - properties: [id]
+    type: exact

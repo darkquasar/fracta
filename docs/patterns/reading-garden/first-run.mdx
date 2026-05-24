@@ -1,0 +1,220 @@
+---
+title: First Run
+description: End-to-end scripted run — register the MCP stack, spawn a Claude worker with one pipeline prompt, and publish your first Concept page to Notion.
+---
+
+This page is the proof-of-life walkthrough for the Reading Garden pattern. By the end you will have ingested one book's worth of Readwise highlights, distilled them into Concepts in the knowledge graph, and published a Notion page for the highest-confidence Concept — all driven by a single prompt to a Claude worker.
+
+It assumes you have already done the one-time install. If you have not:
+
+<Steps>
+  <Step title="Install fracta">
+    Follow [Installation](/getting-started/installation) and [Your First Agent](/getting-started/first-agent). Confirm `fracta spawn --task hello --contract "say hi"` returns cleanly before continuing.
+  </Step>
+  <Step title="Complete pattern Setup">
+    Walk through [Setup](/patterns/reading-garden/setup) once — it covers the Notion + Readwise OAuth dance (via `mcp-remote`), the `fracta.yaml` blocks for those two servers, and the catalog gotchas (Notion DB sharing, Readwise rate limits, plaintext token cache). The current page does not repeat that material.
+  </Step>
+</Steps>
+
+## What you will do
+
+Add the three concept-extraction MCP servers, spawn one Claude worker with one prompt, and read back the result. The pipeline framing — "run the reading-garden pipeline" — lets Claude orchestrate the three strategies internally; you do not call them one at a time.
+
+The whole thing should fit in under 15 minutes once Setup is complete.
+
+## Step 1 — Add the concept-extractor MCP servers
+
+Setup wired up `notion` and `readwise` (the two OAuth-gated knowledge sources). The Reading Garden pipeline also needs three small extractor MCP servers — KeyBERT, GLiNER, and spaCy — that turn raw highlight text into ranked concept candidates. They run as containers (no OAuth required), are first-party fracta images published to GHCR, and are catalogued at `mcp-servers/concept-{keybert,gliner,spacy}/server.yaml` in the fracta repo.
+
+This guide assumes you are running fracta with [docker-compose deployment](/guides/deployment/docker-compose) — these three servers are `local_process: not_supported` in the catalog (they ship as containers only). Bring up the three sidecars alongside your gateway by appending their compose services to `deployment/docker-compose.yml`:
+
+```yaml
+services:
+  # ... fracta gateway and existing services remain here ...
+
+  concept-keybert:
+    image: ghcr.io/darkquasar/fracta-mcp-servers/concept-keybert:latest
+    networks: [fracta]
+
+  concept-gliner:
+    image: ghcr.io/darkquasar/fracta-mcp-servers/concept-gliner:latest
+    networks: [fracta]
+
+  concept-spacy:
+    image: ghcr.io/darkquasar/fracta-mcp-servers/concept-spacy:latest
+    networks: [fracta]
+```
+
+Then append the matching registry entries to `mcp_servers.servers:` in your `fracta.yaml` so the gateway can route to them by compose-service DNS on the internal port 8000:
+
+```yaml
+mcp_servers:
+  servers:
+    # ... notion and readwise from Setup remain here ...
+
+    concept-keybert:
+      remote:
+        url: http://concept-keybert:8000/mcp
+        transport: streamable-http
+
+    concept-gliner:
+      remote:
+        url: http://concept-gliner:8000/mcp
+        transport: streamable-http
+
+    concept-spacy:
+      remote:
+        url: http://concept-spacy:8000/mcp
+        transport: streamable-http
+```
+
+<Note>
+  The URL shape follows the docker-compose convention from [MCP server examples](/guides/mcp-server-examples) — compose-service DNS on the container's internal port. In Kubernetes, swap the host for each server's `service_url` (e.g. `http://concept-keybert.fracta.svc:8000/mcp`) as documented in the catalog entry; see the [Kubernetes runbook](/guides/deployment/kubernetes-runbook) for the surrounding manifests. The container images ship from [fracta-mcp-servers](https://github.com/darkquasar/fracta-mcp-servers); fracta consumes the published GHCR tags only.
+</Note>
+
+Bring the new sidecars up:
+
+```bash
+docker compose -f deployment/docker-compose.yml up -d concept-keybert concept-gliner concept-spacy
+```
+
+Verify the registry sees all five servers:
+
+```bash
+fracta registry list
+```
+
+You should see `notion`, `readwise`, `concept-keybert`, `concept-gliner`, `concept-spacy` — all with status `ok`. If `notion` or `readwise` show `auth_required`, re-check [Setup](/patterns/reading-garden/setup) for the OAuth flow. If any of the extractors fail to reach `ok`, confirm the compose containers are healthy (`docker compose ps`) and that the gateway can resolve the service DNS from its own container.
+
+## Step 2 — Confirm Claude is your default runtime
+
+The rest of this guide assumes `fracta spawn` without `--runtime` launches a Claude worker. Open your `fracta.yaml` and confirm it contains an `agents:` block roughly like the following — if Setup or `fracta init` already left this in place, you only need to verify it's there:
+
+```yaml
+agents:
+  default_runtime: claude
+  agent_runtimes:
+    claude:
+      adapter: claude
+      model_tiers:
+        heavy: opus
+        medium: global.anthropic.claude-sonnet-4-5-20250929-v1:0
+        light: haiku
+```
+
+If the `agents:` block is missing or `default_runtime` is set to something else, add or edit it now. See [Runtime configuration](/guides/authentication/runtime-configuration) for the full per-runtime adapter and authentication setup; the block above is the minimum needed for the rest of this guide. Any host that speaks MCP can drive this pipeline, but the prompt below is written for Claude and assumes its tool-use conventions.
+
+## Step 3 — Spawn the worker with the pipeline prompt
+
+This is the one prompt. Copy it as-is, swap the database ID, and run:
+
+```bash
+fracta spawn \
+  --task reading-garden-first-run \
+  --contract "Run the reading-garden pipeline against my Readwise account and publish the top concepts to Notion.
+
+Steps:
+1. Call strategy_run(name='highlight-distill', params={'watermark_iso': '2025-10-01T00:00:00Z', 'page_size': 100}). This pulls recent Readwise highlights and writes Highlight, Document, and candidate Concept nodes into the graph. Report how many of each were written.
+2. Call strategy_run(name='cross-source-concepts'). This rescores every Concept by recency, frequency, and source diversity, then updates Concept.confidence and Concept.mention_count in the graph. Report the top five concepts by confidence.
+3. Pick the single highest-confidence Concept from step 2. Call strategy_run(name='notion-publish', params={'concept_name': '<that concept name>', 'notion_database_id': 'YOUR_NOTION_DATABASE_ID'}). Report the returned Notion page URL.
+4. Call graph_checkpoint(mcp_servers='notion,readwise') and report whether all_clear is true.
+
+Finish by summarizing: highlights ingested, concepts extracted, top concept published, Notion URL, checkpoint status."
+```
+
+Replace `YOUR_NOTION_DATABASE_ID` with the database ID you set up in [Setup](/patterns/reading-garden/setup#share-the-notion-database). Adjust the `watermark_iso` to whatever cutoff date you want — keeping it recent on the first run avoids long Readwise pulls (the API caps at 20 requests/minute).
+
+<Tip>
+  The prompt is intentionally pipeline-framed. You are not asking Claude to "find concepts in my highlights" — you are asking it to run a named pipeline whose steps are spelled out. That framing keeps the worker deterministic and makes the run easy to replay.
+</Tip>
+
+Watch the run as it happens:
+
+```bash
+fracta watch reading-garden-first-run
+```
+
+You will see each `strategy_run` call as a tool invocation, with the structured result returned to the worker. Detach with `Ctrl-C` whenever you want — the worker keeps running.
+
+## Step 4 — Read what the worker reports back
+
+Once the worker reaches `completed` (visible in `fracta list`), read its final semantic output:
+
+```bash
+fracta peek reading-garden-first-run
+```
+
+A successful first run looks roughly like:
+
+```
+Pipeline complete.
+
+- highlight-distill: ingested 87 Highlights from 3 Documents; wrote 142 candidate Concepts.
+- cross-source-concepts: rescored 142 Concepts; top 5 by confidence:
+    1. "epistemic humility" (confidence 0.91, mentions 6)
+    2. "second-order thinking" (confidence 0.84, mentions 5)
+    3. "Goodhart's Law" (confidence 0.78, mentions 4)
+    4. "compounding" (confidence 0.72, mentions 4)
+    5. "via negativa" (confidence 0.69, mentions 3)
+- notion-publish: created page for "epistemic humility" -> https://www.notion.so/your-workspace/Epistemic-Humility-abc123def456
+- graph_checkpoint: all_clear=true
+```
+
+Open the Notion URL. You should see a page titled with the concept name, an `epistemic_status` header (`evergreen` for confidence > 0.8, `budding` for 0.4–0.8, `seedling` below), the supporting Highlights rendered as quote blocks, and backlinks to the source Documents. The exact rendering is fixed by the [`notion-publish` strategy](/patterns/reading-garden/strategies#notion-publish).
+
+## Step 5 — Spot-check the graph
+
+The worker reported counts; verify them against the graph yourself. Spawn a short-lived agent to run a Cypher query through the `graph_query` MCP tool:
+
+```bash
+fracta spawn \
+  --task verify-graph \
+  --mode batch \
+  --contract "Call graph_query with the Cypher: MATCH (c:Concept) RETURN c.name, c.confidence, c.mention_count ORDER BY c.confidence DESC LIMIT 10 -- and report the rows verbatim."
+
+fracta peek verify-graph
+```
+
+You should see the same top-N concepts the pipeline reported, with confidence scores in descending order. A second useful spot-check, to confirm the publish leg wrote a `Publication` node:
+
+```bash
+fracta spawn \
+  --task verify-publication \
+  --mode batch \
+  --contract "Call graph_query with the Cypher: MATCH (c:Concept)-[:PUBLISHED_AS]->(p:Publication) RETURN c.name, p.sink, p.external_id, p.last_updated_at ORDER BY p.last_updated_at DESC LIMIT 5 -- and report the rows."
+
+fracta peek verify-publication
+```
+
+The `sink` should be `notion` and `external_id` should match the Notion page ID in the URL the worker reported.
+
+## Step 6 — Re-run for idempotency
+
+Run the same `fracta spawn` command from Step 3 again, with the same `concept_name` and `notion_database_id`. The `notion-publish` strategy is idempotent — Step 3's report should now read something like:
+
+```
+- notion-publish: page for "epistemic humility" already current (content_hash match); no Notion API writes performed.
+```
+
+If the underlying Concept changed (more Highlights linked, confidence shifted), the strategy updates the existing page rather than creating a duplicate. This is the contract that makes the pattern safe to schedule.
+
+## What just happened
+
+The single prompt drove a three-stage CODE flow (Capture → Distill → Express) end-to-end:
+
+- **Capture + Organize:** `highlight-distill` pulled fresh Readwise data through the gateway, staged it in a per-run DuckDB, and wrote typed nodes into the graph.
+- **Distill:** `cross-source-concepts` scored Concepts using recency × frequency × source diversity, writing `confidence` and `mention_count` back to the graph.
+- **Express:** `notion-publish` rendered the highest-confidence Concept as a Notion page and recorded a `Publication` node tying the graph state to the external page (the basis for idempotent re-runs).
+
+Claude held the framing prompt and orchestrated the three strategy calls. Each `strategy_run` was a deterministic Python pipeline executed by the gateway's strategy runner — no LLM tokens were spent on the actual data work, only on deciding when to call the next stage.
+
+## What's next
+
+<Cards>
+  <Card title="Strategies" href="/patterns/reading-garden/strategies">
+    Per-strategy reference for `highlight-distill`, `cross-source-concepts`, `notion-publish` — every param, every output shape.
+  </Card>
+  <Card title="Extending" href="/patterns/reading-garden/extending">
+    Add new sources (Raindrop, Zotero), publish to public gardens (Mintlify, Quartz), or grow the ontology — without forking the pattern.
+  </Card>
+</Cards>

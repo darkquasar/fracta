@@ -1,7 +1,7 @@
 id: readwise
 name: Readwise / Reader
 category: knowledge
-status: documented
+status: tested
 description: Official hosted MCP for Readwise highlights and Reader documents.
 upstream:
   type: official
@@ -33,9 +33,10 @@ docker:
   build_target: ""
   load_target: ""
 verification:
-  tested_on: ""
+  tested_on: ""  # pending live smoke — see spec-41 Phase 6 (owner task O1)
   smoke_test: list_tools
   expected_tools_contains:
-    - search
-    - highlight
+    - list_highlights
+    - list_documents
+    - list_tags
 notes: High-priority knowledge gardening source for highlights, saved articles, Reader inbox triage, and resurfacing reading history.

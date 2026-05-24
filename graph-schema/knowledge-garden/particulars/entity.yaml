@@ -1,0 +1,35 @@
+label: Entity
+layer: particular
+description: >
+  A named entity (person, place, organization, work) extracted from content.
+  Distinct from Concept: Entities are proper nouns, Concepts are ideas.
+
+properties:
+  name:
+    type: string
+    required: true
+    unique: true
+  kind:
+    type: string
+    required: false
+    description: "Entity kind: person, place, org, work, product"
+  description:
+    type: string
+    required: false
+  external_ref:
+    type: string
+    required: false
+    description: Optional reference URI (Wikidata QID, ISBN, ORCID, etc.)
+  extraction_score:
+    type: float
+    required: false
+    description: >
+      0.0-1.0 per-extraction confidence written by highlight_distill, mirroring
+      Concept.extraction_score. Authoritative typer is gliner; spacy NER and
+      keybert contribute as support signals.
+
+indexes:
+  - properties: [name]
+    type: exact
+  - properties: [extraction_score]
+    type: exact

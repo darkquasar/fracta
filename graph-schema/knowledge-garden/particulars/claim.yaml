@@ -1,0 +1,27 @@
+label: Claim
+layer: particular
+description: >
+  A propositional claim asserted by a Document, Highlight, or Note.
+  Targets of EVIDENCES and CONTRADICTS edges from supporting captures.
+
+properties:
+  id:
+    type: string
+    required: true
+    unique: true
+  text:
+    type: string
+    required: true
+    description: The claim stated as a proposition
+  stance:
+    type: string
+    required: false
+    description: "Author position: assertion, hypothesis, refutation"
+  confidence:
+    type: float
+    required: false
+    description: 0.0-1.0 belief score across supporting evidence
+
+indexes:
+  - properties: [id]
+    type: exact

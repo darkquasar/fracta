@@ -1,0 +1,16 @@
+type: REFINES
+description: >
+  A Concept or Claim refines (narrows, sharpens, supersedes) another. Used
+  to track how your understanding of a concept evolves over time.
+
+endpoints:
+  from: [Concept, Claim]
+  to: [Concept, Claim]
+
+properties:
+  refined_at:
+    type: string
+    required: false
+  rationale:
+    type: string
+    required: false

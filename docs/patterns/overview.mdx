@@ -1,0 +1,86 @@
+---
+title: Fracta Patterns
+description: Opinionated end-to-end stacks — MCP servers, ontology slice, strategies — for the most common ways people use fracta.
+---
+
+# Fracta Patterns
+
+A **pattern** is a curated, working stack: a set of MCP servers wired up, a slice of the knowledge graph laid out for a domain, and the strategies that turn that slice into something useful. The framework reference tells you *how* fracta works. A pattern shows you a *complete* setup for a specific job — every piece in place, ready to run.
+
+If the rest of the docs are the parts catalogue, this section is the recipe book.
+
+## Standing on shoulders
+
+Patterns don't invent methodologies — they wire fracta into the ones the field has already settled on. Most knowledge-management patterns trace their lineage to a recognisable thread: Tiago Forte's **CODE** flow (Capture / Organize / Distill / Express) for treating personal knowledge as a pipeline; **digital gardens** in the [Maggie Appleton lineage](https://maggieappleton.com/garden-history) for letting ideas grow in public over time; the **zettelkasten** tradition for atomic notes that link rather than nest. Every pattern in this section declares an `influences:` field in its frontmatter listing the prior art it stands on, so you can place the pattern on the map before you commit to it.
+
+The Reading Garden in particular publishes to a Notion workspace by default — a deliberately *narrower* interpretation of the digital-garden tradition than the canonical public-web garden. That trade chooses privacy and a richer query surface (Notion databases) over discoverability. A future `mintlify_publish` / `quartz_publish` sibling strategy will make the public-garden path a one-line extension; for now, the pattern names the limit explicitly so the reader can choose with eyes open.
+
+## Why patterns
+
+Fracta is general — it doesn't care whether you're hunting threats in CloudTrail, refactoring a Go monorepo, or organising a year of book highlights. That generality is the point. It also means a new user staring at `fracta.yaml`, `contract.yaml`, and a blank knowledge graph has too many degrees of freedom to make confident decisions.
+
+A pattern collapses those decisions:
+
+- **MCP stack** — exactly which servers you connect, and how each one is registered.
+- **Ontology slice** — the nodes and edges that matter for this domain, with the property shapes the agents will write.
+- **Strategies** — the deterministic pipelines that read from the graph and return the answers the pattern was built to give.
+
+Every pattern is a complete loop: ingest with MCP, capture in the graph, execute with strategies. You can lift it as-is, or read it as worked example and remix.
+
+## How a pattern is laid out
+
+Every pattern in this section follows the same six-page shape:
+
+| Page | Answers |
+|---|---|
+| **Overview** | What is this pattern, who is it for, what does the finished stack do? |
+| **Setup** | Which MCP servers to install, what credentials to provision, what the `fracta.yaml` block looks like. |
+| **Ontology** | The node and edge types this pattern writes — with property tables and an entity diagram. |
+| **Strategies** | The strategies shipped with the pattern, what each one returns, how they're invoked. |
+| **First Run** | A scripted end-to-end: ingest a small sample, watch the graph fill, run a strategy, read the result. |
+| **Extending** | The seams — adding new sources, new entity types, new strategies — without breaking the pattern. |
+
+The order is deliberate: stack first, schema second, behaviour third, proof fourth, customisation last. Most readers go top-to-bottom on the first read; on return visits, **Setup** and **Strategies** become the two pages that get reopened.
+
+## The CODE spine
+
+Knowledge-management patterns in this section follow Tiago Forte's **CODE** flow as their narrative spine, because it's the most recognisable PKM vocabulary in the field today and it maps cleanly onto the four primitives fracta already provides:
+
+| CODE stage | What it means | Fracta primitive |
+|---|---|---|
+| **Capture** | Pull raw input from the source of truth (book highlights, papers, alerts, logs) | MCP servers ingesting through the gateway |
+| **Organize** | Land the input in structured, queryable tables | Strategies staging Parquet into per-run DuckDB |
+| **Distill** | Compress raw input into atomic, linkable units | Strategies plus agent reasoning, writing typed nodes and edges into the graph |
+| **Express** | Surface the result back into a venue you read | A publishing strategy or a downstream MCP write (e.g. into a Notion database) |
+
+A pattern that doesn't fit this shape (e.g. a security-investigation pattern) is welcome; the CODE spine is the *default* for KM-flavoured patterns, not a requirement for every pattern.
+
+## Available patterns
+
+<Cards>
+  <Card title="Reading Garden" icon="book-open" href="/patterns/reading-garden/overview">
+    Notion + Readwise + a knowledge-garden ontology, wired so highlights become atomic notes you can query, link, and surface from your annotated reading.
+  </Card>
+</Cards>
+
+More patterns are in flight — see [Extending fracta](/patterns/reading-garden/extending) for the template you can copy when you write your own.
+
+## When *not* to reach for a pattern
+
+- You only need one or two MCP servers for a one-off question — just register them and ask an agent. Patterns are for setups you'll reuse.
+- You're inventing a new domain that has no resemblance to the available patterns. Read the framework reference ([Strategies](/strategies/overview), [Architecture](/introduction/architecture)) and build the pieces directly.
+- You want to understand fracta's internals. Patterns are recipes; for the engineering, start at [What is Fracta?](/introduction/what-is-fracta).
+
+## Authoring a new pattern
+
+Every pattern is built from the same template — see [`patterns/_template`](/patterns/_template) for the canonical six-page skeleton with annotated section guidance. The short version: write the **Overview** last, after the Setup, Ontology, and Strategies pages have settled. The Overview is a sales page for a working thing; selling something half-built lies to the reader.
+
+## What's next
+
+<Card title="Reading Garden — Overview" href="/patterns/reading-garden/overview">
+  The first pattern shipped: turn Readwise highlights into a navigable atomic-note knowledge garden in Notion, queryable from any agent.
+</Card>
+
+<Card title="Strategies framework" href="/strategies/overview">
+  How the deterministic pipelines that ship with each pattern actually work.
+</Card>

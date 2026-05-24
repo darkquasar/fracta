@@ -1,0 +1,40 @@
+label: Document
+layer: particular
+description: >
+  A source document — book, article, web page, podcast episode, paper.
+  Captured from a DomainSource (Readwise, Raindrop, Zotero, etc.).
+
+properties:
+  id:
+    type: string
+    required: true
+    unique: true
+    description: Stable document identifier (source-specific, e.g., readwise book id)
+  title:
+    type: string
+    required: true
+  author:
+    type: string
+    required: false
+  url:
+    type: string
+    required: false
+    description: Canonical source URL if web-accessible
+  source_kind:
+    type: string
+    required: false
+    description: "Document type: book, article, podcast, paper, web"
+  captured_at:
+    type: string
+    required: false
+    description: RFC3339 timestamp when captured into the garden
+  _status:
+    type: string
+    required: false
+    description: "Lifecycle status: speculative, confirmed, stale"
+
+indexes:
+  - properties: [id]
+    type: exact
+  - properties: [title]
+    type: exact

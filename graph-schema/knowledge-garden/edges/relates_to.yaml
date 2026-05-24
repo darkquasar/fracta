@@ -1,0 +1,24 @@
+type: RELATES_TO
+description: >
+  Generic weighted associative edge between any two garden particulars.
+  Use when no more specific edge fits — captures soft, undirected affinity
+  surfaced by correlation strategies. Equivalent in spirit to
+  threat-hunting/POTENTIALLY_RELATED, but carries an explicit weight.
+
+endpoints:
+  from: [Concept, Entity, Topic, Question, Claim, Document, Highlight]
+  to: [Concept, Entity, Topic, Question, Claim, Document, Highlight]
+
+properties:
+  weight:
+    type: float
+    required: false
+    description: 0.0-1.0 association strength
+  reason:
+    type: string
+    required: false
+    description: "How the relation was inferred: cooccurrence, shared_topic, manual, embedding"
+  computed_by:
+    type: string
+    required: false
+    description: "Producer: strategy:cross_source_concepts, agent:<name>, user"

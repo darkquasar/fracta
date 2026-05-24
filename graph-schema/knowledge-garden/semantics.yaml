@@ -1,0 +1,45 @@
+vocabulary:
+  - name: highlight_text
+    description: Verbatim quoted text captured from a source document
+
+  - name: highlight_note
+    description: User-authored note attached to a Highlight at capture time (Readwise note field)
+
+  - name: document_title
+    description: Canonical title of a source document (book, article, page)
+
+  - name: document_author
+    description: Author name attributed to a document
+
+  - name: concept_label
+    description: Canonical label for an extracted concept
+
+  - name: epistemic_status
+    description: Qualitative readiness label for a Concept — seedling, budding, or evergreen
+
+  - name: topic_label
+    description: Curated topic label clustering related concepts
+
+  - name: entity_name
+    description: Named entity (person, place, organization, work) extracted from content
+
+  - name: claim_text
+    description: A propositional claim asserted by a document or highlight
+
+  - name: question_text
+    description: An open question prompted by content under study
+
+  - name: external_page_id
+    description: Sink-side page identifier (Notion page id, Mintlify slug, Quartz path) used for idempotent publish
+
+  - name: content_hash
+    description: Deterministic hash of rendered content used to detect changes
+
+  - name: confidence_score
+    description: Numeric score (0.0-1.0) representing extraction or correlation confidence
+
+  - name: mention_count
+    description: Number of times a concept is mentioned across captured sources
+
+  - name: source_url
+    description: URL pointing to the original location of a captured artifact

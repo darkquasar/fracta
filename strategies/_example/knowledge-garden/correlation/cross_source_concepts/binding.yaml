@@ -1,0 +1,5 @@
+# cross-source-concepts is a graph-only strategy — no DuckDB pre-stage
+# and no MCP calls. The empty source_bindings block is intentional and
+# satisfies the framework's binding-shape expectations.
+
+source_bindings: {}

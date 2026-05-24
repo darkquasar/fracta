@@ -1,7 +1,7 @@
 id: concept-gliner
 name: Concept GLiNER MCP
 category: nlp
-status: candidate
+status: tested
 description: >-
   GLiNER zero-shot NER exposed as a single MCP tool. Caller supplies the
   label taxonomy per call.
@@ -42,7 +42,7 @@ docker:
   build_target: ""
   load_target: ""
 verification:
-  tested_on: ""
+  tested_on: ""  # pending live smoke — see spec-41 Phase 6 (owner task O1)
   smoke_test: list_tools
   expected_tools_contains:
     - gliner_extract_tool

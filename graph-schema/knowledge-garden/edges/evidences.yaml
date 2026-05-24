@@ -1,0 +1,14 @@
+type: EVIDENCES
+description: >
+  A Highlight or Document supports a Claim. Used to gather supporting
+  evidence behind propositions surfaced from reading.
+
+endpoints:
+  from: [Highlight, Document]
+  to: [Claim]
+
+properties:
+  strength:
+    type: float
+    required: false
+    description: 0.0-1.0 — how strongly the source supports the claim

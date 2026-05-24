@@ -1,0 +1,234 @@
+---
+title: Strategies
+description: The bundled strategies — highlight_distill, cross_source_concepts, notion_publish — that turn captured highlights into idempotent Notion concept pages.
+---
+
+The Reading Garden ships three strategies, each owning one stage of the CODE flow (Capture+Organize, Distill, Express). They live under `strategies/_example/knowledge-garden/` and follow the standard fracta strategy shape: `contract.yaml` + `strategy.py` + `binding.yaml`.
+
+Strategies are deterministic Python DAGs run by the fracta strategy runner — not LLM calls. The pipeline prompt on [First Run](/patterns/reading-garden/first-run) is the only place an LLM holds the framing; each `strategy_run` is a Python pipeline.
+
+## What ships
+
+| Strategy | Category | Purpose | Source |
+|---|---|---|---|
+| `highlight-distill` | enrichment | Pull Readwise highlights and documents, extract Concept and Entity candidates via three NLP MCPs, write to graph. | [strategies/_example/knowledge-garden/enrichment/highlight_distill](https://github.com/darkquasar/fracta/tree/main/strategies/_example/knowledge-garden/enrichment/highlight_distill) |
+| `cross-source-concepts` | correlation | Rescore every Concept by graph-wide signal; update `Concept.confidence`, `Concept.mention_count`, and `MENTIONS.weight`. | [strategies/_example/knowledge-garden/correlation/cross_source_concepts](https://github.com/darkquasar/fracta/tree/main/strategies/_example/knowledge-garden/correlation/cross_source_concepts) |
+| `notion-publish` | traversal | Render a Concept (or top-N batch) as a Notion page; create-or-update idempotently via `Publication.content_hash`. | [strategies/_example/knowledge-garden/traversal/notion_publish](https://github.com/darkquasar/fracta/tree/main/strategies/_example/knowledge-garden/traversal/notion_publish) |
+
+The three are designed to run as a pipeline (in order), but each is independently invocable — useful for iterating on one stage without re-pulling raw data.
+
+<hr />
+
+## highlight-distill
+
+**Purpose.** Pull recent Readwise highlights and documents through the gateway, group them by source document, fan out three parallel NLP extractor calls per highlight, merge the results with an asymmetric scoring algorithm, and write `Highlight`, `Document`, `Concept`, and `Entity` nodes (plus `MENTIONS` / `PART_OF` / `CAPTURED_FROM` edges) into the graph.
+
+This is the **Capture + Organize** stage. It is the only strategy in the pattern that calls upstream MCPs for data ingest.
+
+### Inputs
+
+| Param | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `watermark_iso` | string | no | `"1970-01-01T00:00:00Z"` | Pull only highlights with `updated > watermark`. Set this to a recent date on first run to keep the Readwise call count bounded. |
+| `page_size` | int | no | `100` | Readwise `list_highlights` page size. The hosted MCP caps at 20 req/min, so larger pages mean fewer round-trips. |
+
+### Outputs
+
+Graph mutations only — no tabular return payload. After a run, expect:
+
+- One `Highlight` node per ingested Readwise highlight.
+- One `Document` node per source book / article / podcast.
+- `Concept` nodes for high-signal keyphrases (asymmetric score >= 0.40).
+- `Entity` nodes for `gliner`-typed spans (Person / Organisation / Place / Work / Product).
+- `MENTIONS` edges with `weight`, `extracted_by` (pipe-joined extractor IDs), `extraction_score`, and `agreement_n` (1, 2, or 3).
+- `CAPTURED_FROM` edges to the `Readwise Highlights` `DomainSource`.
+
+Borderline candidates (score in `[0.30, 0.40)`) land in a DuckDB `pending_extractions` table — not graph — and graduate on second appearance.
+
+### Extractor fan-out
+
+Each highlight triggers three parallel MCP calls via `ThreadPoolExecutor(max_workers=8)`:
+
+| Extractor | Tool | Score semantics | Role |
+|---|---|---|---|
+| `concept-keybert` | `keybert_extract_tool` | Within-document MMR-reranked cosine — **not a probability**. | Concept candidates when GLiNER doesn't fire; consumed as a rank tier (top-3 = 0.70, 4–10 = 0.50, > 10 = 0.30), never as raw cosine. |
+| `concept-gliner` | `gliner_extract_tool` | DeBERTa-v3 sigmoid in `[0, 1]`; comparable across spans. | **Authoritative typer and score-of-record where it fires.** Routes spans to `Entity.kind` (Person/Org/Place/Work/Product) or `Concept` (Theory/Method/Concept/Tool). |
+| `concept-spacy` | `spacy_extract_tool` | OntoNotes-5 NER + noun chunks — categorical, no score field. | Fallback typer when GLiNER doesn't fire; noun chunks (filtered `root_pos != PRON`) are last-resort candidates; contributes to `agreement_n` but not to `extraction_score`. |
+
+The asymmetric score derivation (per merged candidate cluster):
+
+```text
+base = gliner_sigmoid              if gliner fired
+     = keybert_rank_tier            elif keybert fired
+     = SPACY_NER_PRIOR (0.55)       elif spacy NER fired
+     = SPACY_NP_PRIOR (0.30)        else (noun-chunk only)
+
+extraction_score = clip(
+    base
+  + AGREEMENT_BONUS[n_extractors]   # {1: 0.0, 2: 0.15, 3: 0.30}
+  + (0.05 if typed_labels_agree else 0.0)
+  - (0.10 if weak_substring_join else 0.0)
+, 0.0, 1.0)
+```
+
+Followed by MMR diversification (`lambda=0.7`, `K=8` per highlight, Jaccard similarity over canonical tokens — KeyBERT does not expose per-keyphrase embeddings, so embedding cosine is unavailable in v1).
+
+### Call it
+
+<CodeGroup>
+
+```bash CLI via agent
+fracta spawn \
+  --task ingest-recent \
+  --contract "Call strategy_run(name='highlight-distill', params={'watermark_iso': '2025-10-01T00:00:00Z', 'page_size': 100}) and report counts of Highlight, Document, and Concept nodes written."
+```
+
+```python In Python (inside a strategy)
+ctx.runner.call(
+    "highlight-distill",
+    params={"watermark_iso": "2025-10-01T00:00:00Z", "page_size": 100},
+)
+```
+
+</CodeGroup>
+
+<hr />
+
+## cross-source-concepts
+
+**Purpose.** Read the graph; rescore every `Concept` using recency × frequency × source diversity, folded with the mean of `MENTIONS.extraction_score`; write back `Concept.confidence`, `Concept.mention_count`, and `MENTIONS.weight`. Surface high-confidence Concepts not yet linked to a `Topic` via the `high_confidence_concept_without_topic` checkpoint rule.
+
+This is the **Distill** stage. It is a pure-DuckDB-over-graph computation — no MCP fetch.
+
+### Inputs
+
+This strategy takes no params in v1.
+
+### Outputs
+
+Graph mutations only:
+
+- `Concept.confidence` — updated for every Concept the rescore touched.
+- `Concept.mention_count` — refreshed from the actual inbound `MENTIONS` count.
+- `MENTIONS.weight` — derived from `extraction_score × recency_decay`.
+
+### Scoring formula
+
+```text
+confidence = sigmoid(
+    w_freq      * log1p(mention_count)
+  + w_recency   * recency_decay(last_seen_at)
+  + w_diversity * domain_source_count           # via CAPTURED_FROM -> DomainSource
+  + w_extract   * mean(MENTIONS.extraction_score)
+)
+```
+
+Default weights: `{freq: 0.30, recency: 0.15, diversity: 0.40, extract: 0.15}`. The `w_extract` term is what folds `highlight_distill`'s per-extraction signal into the graph-aware confidence — without `cross_source_concepts` writing `extraction_score` itself. The two strategies never overwrite each other's field.
+
+### Call it
+
+<CodeGroup>
+
+```bash CLI via agent
+fracta spawn \
+  --task rescore \
+  --contract "Call strategy_run(name='cross-source-concepts') and report the top 10 concepts by confidence with their mention_count."
+```
+
+```python In Python (inside a strategy)
+ctx.runner.call("cross-source-concepts")
+```
+
+</CodeGroup>
+
+<hr />
+
+## notion-publish
+
+**Purpose.** Given a Concept name (or a batch of top-N by confidence), render a Notion page from the Concept and its supporting Highlights, and create-or-update the Notion page idempotently via `Publication.content_hash`. Computes `Concept.epistemic_status` (`seedling` / `budding` / `evergreen`) from `Concept.confidence` and writes it back before render.
+
+This is the **Express** stage. It is the only write-strategy in the pattern, and the introduction of the `actions:` block to the binding framework — see [Bindings](/strategies/bindings) for the framework reference.
+
+### Inputs
+
+| Param | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `concept_name` | string | no | — | Publish a single Concept by canonical name. Omit for batch mode. |
+| `notion_database_id` | string | yes | — | The 32-character hex ID of the Notion database to publish into. |
+| `batch_size` | int | no | `10` | In batch mode, publish the top-N Concepts by confidence. |
+
+### Outputs
+
+- A new or updated Notion page in the configured database.
+- A `Publication` node MERGEd with `sink: notion`, `external_id`, and `content_hash`.
+- A `PUBLISHED_AS` edge wiring the source `Concept` to the new `Publication`.
+
+### Idempotency
+
+The publish sequence (per Concept):
+
+1. Local lookup — `MATCH (p:Publication {sink:'notion', id:'<concept_name>:notion'})`.
+2. If found and `p.content_hash == new_hash` -> skip; no API calls.
+3. If found and hash differs -> `notion-update-page` (properties) + `append-block-children` (replace blocks).
+4. If not found -> `notion-query-data-sources` by `concept_name` property.
+   - If Notion has the page -> adopt (MERGE Publication with that `external_id`), go to step 3.
+   - Else -> `notion-create-pages`, MERGE Publication with the returned `external_id`.
+5. Update `Publication.content_hash`, `last_updated_at`.
+6. Wire `MATCH (c:Concept {name:$name}) MERGE (c)-[:PUBLISHED_AS]->(p)`.
+
+The `epistemic_status` mapping at publish time:
+
+- `confidence < 0.4` -> `seedling`
+- `0.4 <= confidence <= 0.8` -> `budding`
+- `confidence > 0.8` -> `evergreen`
+
+Storing the status on `Concept` (rather than deriving on every read) keeps the graph as the canonical record of what was published, and lets the `concept_confidence_status_mismatch` checkpoint rule detect drift after a later rescore.
+
+### Block update strategy
+
+Default: **wipe and replace** — `append-block-children` after deleting existing children. Opt-out flag preserves history for users who want it; see the strategy source for the env var name and the trade-off (re-runs become non-deterministic when history is preserved).
+
+### Call it
+
+<CodeGroup>
+
+```bash CLI via agent (single concept)
+fracta spawn \
+  --task publish-one \
+  --contract "Call strategy_run(name='notion-publish', params={'concept_name': 'falsifiability', 'notion_database_id': 'YOUR_DB_ID'}) and report the Notion page URL."
+```
+
+```bash CLI via agent (top-N batch)
+fracta spawn \
+  --task publish-top \
+  --contract "Call strategy_run(name='notion-publish', params={'notion_database_id': 'YOUR_DB_ID', 'batch_size': 10}) and report the URLs of every created or updated page."
+```
+
+```python In Python (inside a strategy)
+ctx.runner.call(
+    "notion-publish",
+    params={
+        "concept_name": "falsifiability",
+        "notion_database_id": "YOUR_DB_ID",
+    },
+)
+```
+
+</CodeGroup>
+
+<hr />
+
+## Why three strategies, not one
+
+Splitting capture, distill, and express into three strategies lets you run each independently — re-publish without re-ingesting; re-score without re-extracting; iterate on one stage at a time. It also enforces the **ownership seam**: `highlight-distill` owns `extraction_score`; `cross_source_concepts` owns `confidence`; `notion_publish` owns `epistemic_status` and `Publication.*`. No two strategies write the same field, which keeps the checkpoint rules meaningful and the graph honest.
+
+## What's next
+
+<Cards>
+  <Card title="First Run" href="/patterns/reading-garden/first-run">
+    Run all three end-to-end with one Claude worker and one prompt.
+  </Card>
+  <Card title="Extending" href="/patterns/reading-garden/extending">
+    Add a new source, swap a publish sink, or grow the ontology.
+  </Card>
+</Cards>

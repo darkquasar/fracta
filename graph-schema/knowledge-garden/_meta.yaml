@@ -1,0 +1,14 @@
+name: knowledge-garden
+version: 2
+description: Knowledge garden ontology for personal knowledge management (Reading Garden pattern)
+authority:
+  scaffold:
+    - Topic
+  discovered:
+    - Document
+    - Highlight
+    - Concept
+    - Entity
+    - Claim
+    - Question
+    - Publication
