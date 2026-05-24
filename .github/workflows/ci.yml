@@ -31,6 +31,17 @@ jobs:
       - name: Vet
         run: go vet ./...
 
+      - name: Gofmt
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "The following files are not gofmt-clean:"
+            echo "$unformatted"
+            echo ""
+            echo "Run 'gofmt -w .' locally and commit the result."
+            exit 1
+          fi
+
       - name: Build
         run: go build ./...
 
