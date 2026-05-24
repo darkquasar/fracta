@@ -1,0 +1,56 @@
+id: concept-keybert
+name: Concept KeyBERT MCP
+category: nlp
+status: candidate
+description: >-
+  KeyBERT keyphrase extraction exposed as a single MCP tool.
+upstream:
+  type: first_party
+  url: https://github.com/darkquasar/fracta-mcp-servers
+auth:
+  modes:
+    - none
+  notes: |
+    No auth at the MCP layer. The fracta gateway provides per-agent
+    policy and observability; this server trusts the gateway envelope.
+variants:
+  container:
+    image: ghcr.io/darkquasar/fracta-mcp-servers/concept-keybert:latest
+    image_owner: fracta
+    transport: streamable-http
+    service_url: http://concept-keybert.fracta.svc:8000/mcp
+    # Rough sizing — informed estimates, not measured under sustained load.
+    # Resident set ~ 90 MB (MiniLM-L6-v2) + ~600 MB (torch CPU + MKL libs).
+    # Sentence-transformer embedding benefits from a couple of cores for
+    # batched ops. Mirrors the upstream entry-level `resources:` block;
+    # see the FOLLOWUP note in mcp-servers/README.md.
+    resources:
+      requests:
+        memory: 1Gi
+        cpu: 250m
+      limits:
+        memory: 2Gi
+        cpu: 2000m
+support:
+  local_process: not_supported
+  docker_compose: supported
+  kubernetes: supported
+docker:
+  dockerfile: ""
+  build_target: ""
+  load_target: ""
+verification:
+  tested_on: ""
+  smoke_test: list_tools
+  expected_tools_contains:
+    - keybert_extract_tool
+notes: |
+  Image built and published by github.com/darkquasar/fracta-mcp-servers
+  (see servers/concept-keybert/). fracta consumes the published GHCR
+  image only — fracta does not own the Dockerfile.
+
+  One of three successors to the retired concept-extractor monolith
+  (split into per-library servers so operators only pull what they use).
+
+  Default model (override via env on the container):
+    CONCEPT_KEYBERT_BACKBONE = all-MiniLM-L6-v2

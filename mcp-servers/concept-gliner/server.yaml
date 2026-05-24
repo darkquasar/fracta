@@ -1,0 +1,58 @@
+id: concept-gliner
+name: Concept GLiNER MCP
+category: nlp
+status: candidate
+description: >-
+  GLiNER zero-shot NER exposed as a single MCP tool. Caller supplies the
+  label taxonomy per call.
+upstream:
+  type: first_party
+  url: https://github.com/darkquasar/fracta-mcp-servers
+auth:
+  modes:
+    - none
+  notes: |
+    No auth at the MCP layer. The fracta gateway provides per-agent
+    policy and observability; this server trusts the gateway envelope.
+variants:
+  container:
+    image: ghcr.io/darkquasar/fracta-mcp-servers/concept-gliner:latest
+    image_owner: fracta
+    transport: streamable-http
+    service_url: http://concept-gliner.fracta.svc:8000/mcp
+    # Rough sizing — informed estimates, not measured under sustained load.
+    # Resident set ~ 800 MB (gliner_medium DeBERTa-v3-large weights) +
+    # ~600 MB (torch CPU + MKL) + transformers/tokenizer overhead. DeBERTa
+    # inference can saturate multiple cores; give it room to burst.
+    # Mirrors the upstream entry-level `resources:` block; see the FOLLOWUP
+    # note in mcp-servers/README.md.
+    resources:
+      requests:
+        memory: 2Gi
+        cpu: 500m
+      limits:
+        memory: 4Gi
+        cpu: 4000m
+support:
+  local_process: not_supported
+  docker_compose: supported
+  kubernetes: supported
+docker:
+  dockerfile: ""
+  build_target: ""
+  load_target: ""
+verification:
+  tested_on: ""
+  smoke_test: list_tools
+  expected_tools_contains:
+    - gliner_extract_tool
+notes: |
+  Image built and published by github.com/darkquasar/fracta-mcp-servers
+  (see servers/concept-gliner/). fracta consumes the published GHCR
+  image only — fracta does not own the Dockerfile.
+
+  One of three successors to the retired concept-extractor monolith
+  (split into per-library servers so operators only pull what they use).
+
+  Default model (override via env on the container):
+    CONCEPT_GLINER_MODEL = urchade/gliner_medium-v2.1

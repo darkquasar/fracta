@@ -1,4 +1,4 @@
-version: 1
+version: 2
 description: Fracta MCP server catalog. Each entry points to a per-server server.yaml.
 status_values:
   tested: Connected and listed tools through fracta in at least one supported mode.
@@ -33,5 +33,9 @@ servers:
     path: noteplan/server.yaml
   - id: tana
     path: tana/server.yaml
-  - id: concept-extractor
-    path: concept-extractor/server.yaml
+  - id: concept-keybert
+    path: concept-keybert/server.yaml
+  - id: concept-gliner
+    path: concept-gliner/server.yaml
+  - id: concept-spacy
+    path: concept-spacy/server.yaml
