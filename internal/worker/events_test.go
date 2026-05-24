@@ -10,9 +10,9 @@ import (
 
 	"github.com/darkquasar/fracta/internal/agentlifecycle"
 	"github.com/darkquasar/fracta/internal/events"
+	"github.com/darkquasar/fracta/internal/fractalog"
 	"github.com/darkquasar/fracta/internal/host"
 	"github.com/darkquasar/fracta/internal/model"
-	"github.com/darkquasar/fracta/internal/fractalog"
 	"github.com/darkquasar/fracta/internal/queue"
 	"github.com/darkquasar/fracta/internal/runtime"
 )
@@ -72,10 +72,10 @@ func TestWorker_EmitsLifecycleEvents(t *testing.T) {
 	payloadBytes, _ := json.Marshal(payload)
 	m := &queue.Mission{AgentTask: "agent-events", Payload: payloadBytes}
 	agent := &model.AgentEntry{
-		Task:     "agent-events",
+		Task:        "agent-events",
 		RuntimeType: "testhost",
-		Status:   model.StatusQueued,
-		Mode:     "queued",
+		Status:      model.StatusQueued,
+		Mode:        "queued",
 	}
 	if err := q.Enqueue(ctx, m, agent); err != nil {
 		t.Fatal(err)
@@ -171,10 +171,10 @@ func TestWorker_EmitsFailEvent(t *testing.T) {
 	payloadBytes, _ := json.Marshal(payload)
 	m := &queue.Mission{AgentTask: "agent-fail", Payload: payloadBytes}
 	agent := &model.AgentEntry{
-		Task:     "agent-fail",
+		Task:        "agent-fail",
 		RuntimeType: "testhost",
-		Status:   model.StatusQueued,
-		Mode:     "queued",
+		Status:      model.StatusQueued,
+		Mode:        "queued",
 	}
 	if err := q.Enqueue(ctx, m, agent); err != nil {
 		t.Fatal(err)
@@ -244,10 +244,10 @@ func TestWorker_EmitsFailEventOnEarlyError(t *testing.T) {
 	payloadBytes, _ := json.Marshal(payload)
 	m := &queue.Mission{AgentTask: "agent-early-fail", Payload: payloadBytes}
 	agent := &model.AgentEntry{
-		Task:     "agent-early-fail",
+		Task:        "agent-early-fail",
 		RuntimeType: "unknown-host",
-		Status:   model.StatusQueued,
-		Mode:     "queued",
+		Status:      model.StatusQueued,
+		Mode:        "queued",
 	}
 	if err := q.Enqueue(ctx, m, agent); err != nil {
 		t.Fatal(err)
@@ -408,4 +408,3 @@ func eventActions(evts []events.Event) []string {
 	}
 	return out
 }
-

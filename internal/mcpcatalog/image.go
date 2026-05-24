@@ -78,11 +78,11 @@ func DetectImageInspector() ImageInspector {
 // Classification is exit-code-only (spec §9): localised stderr text (LANG,
 // version drift) makes substring matching fragile.
 //
-//   exit 0                                  → ImageStatePresent
-//   exit 1 with empty stdout                → ImageStateAbsent
-//   ctx.Err() == context.DeadlineExceeded   → ImageStateUnknown (timeout)
-//   *exec.Error (binary not on PATH)        → ImageStateUnknown
-//   any other exit code                     → ImageStateUnknown
+//	exit 0                                  → ImageStatePresent
+//	exit 1 with empty stdout                → ImageStateAbsent
+//	ctx.Err() == context.DeadlineExceeded   → ImageStateUnknown (timeout)
+//	*exec.Error (binary not on PATH)        → ImageStateUnknown
+//	any other exit code                     → ImageStateUnknown
 func (c *cliInspector) HasImage(ctx context.Context, ref string) (ImageState, error) {
 	if c.timeout > 0 {
 		var cancel context.CancelFunc

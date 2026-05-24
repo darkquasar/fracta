@@ -66,26 +66,26 @@ func TestParitySpawnParams(t *testing.T) {
 
 	// Simulate what the CLI does (from cmd/spawn.go runSpawn):
 	_, err := cliClient.Spawn(context.Background(), cpapi.SpawnRequest{
-		Task:       "test-agent",
-		Contract:   "task instructions",
-		BaseBranch: "main",
-		Model:      "opus",
-		Tier:       "heavy",
-		RuntimeType:   "claude",
-		Mode:       "batch",
+		Task:        "test-agent",
+		Contract:    "task instructions",
+		BaseBranch:  "main",
+		Model:       "opus",
+		Tier:        "heavy",
+		RuntimeType: "claude",
+		Mode:        "batch",
 	})
 	require.NoError(t, err)
 
 	// Simulate what the MCP tool does:
 	srv := New(mcpClient)
 	_, err = srv.handleSpawn(context.Background(), makeToolRequest(map[string]interface{}{
-		"task":      "test-agent",
-		"contract":  "task instructions",
-		"base":      "main",
-		"model":     "opus",
-		"tier":      "heavy",
-		"runtime": "claude",
-		"mode":      "batch",
+		"task":     "test-agent",
+		"contract": "task instructions",
+		"base":     "main",
+		"model":    "opus",
+		"tier":     "heavy",
+		"runtime":  "claude",
+		"mode":     "batch",
 	}))
 	require.NoError(t, err)
 

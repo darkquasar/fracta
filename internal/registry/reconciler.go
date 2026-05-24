@@ -631,4 +631,4 @@ func serverToConfigEntry(srv Server) config.MCPServerEntry {
 		_ = json.Unmarshal(srv.ConnectionConfig, &entry)
 	}
 	return entry
-} 
+}

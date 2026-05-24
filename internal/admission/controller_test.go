@@ -292,13 +292,13 @@ func (q *mockQueue) Enqueue(_ context.Context, m *queue.Mission, _ *model.AgentE
 	return nil
 }
 
-func (q *mockQueue) Dequeue(_ context.Context) (*queue.Mission, error)     { return nil, nil }
-func (q *mockQueue) Ack(_ context.Context, _ int64) error                  { return nil }
-func (q *mockQueue) Fail(_ context.Context, _ int64, _ string) error       { return nil }
-func (q *mockQueue) Len(_ context.Context) (int, error)                    { return 0, nil }
-func (q *mockQueue) Status(_ context.Context, _ int64) (string, error)     { return "", nil }
-func (q *mockQueue) Cancel(_ context.Context, _ int64) error               { return nil }
-func (q *mockQueue) Close() error                                          { return nil }
+func (q *mockQueue) Dequeue(_ context.Context) (*queue.Mission, error) { return nil, nil }
+func (q *mockQueue) Ack(_ context.Context, _ int64) error              { return nil }
+func (q *mockQueue) Fail(_ context.Context, _ int64, _ string) error   { return nil }
+func (q *mockQueue) Len(_ context.Context) (int, error)                { return 0, nil }
+func (q *mockQueue) Status(_ context.Context, _ int64) (string, error) { return "", nil }
+func (q *mockQueue) Cancel(_ context.Context, _ int64) error           { return nil }
+func (q *mockQueue) Close() error                                      { return nil }
 
 func (q *mockQueue) enqueuedCount() int {
 	q.mu.Lock()
@@ -344,10 +344,10 @@ func (m *mockMailbox) messagesTo(to string) []string {
 func makePayload(t *testing.T) json.RawMessage {
 	t.Helper()
 	p := queue.MissionPayload{
-		Task:     "root task",
-		Model:    "claude-sonnet-4-5-20250929",
+		Task:        "root task",
+		Model:       "claude-sonnet-4-5-20250929",
 		RuntimeType: "claude",
-		Backend:  "memory",
+		Backend:     "memory",
 	}
 	b, err := json.Marshal(p)
 	if err != nil {
@@ -606,10 +606,10 @@ func TestMaterialization(t *testing.T) {
 
 	// Create parent mission in reader.
 	parentPayload := queue.MissionPayload{
-		Task:     "root task",
-		Model:    "claude-sonnet",
+		Task:        "root task",
+		Model:       "claude-sonnet",
 		RuntimeType: "claude",
-		Backend:  "memory",
+		Backend:     "memory",
 	}
 	payloadBytes, _ := json.Marshal(parentPayload)
 	parentMission := &queue.Mission{
@@ -897,12 +897,12 @@ func TestMaterialization_ChildInheritsGatewayURL(t *testing.T) {
 
 	// Create parent mission WITH GatewayURL set.
 	parentPayload := queue.MissionPayload{
-		Task:       "root task",
-		Model:      "claude-sonnet",
-		RuntimeType:   "claude",
-		Backend:    "kubernetes",
-		GatewayURL: "http://gateway.fracta.svc:8080",
-		ConfigHash: "abc123",
+		Task:        "root task",
+		Model:       "claude-sonnet",
+		RuntimeType: "claude",
+		Backend:     "kubernetes",
+		GatewayURL:  "http://gateway.fracta.svc:8080",
+		ConfigHash:  "abc123",
 	}
 	payloadBytes, _ := json.Marshal(parentPayload)
 	parentMission := &queue.Mission{

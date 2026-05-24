@@ -394,9 +394,9 @@ func swapStagingIntoLive(catRoot, staging string) error {
 		return err
 	}
 	preserve := map[string]bool{
-		".staging":         true,
-		fractaSourceFile:   true,
-		".gitignore":       true,
+		".staging":       true,
+		fractaSourceFile: true,
+		".gitignore":     true,
 	}
 	for _, e := range existing {
 		if preserve[e.Name()] {

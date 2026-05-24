@@ -87,22 +87,21 @@ type errorParams struct {
 // AppServerSession wraps a long-lived codex app-server process using the
 // JSON-RPC protocol over stdio.
 type AppServerSession struct {
-	cmd          *exec.Cmd
-	stdin        *appServerWriter
+	cmd           *exec.Cmd
+	stdin         *appServerWriter
 	notifications chan jsonRPCNotification // buffered channel from reader goroutine
-	mu           sync.Mutex               // serializes Send calls
-	writeMu      sync.Mutex               // serializes stdin writes (allows Steer during Send)
-	done         chan struct{}             // closed when process exits and Wait() completes
-	err          error                    // exit error from cmd.Wait()
-	requestID    atomic.Int64             // monotonic JSON-RPC request ID counter
-	turnActive   atomic.Bool              // true while a turn is executing (between turn/start and turn/completed)
-	threadID     string                   // from thread/started notification
-	output       *host.ByteBuffer
-	logPath      string
-	logFn        func(path, content string) error
-	lineObserver func([]byte) // optional external line observer (Spec-35 seam)
+	mu            sync.Mutex               // serializes Send calls
+	writeMu       sync.Mutex               // serializes stdin writes (allows Steer during Send)
+	done          chan struct{}            // closed when process exits and Wait() completes
+	err           error                    // exit error from cmd.Wait()
+	requestID     atomic.Int64             // monotonic JSON-RPC request ID counter
+	turnActive    atomic.Bool              // true while a turn is executing (between turn/start and turn/completed)
+	threadID      string                   // from thread/started notification
+	output        *host.ByteBuffer
+	logPath       string
+	logFn         func(path, content string) error
+	lineObserver  func([]byte) // optional external line observer (Spec-35 seam)
 }
-
 
 // appServerWriter wraps stdin for the app-server process.
 type appServerWriter struct {
@@ -113,7 +112,7 @@ type appServerWriter struct {
 }
 
 func (w *appServerWriter) Write(p []byte) (int, error) { return w.wc.Write(p) }
-func (w *appServerWriter) Close() error                 { return w.wc.Close() }
+func (w *appServerWriter) Close() error                { return w.wc.Close() }
 
 // NewAppServerSession launches a codex app-server subprocess and performs the
 // thread/start bootstrap handshake. Returns a ready-to-use StreamSession.
@@ -419,7 +418,6 @@ func (s *AppServerSession) nextRequestID() int64 {
 	return s.requestID.Add(1)
 }
 
-
 // appendToLogFile writes content to a log file, creating parent dirs if needed.
 func appendToLogFile(path, content string) error {
 	dir := filepath.Dir(path)
@@ -652,8 +650,8 @@ func (s *wsAppServerSession) Send(message string) (host.Result, error) {
 		ID:      s.requestID.Add(1),
 		Method:  "turn/start",
 		Params: map[string]interface{}{
-			"threadId": s.threadID,
-			"input":    []map[string]string{{"type": "text", "text": message}},
+			"threadId":       s.threadID,
+			"input":          []map[string]string{{"type": "text", "text": message}},
 			"sandboxPolicy":  map[string]interface{}{"type": "workspaceWrite"},
 			"approvalPolicy": "never",
 		},

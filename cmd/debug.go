@@ -9,4 +9,4 @@ var debugCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(debugCmd)
-} 
+}

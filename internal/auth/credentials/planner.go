@@ -120,12 +120,12 @@ func BuildCredentialPlan(
 	)
 
 	return &CredentialPlan{
-		Profile:              profileName,
-		AuthOrigins:          sources,
-		RuntimeAuthResolver:  resolver,
-		Binding:              binding,
-		Env:                  mergedEnv,
-		Assertions:           profile.Assertions,
+		Profile:             profileName,
+		AuthOrigins:         sources,
+		RuntimeAuthResolver: resolver,
+		Binding:             binding,
+		Env:                 mergedEnv,
+		Assertions:          profile.Assertions,
 	}, nil
 }
 

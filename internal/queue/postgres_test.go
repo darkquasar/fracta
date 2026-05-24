@@ -66,10 +66,10 @@ func TestPostgresQueue_EnqueueDequeue(t *testing.T) {
 	payload := pgPayload(t)
 	m := &queue.Mission{AgentTask: "agent-1", Payload: payload, Priority: 0}
 	agent := &model.AgentEntry{
-		Task:     "agent-1",
+		Task:        "agent-1",
 		RuntimeType: "claude",
-		Status:   model.StatusQueued,
-		Mode:     "queued",
+		Status:      model.StatusQueued,
+		Mode:        "queued",
 	}
 
 	require.NoError(t, q.Enqueue(ctx, m, agent))
@@ -90,11 +90,11 @@ func TestPostgresQueue_TransactionalEnqueue(t *testing.T) {
 	payload := pgPayload(t)
 	m := &queue.Mission{AgentTask: "tx-agent", Payload: payload}
 	agent := &model.AgentEntry{
-		Task:      "tx-agent",
-		RuntimeType:  "claude",
-		Status:    model.StatusQueued,
-		Mode:      "queued",
-		MissionID: 0, // will be set by Enqueue
+		Task:        "tx-agent",
+		RuntimeType: "claude",
+		Status:      model.StatusQueued,
+		Mode:        "queued",
+		MissionID:   0, // will be set by Enqueue
 	}
 
 	require.NoError(t, q.Enqueue(ctx, m, agent))
@@ -115,10 +115,10 @@ func TestPostgresQueue_ConcurrentClaim(t *testing.T) {
 	payload := pgPayload(t)
 	m := &queue.Mission{AgentTask: "concurrent-1", Payload: payload}
 	agent := &model.AgentEntry{
-		Task:     "concurrent-1",
+		Task:        "concurrent-1",
 		RuntimeType: "claude",
-		Status:   model.StatusQueued,
-		Mode:     "queued",
+		Status:      model.StatusQueued,
+		Mode:        "queued",
 	}
 	require.NoError(t, q.Enqueue(ctx, m, agent))
 
@@ -162,10 +162,10 @@ func TestPostgresQueue_CancelPending(t *testing.T) {
 	payload := pgPayload(t)
 	m := &queue.Mission{AgentTask: "cancel-pending", Payload: payload}
 	agent := &model.AgentEntry{
-		Task:     "cancel-pending",
+		Task:        "cancel-pending",
 		RuntimeType: "claude",
-		Status:   model.StatusQueued,
-		Mode:     "queued",
+		Status:      model.StatusQueued,
+		Mode:        "queued",
 	}
 	require.NoError(t, q.Enqueue(ctx, m, agent))
 
@@ -184,10 +184,10 @@ func TestPostgresQueue_CancelClaimed(t *testing.T) {
 	payload := pgPayload(t)
 	m := &queue.Mission{AgentTask: "cancel-claimed", Payload: payload}
 	agent := &model.AgentEntry{
-		Task:     "cancel-claimed",
+		Task:        "cancel-claimed",
 		RuntimeType: "claude",
-		Status:   model.StatusQueued,
-		Mode:     "queued",
+		Status:      model.StatusQueued,
+		Mode:        "queued",
 	}
 	require.NoError(t, q.Enqueue(ctx, m, agent))
 
@@ -311,10 +311,10 @@ func TestPostgresQueue_LeaseReclaim(t *testing.T) {
 	payload := pgPayload(t)
 	m := &queue.Mission{AgentTask: "reclaim-agent", Payload: payload}
 	agent := &model.AgentEntry{
-		Task:     "reclaim-agent",
+		Task:        "reclaim-agent",
 		RuntimeType: "claude",
-		Status:   model.StatusQueued,
-		Mode:     "queued",
+		Status:      model.StatusQueued,
+		Mode:        "queued",
 	}
 	require.NoError(t, q.Enqueue(ctx, m, agent))
 

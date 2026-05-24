@@ -7,9 +7,9 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/darkquasar/fracta/internal/fractalog"
 	"github.com/darkquasar/fracta/internal/mailbox"
 	"github.com/darkquasar/fracta/internal/model"
-	"github.com/darkquasar/fracta/internal/fractalog"
 	"github.com/darkquasar/fracta/internal/objective"
 	"github.com/darkquasar/fracta/internal/proposal"
 	"github.com/darkquasar/fracta/internal/queue"

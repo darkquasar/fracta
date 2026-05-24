@@ -44,8 +44,8 @@ func makeFlatTarballGz(t *testing.T, files map[string]string) []byte {
 
 func TestHttpsSource_DownloadAndExtract(t *testing.T) {
 	tarball := makeFlatTarballGz(t, map[string]string{
-		"k8s/fracta.yaml":     "kubernetes",
-		"local/fracta.yaml":   "local",
+		"k8s/fracta.yaml":   "kubernetes",
+		"local/fracta.yaml": "local",
 	})
 	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write(tarball)

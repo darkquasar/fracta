@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/darkquasar/fracta/internal/model"
 	"github.com/darkquasar/fracta/internal/fractalog"
+	"github.com/darkquasar/fracta/internal/model"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -431,4 +431,3 @@ func nilIfEmpty(s string) *string {
 
 // Compile-time check.
 var _ MissionQueue = (*PostgresQueue)(nil)
-

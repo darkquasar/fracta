@@ -12,21 +12,21 @@ import (
 // Event is the canonical event model for the fracta event bus.
 // Required fields: Time, Component, Action.
 type Event struct {
-	ID          string            // random UUID, generated at emit time
-	Time        time.Time         // when the event occurred
-	Component   string            // emitting subsystem: orchestrator, runtime.k8s, gateway, reconciler, mcpclient, worker
-	Category    string            // event family: agent, auth, backend, gateway, queue, objective, strategy
-	Resource    string            // typed identifier: task:research-foo, mcp_server:vendor, objective:obj-123
-	Action      string            // what happened: create, complete, fail, seed, connect_attempt, status_change, tool_refresh, resolve
-	Outcome     string            // result: success, failure, partial, unknown, timeout, rejected, skipped
-	Severity    string            // operator severity: debug, info, warn, error
+	ID        string    // random UUID, generated at emit time
+	Time      time.Time // when the event occurred
+	Component string    // emitting subsystem: orchestrator, runtime.k8s, gateway, reconciler, mcpclient, worker
+	Category  string    // event family: agent, auth, backend, gateway, queue, objective, strategy
+	Resource  string    // typed identifier: task:research-foo, mcp_server:vendor, objective:obj-123
+	Action    string    // what happened: create, complete, fail, seed, connect_attempt, status_change, tool_refresh, resolve
+	Outcome   string    // result: success, failure, partial, unknown, timeout, rejected, skipped
+	Severity  string    // operator severity: debug, info, warn, error
 
-	Task        string            // canonical fracta agent identity (when event relates to an agent)
-	MissionID   int64             // optional mission correlation
-	ObjectiveID string            // optional objective correlation
+	Task        string // canonical fracta agent identity (when event relates to an agent)
+	MissionID   int64  // optional mission correlation
+	ObjectiveID string // optional objective correlation
 
-	Detail      string            // short human-readable explanation
-	Attrs       map[string]string // flexible metadata bag
+	Detail string            // short human-readable explanation
+	Attrs  map[string]string // flexible metadata bag
 }
 
 // Info creates an event with severity "info". ID and Time are pre-filled.

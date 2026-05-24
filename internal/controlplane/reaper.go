@@ -13,9 +13,9 @@ import (
 	"github.com/darkquasar/fracta/internal/agentlifecycle"
 	"github.com/darkquasar/fracta/internal/config"
 	"github.com/darkquasar/fracta/internal/events"
+	"github.com/darkquasar/fracta/internal/fractalog"
 	"github.com/darkquasar/fracta/internal/mailbox"
 	"github.com/darkquasar/fracta/internal/model"
-	"github.com/darkquasar/fracta/internal/fractalog"
 	"github.com/darkquasar/fracta/internal/objective"
 	"github.com/darkquasar/fracta/internal/queue"
 	"github.com/darkquasar/fracta/internal/runtime"
@@ -27,12 +27,12 @@ import (
 type Reaper struct {
 	store          state.Store
 	backend        runtime.Backend
-	streamBackend  runtime.StreamBackend        // optional — for stream pod cleanup
-	queue          queue.MissionQueue          // optional — nil when queue not configured
-	mailbox        mailbox.Mailbox             // optional — for terminal queued agent cleanup
-	objectiveStore objective.ObjectiveStore     // optional — for objective timeout enforcement
-	bus            events.Bus                  // optional — emits reap lifecycle events
-	lifecycle      *agentlifecycle.Writer      // lifecycle transition coordinator
+	streamBackend  runtime.StreamBackend    // optional — for stream pod cleanup
+	queue          queue.MissionQueue       // optional — nil when queue not configured
+	mailbox        mailbox.Mailbox          // optional — for terminal queued agent cleanup
+	objectiveStore objective.ObjectiveStore // optional — for objective timeout enforcement
+	bus            events.Bus               // optional — emits reap lifecycle events
+	lifecycle      *agentlifecycle.Writer   // lifecycle transition coordinator
 	cfg            config.ReaperConfig
 	mu             sync.RWMutex
 	stopCh         chan struct{}
@@ -391,4 +391,4 @@ type MaxConcurrentError struct {
 
 func (e *MaxConcurrentError) Error() string {
 	return fmt.Sprintf("max concurrent agents (%d) reached", e.Limit)
-} 
+}

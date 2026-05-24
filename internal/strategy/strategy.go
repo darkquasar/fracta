@@ -21,4 +21,4 @@ type Runner interface {
 }
 
 // Compile-time assertion: *Sidecar satisfies Runner.
-var _ Runner = (*Sidecar)(nil) 
+var _ Runner = (*Sidecar)(nil)

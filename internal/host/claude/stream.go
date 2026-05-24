@@ -30,7 +30,7 @@ type wireEvent struct {
 	ToolName  string   // tool being used (from tool_use content blocks)
 	Result    string   // final result text (from result events)
 	IsError   bool
-	RawLine   string   // original JSON line (for debug/raw log)
+	RawLine   string // original JSON line (for debug/raw log)
 }
 
 func parseWireEvent(line string) wireEvent {
@@ -106,7 +106,6 @@ func (we *wireEvent) semantic() string {
 	}
 }
 
-
 // --- StreamHandle: implements host.StreamSession ---
 //
 // Architecture: a dedicated reader goroutine owns all stdout reads.
@@ -122,22 +121,27 @@ func (we *wireEvent) semantic() string {
 type StreamHandle struct {
 	cmd          *exec.Cmd
 	stdin        *writerCloser
-	lines        chan string    // buffered channel of stdout lines from reader goroutine
+	lines        chan string   // buffered channel of stdout lines from reader goroutine
 	mu           sync.Mutex    // serializes Send calls
-	done         chan struct{}  // closed when process exits and Wait() completes
+	done         chan struct{} // closed when process exits and Wait() completes
 	err          error         // exit error from cmd.Wait()
 	resumeToken  string
 	output       *host.ByteBuffer
 	logPath      string
 	logFn        func(path, content string) error
-	lineObserver func([]byte)  // optional external line observer (set before first Send)
+	lineObserver func([]byte) // optional external line observer (set before first Send)
 }
 
 // writerCloser wraps io.WriteCloser.
-type writerCloser struct{ wc interface{ Write([]byte) (int, error); Close() error } }
+type writerCloser struct {
+	wc interface {
+		Write([]byte) (int, error)
+		Close() error
+	}
+}
 
 func (w *writerCloser) Write(p []byte) (int, error) { return w.wc.Write(p) }
-func (w *writerCloser) Close() error                 { return w.wc.Close() }
+func (w *writerCloser) Close() error                { return w.wc.Close() }
 
 // StartStream launches a Claude CLI process in streaming mode and returns
 // a StreamSession. This is the Claude implementation of host.Host.StartStream.

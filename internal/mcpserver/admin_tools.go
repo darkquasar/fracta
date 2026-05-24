@@ -154,7 +154,6 @@ func (s *Server) handleSpawn(ctx context.Context, request mcp.CallToolRequest) (
 	return mcp.NewToolResultText(string(data)), nil
 }
 
-
 func (s *Server) handleSay(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	if err := s.requireRoot(); err != nil {
 		return mcp.NewToolResultError(err.Error()), nil

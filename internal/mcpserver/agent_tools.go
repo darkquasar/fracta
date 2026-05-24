@@ -462,4 +462,4 @@ func makeResolveObjectiveHandler(resolver ObjectiveContextResolver, objStore obj
 		data, _ := json.Marshal(result)
 		return mcp.NewToolResultText(string(data)), nil
 	}
-} 
+}

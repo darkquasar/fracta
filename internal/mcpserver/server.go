@@ -8,12 +8,12 @@ import (
 
 	"github.com/darkquasar/fracta/internal/contract"
 	"github.com/darkquasar/fracta/internal/cpapi"
-	"github.com/darkquasar/fracta/internal/gateway"
-	"github.com/darkquasar/fracta/internal/host"
-	"github.com/darkquasar/fracta/internal/graph"
-	"github.com/darkquasar/fracta/internal/mailbox"
 	"github.com/darkquasar/fracta/internal/fractalog"
+	"github.com/darkquasar/fracta/internal/gateway"
+	"github.com/darkquasar/fracta/internal/graph"
+	"github.com/darkquasar/fracta/internal/host"
 	"github.com/darkquasar/fracta/internal/loaders"
+	"github.com/darkquasar/fracta/internal/mailbox"
 	"github.com/darkquasar/fracta/internal/mcpclient"
 	"github.com/darkquasar/fracta/internal/orchestrator"
 	"github.com/darkquasar/fracta/internal/registry"
@@ -251,4 +251,3 @@ func (s *Server) requireRoot() error {
 	}
 	return nil
 }
-

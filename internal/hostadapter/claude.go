@@ -13,7 +13,7 @@ import (
 // to canonical events.Event values.
 type ClaudeStreamAdapter struct {
 	task        string
-	runtimeType    string
+	runtimeType string
 	sessionID   string // from system:init, attached to subsequent events
 	currentTool string // last tool_use name seen, for tool_result correlation
 }

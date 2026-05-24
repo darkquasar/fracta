@@ -483,4 +483,4 @@ func defaultJSON(data json.RawMessage) json.RawMessage {
 }
 
 // Verify interface compliance at compile time.
-var _ registry.Store = (*PgRegistry)(nil) 
+var _ registry.Store = (*PgRegistry)(nil)

@@ -3,9 +3,9 @@ package config
 import (
 	"fmt"
 
+	yamlv3 "gopkg.in/yaml.v3"
 	corev1 "k8s.io/api/core/v1"
 	sigsyaml "sigs.k8s.io/yaml"
-	yamlv3 "gopkg.in/yaml.v3"
 )
 
 // k8sBuiltInVolumeNames lists the volume names the runtime always defines on

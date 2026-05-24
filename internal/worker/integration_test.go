@@ -104,10 +104,10 @@ func TestIntegration_FullLifecycle(t *testing.T) {
 		task := fmt.Sprintf("agent-%d", i)
 		m := &queue.Mission{AgentTask: task, Payload: mkPayload(t, "claude")}
 		a := &model.AgentEntry{
-			Task:     task,
+			Task:        task,
 			RuntimeType: "claude",
-			Status:   model.StatusQueued,
-			Mode:     "queued",
+			Status:      model.StatusQueued,
+			Mode:        "queued",
 		}
 		if err := q.Enqueue(ctx, m, a); err != nil {
 			t.Fatal(err)

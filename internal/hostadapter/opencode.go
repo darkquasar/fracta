@@ -37,10 +37,10 @@ type ocSessionStatusInfo struct {
 // ocMessagePartInfo is the info payload for message.part.updated events.
 type ocMessagePartInfo struct {
 	Part struct {
-		Type   string `json:"type"` // "text", "tool"
-		Text   string `json:"text,omitempty"`
-		Tool   string `json:"tool,omitempty"`
-		State  *struct {
+		Type  string `json:"type"` // "text", "tool"
+		Text  string `json:"text,omitempty"`
+		Tool  string `json:"tool,omitempty"`
+		State *struct {
 			Status string `json:"status,omitempty"` // "running", "completed", "error"
 		} `json:"state,omitempty"`
 	} `json:"part"`

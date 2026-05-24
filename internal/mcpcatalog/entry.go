@@ -211,4 +211,4 @@ func (e Entry) PreferredVariant(k scaffolds.Kind) (string, bool) {
 		return "", false
 	}
 	return "", false
-} 
+}

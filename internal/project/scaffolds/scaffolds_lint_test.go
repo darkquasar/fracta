@@ -112,4 +112,4 @@ func TestScaffoldsK8sDriftParity(t *testing.T) {
 			t.Errorf("templates manifest %q is not in migratedK8sManifests nor allowedTemplatesOnly; if intentional, update scaffolds_lint_test.go", e.Name())
 		}
 	}
-} 
+}

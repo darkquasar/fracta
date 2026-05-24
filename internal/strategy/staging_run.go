@@ -86,11 +86,11 @@ func DeriveRunStatus(run *StagingRun) RunStatus {
 type TableStatus string
 
 const (
-	TableStatusPending      TableStatus = "pending"
-	TableStatusFetching     TableStatus = "fetching"
-	TableStatusStaged       TableStatus = "staged"
-	TableStatusFailed       TableStatus = "failed"
-	TableStatusSkipped      TableStatus = "skipped"
+	TableStatusPending       TableStatus = "pending"
+	TableStatusFetching      TableStatus = "fetching"
+	TableStatusStaged        TableStatus = "staged"
+	TableStatusFailed        TableStatus = "failed"
+	TableStatusSkipped       TableStatus = "skipped"
 	TableStatusAwaitingAgent TableStatus = "awaiting_agent"
 )
 
@@ -121,17 +121,17 @@ func ValidateTableTransition(from, to TableStatus) error {
 
 // StagingRun represents the full state of a strategy staging+execution lifecycle.
 type StagingRun struct {
-	ID                string            `json:"id"`
-	StrategyName      string            `json:"strategy_name"`
-	Params            map[string]any    `json:"params"`
-	ParamsFingerprint string            `json:"params_fingerprint"`
-	Status            RunStatus         `json:"status"`
+	ID                string                 `json:"id"`
+	StrategyName      string                 `json:"strategy_name"`
+	Params            map[string]any         `json:"params"`
+	ParamsFingerprint string                 `json:"params_fingerprint"`
+	Status            RunStatus              `json:"status"`
 	Tables            map[string]*TableState `json:"tables"`
-	CreatedAt         time.Time         `json:"created_at"`
-	UpdatedAt         time.Time         `json:"updated_at"`
-	Error             *StructuredError  `json:"error,omitempty"`
-	Result            json.RawMessage   `json:"result,omitempty"`
-	Trace             json.RawMessage   `json:"trace,omitempty"`
+	CreatedAt         time.Time              `json:"created_at"`
+	UpdatedAt         time.Time              `json:"updated_at"`
+	Error             *StructuredError       `json:"error,omitempty"`
+	Result            json.RawMessage        `json:"result,omitempty"`
+	Trace             json.RawMessage        `json:"trace,omitempty"`
 
 	// Diagnostic fields (S10.C)
 	ResumeCount        int        `json:"resume_count"`
@@ -141,23 +141,23 @@ type StagingRun struct {
 
 // TableState tracks the staging progress of a single table within a run.
 type TableState struct {
-	Name           string          `json:"name"`
-	FetchMode      string          `json:"fetch_mode"`       // fracta_mcp_gateway, mcp, native
-	Required       bool            `json:"required"`
-	Status         TableStatus     `json:"status"`
-	Partial        bool            `json:"partial"`          // true if staged with incomplete data
-	ParquetPath    string          `json:"parquet_path"`     // single file or glob pattern for chunks
-	RowCount       int64           `json:"row_count"`
-	BytesStaged    int64           `json:"bytes_staged"`
-	PagesCompleted int             `json:"pages_completed"`
-	TotalEstimate  int             `json:"total_estimate"`   // estimated total rows (from max_rows)
+	Name           string           `json:"name"`
+	FetchMode      string           `json:"fetch_mode"` // fracta_mcp_gateway, mcp, native
+	Required       bool             `json:"required"`
+	Status         TableStatus      `json:"status"`
+	Partial        bool             `json:"partial"`      // true if staged with incomplete data
+	ParquetPath    string           `json:"parquet_path"` // single file or glob pattern for chunks
+	RowCount       int64            `json:"row_count"`
+	BytesStaged    int64            `json:"bytes_staged"`
+	PagesCompleted int              `json:"pages_completed"`
+	TotalEstimate  int              `json:"total_estimate"` // estimated total rows (from max_rows)
 	Error          *StructuredError `json:"error,omitempty"`
-	FetchPlan      json.RawMessage `json:"fetch_plan,omitempty"` // serialized for resume after restart
-	RetryCount     int             `json:"retry_count"`
-	LastOffset     int             `json:"last_offset"`      // resume point for offset pagination
-	LastCursor     string          `json:"last_cursor"`      // resume point for cursor pagination
-	StartedAt      *time.Time      `json:"started_at,omitempty"`
-	CompletedAt    *time.Time      `json:"completed_at,omitempty"`
+	FetchPlan      json.RawMessage  `json:"fetch_plan,omitempty"` // serialized for resume after restart
+	RetryCount     int              `json:"retry_count"`
+	LastOffset     int              `json:"last_offset"` // resume point for offset pagination
+	LastCursor     string           `json:"last_cursor"` // resume point for cursor pagination
+	StartedAt      *time.Time       `json:"started_at,omitempty"`
+	CompletedAt    *time.Time       `json:"completed_at,omitempty"`
 
 	// Diagnostic fields (S10.C)
 	LastErrorAt        *time.Time `json:"last_error_at,omitempty"`
@@ -167,26 +167,26 @@ type TableState struct {
 // StructuredError provides categorized error information for strategy failures.
 type StructuredError struct {
 	Message        string `json:"message"`
-	Category       string `json:"category"`                    // transient, permanent, partial
+	Category       string `json:"category"` // transient, permanent, partial
 	Retryable      bool   `json:"retryable"`
 	RetryAfterSecs int    `json:"retry_after_seconds,omitempty"`
-	Phase          string `json:"phase"`                       // resolution, staging, execution
+	Phase          string `json:"phase"` // resolution, staging, execution
 	Detail         any    `json:"detail,omitempty"`
 }
 
 // SerializedFetchPlan captures the resolved fetch options for a table,
 // enabling resume from checkpoint after a pod restart.
 type SerializedFetchPlan struct {
-	Server          string         `json:"server"`
-	Tool            string         `json:"tool"`
-	Args            map[string]any `json:"args"`
-	Fields          []FetchField   `json:"fields"`
-	ItemsPath       string         `json:"items_path,omitempty"`
-	SingleItem      bool           `json:"single_item,omitempty"`
-	MaxRows         int            `json:"max_rows,omitempty"`
-	TimeoutSecs     int            `json:"timeout_secs,omitempty"`
-	ResponseFormat  string         `json:"response_format,omitempty"`
-	ResponseAdapter string         `json:"response_adapter,omitempty"`
+	Server          string            `json:"server"`
+	Tool            string            `json:"tool"`
+	Args            map[string]any    `json:"args"`
+	Fields          []FetchField      `json:"fields"`
+	ItemsPath       string            `json:"items_path,omitempty"`
+	SingleItem      bool              `json:"single_item,omitempty"`
+	MaxRows         int               `json:"max_rows,omitempty"`
+	TimeoutSecs     int               `json:"timeout_secs,omitempty"`
+	ResponseFormat  string            `json:"response_format,omitempty"`
+	ResponseAdapter string            `json:"response_adapter,omitempty"`
 	Pagination      *PaginationConfig `json:"pagination,omitempty"`
 }
 

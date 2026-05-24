@@ -72,9 +72,9 @@ type mockAgentHandle struct {
 	waitErr   error
 }
 
-func (h *mockAgentHandle) Wait() error        { return h.waitErr }
-func (h *mockAgentHandle) Output() io.Reader   { return bytes.NewReader(h.output) }
-func (h *mockAgentHandle) ExitCode() int       { return h.exitCode }
+func (h *mockAgentHandle) Wait() error          { return h.waitErr }
+func (h *mockAgentHandle) Output() io.Reader    { return bytes.NewReader(h.output) }
+func (h *mockAgentHandle) ExitCode() int        { return h.exitCode }
 func (h *mockAgentHandle) StartTime() time.Time { return h.startTime }
 
 // --- Mock Backend ---
@@ -527,7 +527,7 @@ func TestSay_RejectsHostWithoutResumeTokenCapability(t *testing.T) {
 	err := store.WithLock(context.Background(), func(st *model.State) error {
 		st.Agents = append(st.Agents, model.AgentEntry{
 			Task:        "resume-test",
-			RuntimeType:    "noop",
+			RuntimeType: "noop",
 			ResumeToken: "some-token",
 			Status:      model.StatusCompleted,
 		})
@@ -561,7 +561,7 @@ func TestSayAsync_RejectsHostWithoutResumeTokenCapability(t *testing.T) {
 	err := store.WithLock(context.Background(), func(st *model.State) error {
 		st.Agents = append(st.Agents, model.AgentEntry{
 			Task:        "resume-async-test",
-			RuntimeType:    "noop",
+			RuntimeType: "noop",
 			ResumeToken: "some-token",
 			Status:      model.StatusCompleted,
 		})
@@ -748,7 +748,7 @@ func (batchOnlyHost) WriteWorkspace(string, []string, host.WorkspaceConfig) erro
 
 func (batchOnlyHost) Bootstrap(task, baseBranch, contract string) host.BootstrapResult {
 	return host.BootstrapResult{
-		FileName:      "",                                 // no file artifact
+		FileName:      "", // no file artifact
 		InitialPrompt: "run the task: " + task + "\n" + contract,
 	}
 }
@@ -805,7 +805,7 @@ func TestResolveSpawn_WithConfig(t *testing.T) {
 			},
 			Agents: config.AgentsConfig{
 				DefaultRuntime: "claude",
-				DefaultMode:     "batch",
+				DefaultMode:    "batch",
 			},
 			Runtimes: map[string]config.RuntimeEntry{
 				"claude": {
@@ -1075,7 +1075,7 @@ func TestBatchOnlyHost_SayFailsCleanly(t *testing.T) {
 	err := store.WithLock(context.Background(), func(st *model.State) error {
 		st.Agents = append(st.Agents, model.AgentEntry{
 			Task:        "batch-say-test",
-			RuntimeType:    "batch-host",
+			RuntimeType: "batch-host",
 			ResumeToken: "fake-token",
 			Status:      model.StatusCompleted,
 		})
@@ -1146,7 +1146,7 @@ func TestSay_BackendReceivesHostEnv(t *testing.T) {
 	err := store.WithLock(context.Background(), func(st *model.State) error {
 		st.Agents = append(st.Agents, model.AgentEntry{
 			Task:          "env-test",
-			RuntimeType:      "claude",
+			RuntimeType:   "claude",
 			ResumeToken:   "tok-123",
 			WorkspacePath: root,
 			Status:        model.StatusCompleted,
@@ -1229,7 +1229,7 @@ func TestSay_BackendReceivesSecretRefHostEnv(t *testing.T) {
 	err := store.WithLock(context.Background(), func(st *model.State) error {
 		st.Agents = append(st.Agents, model.AgentEntry{
 			Task:          "secret-env-test",
-			RuntimeType:      "claude",
+			RuntimeType:   "claude",
 			ResumeToken:   "tok-sec",
 			WorkspacePath: root,
 			Status:        model.StatusCompleted,
@@ -1320,7 +1320,7 @@ func TestSayAsync_BackendRollbackOnStateFailure(t *testing.T) {
 	err := store.WithLock(context.Background(), func(st *model.State) error {
 		st.Agents = append(st.Agents, model.AgentEntry{
 			Task:          "rollback-test",
-			RuntimeType:      "claude",
+			RuntimeType:   "claude",
 			ResumeToken:   "tok-abc",
 			WorkspacePath: root,
 			Status:        model.StatusIdle,

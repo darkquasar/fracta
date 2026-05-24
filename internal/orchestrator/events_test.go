@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/darkquasar/fracta/internal/events"
-	"github.com/darkquasar/fracta/internal/model"
 	"github.com/darkquasar/fracta/internal/fractalog"
+	"github.com/darkquasar/fracta/internal/model"
 )
 
 // captureBus records all emitted events for test assertions.

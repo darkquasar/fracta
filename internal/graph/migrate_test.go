@@ -11,9 +11,9 @@ import (
 // recordingGraphClient records all Query and Update calls for test assertions.
 // It can be primed with query responses via addQueryResponse.
 type recordingGraphClient struct {
-	mu       sync.Mutex
-	updates  []updateCall
-	queries  []queryCall
+	mu      sync.Mutex
+	updates []updateCall
+	queries []queryCall
 	// queryResponses maps a substring of the cypher query to a canned response.
 	queryResponses map[string][]Record
 }

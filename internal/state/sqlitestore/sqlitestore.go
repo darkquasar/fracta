@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/darkquasar/fracta/internal/events"
+	"github.com/darkquasar/fracta/internal/fractalog"
 	"github.com/darkquasar/fracta/internal/mailbox"
 	"github.com/darkquasar/fracta/internal/model"
-	"github.com/darkquasar/fracta/internal/fractalog"
 	"github.com/darkquasar/fracta/internal/state"
 
 	_ "modernc.org/sqlite"

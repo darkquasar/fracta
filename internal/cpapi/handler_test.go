@@ -18,37 +18,37 @@ import (
 
 // mockClient implements ControlPlaneClient for handler tests.
 type mockClient struct {
-	spawnResp          *SpawnResponse
-	spawnErr           error
-	listAgentsResp     *ListAgentsResponse
-	listAgentsErr      error
-	getAgentResp       *GetAgentResponse
-	getAgentErr        error
-	getMissionResp     *GetMissionResponse
-	getMissionErr      error
-	peekResp           *PeekResponse
-	peekErr            error
-	getLogsResp        *GetLogsResponse
-	getLogsErr         error
-	sayResp            *SayResponse
-	sayErr             error
-	killResp           *KillResponse
-	killErr            error
-	createObjResp      *CreateObjectiveResponse
-	createObjErr       error
-	listObjResp        *ListObjectivesResponse
-	listObjErr         error
-	getObjResp         *GetObjectiveResponse
-	getObjErr          error
+	spawnResp      *SpawnResponse
+	spawnErr       error
+	listAgentsResp *ListAgentsResponse
+	listAgentsErr  error
+	getAgentResp   *GetAgentResponse
+	getAgentErr    error
+	getMissionResp *GetMissionResponse
+	getMissionErr  error
+	peekResp       *PeekResponse
+	peekErr        error
+	getLogsResp    *GetLogsResponse
+	getLogsErr     error
+	sayResp        *SayResponse
+	sayErr         error
+	killResp       *KillResponse
+	killErr        error
+	createObjResp  *CreateObjectiveResponse
+	createObjErr   error
+	listObjResp    *ListObjectivesResponse
+	listObjErr     error
+	getObjResp     *GetObjectiveResponse
+	getObjErr      error
 
 	// Capture requests for assertion.
-	lastSpawnReq       SpawnRequest
-	lastSayReq         SayRequest
-	lastKillReq        KillRequest
-	lastPeekReq        PeekRequest
-	lastGetLogsReq     GetLogsRequest
-	lastCreateObjReq   CreateObjectiveRequest
-	lastListObjReq     ListObjectivesRequest
+	lastSpawnReq     SpawnRequest
+	lastSayReq       SayRequest
+	lastKillReq      KillRequest
+	lastPeekReq      PeekRequest
+	lastGetLogsReq   GetLogsRequest
+	lastCreateObjReq CreateObjectiveRequest
+	lastListObjReq   ListObjectivesRequest
 }
 
 func (m *mockClient) Spawn(_ context.Context, req SpawnRequest) (*SpawnResponse, error) {

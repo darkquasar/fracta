@@ -20,18 +20,18 @@ const (
 
 // Server represents a registered MCP server (maps to registered_servers table).
 type Server struct {
-	Name               string            `json:"name"`
-	TransportType      string            `json:"transport_type"`      // stdio, http, streamable_http
-	ConnectionConfig   json.RawMessage   `json:"connection_config"`   // arbitrary JSON
-	SecretRefs         json.RawMessage   `json:"secret_refs"`         // arbitrary JSON
-	ServerCapabilities json.RawMessage   `json:"server_capabilities"` // arbitrary JSON
-	ProxyEnabled       bool              `json:"proxy_enabled"`
-	Status             ServerStatus      `json:"status"`
-	HealthMessage      string            `json:"health_message"`
-	LastDiscoveredAt   *time.Time        `json:"last_discovered_at,omitempty"`
-	CreatedBy          string            `json:"created_by"`
-	CreatedAt          time.Time         `json:"created_at"`
-	UpdatedAt          time.Time         `json:"updated_at"`
+	Name               string          `json:"name"`
+	TransportType      string          `json:"transport_type"`      // stdio, http, streamable_http
+	ConnectionConfig   json.RawMessage `json:"connection_config"`   // arbitrary JSON
+	SecretRefs         json.RawMessage `json:"secret_refs"`         // arbitrary JSON
+	ServerCapabilities json.RawMessage `json:"server_capabilities"` // arbitrary JSON
+	ProxyEnabled       bool            `json:"proxy_enabled"`
+	Status             ServerStatus    `json:"status"`
+	HealthMessage      string          `json:"health_message"`
+	LastDiscoveredAt   *time.Time      `json:"last_discovered_at,omitempty"`
+	CreatedBy          string          `json:"created_by"`
+	CreatedAt          time.Time       `json:"created_at"`
+	UpdatedAt          time.Time       `json:"updated_at"`
 }
 
 // Tool represents a discovered tool on a registered server (maps to registered_tools table).

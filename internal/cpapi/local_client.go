@@ -10,11 +10,11 @@ import (
 	"github.com/darkquasar/fracta/internal/contract"
 	"github.com/darkquasar/fracta/internal/controlplane"
 	"github.com/darkquasar/fracta/internal/events"
+	"github.com/darkquasar/fracta/internal/fractalog"
 	"github.com/darkquasar/fracta/internal/git"
 	"github.com/darkquasar/fracta/internal/graph"
 	"github.com/darkquasar/fracta/internal/host"
 	"github.com/darkquasar/fracta/internal/model"
-	"github.com/darkquasar/fracta/internal/fractalog"
 	"github.com/darkquasar/fracta/internal/objective"
 	"github.com/darkquasar/fracta/internal/orchestrator"
 	"github.com/darkquasar/fracta/internal/queue"
@@ -323,7 +323,7 @@ func (c *LocalControlPlaneClient) spawnQueued(
 		e.MissionID = mission.ID
 		e.Attrs = map[string]string{
 			"mission_id": fmt.Sprintf("%d", mission.ID),
-			"runtime":  resolved.RuntimeType,
+			"runtime":    resolved.RuntimeType,
 			"model":      resolved.Model,
 		}
 		orch.Events.Emit(ctx, e)
@@ -363,7 +363,7 @@ func (c *LocalControlPlaneClient) DryRunSpawn(ctx context.Context, req DryRunReq
 	capsMap := map[string]bool{
 		"stream":           caps.Stream,
 		"agent_mcp":        caps.AgentMCP,
-		"tool_permissions":  caps.ToolPermissions,
+		"tool_permissions": caps.ToolPermissions,
 		"resume_token":     caps.ResumeToken,
 	}
 
@@ -1042,4 +1042,3 @@ func objectiveToInfo(o *objective.Objective) ObjectiveInfo {
 		Outcome:      o.Outcome,
 	}
 }
-

@@ -9,16 +9,16 @@ import (
 // Profile bundles the default settings for a deployment mode.
 type Profile struct {
 	Name                   string
-	StateDriver            string // "sqlite" or "postgres"
-	StatePath              string // SQLite DB path (resolved to absolute)
-	PostgresConfig         config.PostgresConfig // Postgres connection settings (when driver=postgres)
-	WorkspaceType          string // "git" or "directory"
-	WorkspaceBase          string // base directory for workspaces (only used by directory workspace)
-	BackendType            string // "local" or "kubernetes"
-	ProjectRoot            string // project root for git workspace
-	ClientMode             string // "local" (in-process client) or "remote" (HTTP client to in-cluster API)
-	RegistryDriver         string // "sqlite" or "postgres" — defaults to StateDriver if empty
-	RegistryPostgresConfig config.PostgresConfig // Postgres config for registry; explicit override or inherited from state
+	StateDriver            string                  // "sqlite" or "postgres"
+	StatePath              string                  // SQLite DB path (resolved to absolute)
+	PostgresConfig         config.PostgresConfig   // Postgres connection settings (when driver=postgres)
+	WorkspaceType          string                  // "git" or "directory"
+	WorkspaceBase          string                  // base directory for workspaces (only used by directory workspace)
+	BackendType            string                  // "local" or "kubernetes"
+	ProjectRoot            string                  // project root for git workspace
+	ClientMode             string                  // "local" (in-process client) or "remote" (HTTP client to in-cluster API)
+	RegistryDriver         string                  // "sqlite" or "postgres" — defaults to StateDriver if empty
+	RegistryPostgresConfig config.PostgresConfig   // Postgres config for registry; explicit override or inherited from state
 	RegistryBootstrap      bool                    // gateway-only: seed registry from mcp_servers config on startup
 	MCPServers             config.MCPServersConfig // MCP server config for gateway bootstrap seeding
 }

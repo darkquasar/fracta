@@ -47,7 +47,7 @@ func (s *PostgresStore) InsertEvent(ctx context.Context, p events.InsertEventPar
 	return nil
 }
 
-// nilIfEmpty returns nil for empty strings (so JSONB columns get NULL, not '').
+// nilIfEmpty returns nil for empty strings (so JSONB columns get NULL, not ”).
 func nilIfEmpty(s string) any {
 	if s == "" {
 		return nil

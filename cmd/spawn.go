@@ -18,7 +18,7 @@ var (
 	spawnModel    string
 	spawnTier     string
 	spawnMode     string
-	spawnRuntime string
+	spawnRuntime  string
 	spawnDryRun   bool
 	spawnFormat   string
 )

@@ -6,9 +6,9 @@ import (
 	"context"
 	"testing"
 
+	"github.com/darkquasar/fracta/internal/fractalog"
 	"github.com/darkquasar/fracta/internal/graph"
 	"github.com/darkquasar/fracta/internal/mcpclient"
-	"github.com/darkquasar/fracta/internal/fractalog"
 )
 
 const reconcilerTestAddr = "localhost:6379"

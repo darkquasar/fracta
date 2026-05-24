@@ -15,17 +15,17 @@ import (
 
 // mockClient implements cpapi.ControlPlaneClient for testing.
 type mockClient struct {
-	spawnFn          func(ctx context.Context, req cpapi.SpawnRequest) (*cpapi.SpawnResponse, error)
-	listAgentsFn     func(ctx context.Context, req cpapi.ListAgentsRequest) (*cpapi.ListAgentsResponse, error)
-	getAgentFn       func(ctx context.Context, req cpapi.GetAgentRequest) (*cpapi.GetAgentResponse, error)
-	getMissionFn     func(ctx context.Context, req cpapi.GetMissionRequest) (*cpapi.GetMissionResponse, error)
-	peekFn           func(ctx context.Context, req cpapi.PeekRequest) (*cpapi.PeekResponse, error)
-	getLogsFn        func(ctx context.Context, req cpapi.GetLogsRequest) (*cpapi.GetLogsResponse, error)
-	sayFn            func(ctx context.Context, req cpapi.SayRequest) (*cpapi.SayResponse, error)
-	killFn           func(ctx context.Context, req cpapi.KillRequest) (*cpapi.KillResponse, error)
-	createObjFn      func(ctx context.Context, req cpapi.CreateObjectiveRequest) (*cpapi.CreateObjectiveResponse, error)
-	listObjsFn       func(ctx context.Context, req cpapi.ListObjectivesRequest) (*cpapi.ListObjectivesResponse, error)
-	getObjFn         func(ctx context.Context, req cpapi.GetObjectiveRequest) (*cpapi.GetObjectiveResponse, error)
+	spawnFn      func(ctx context.Context, req cpapi.SpawnRequest) (*cpapi.SpawnResponse, error)
+	listAgentsFn func(ctx context.Context, req cpapi.ListAgentsRequest) (*cpapi.ListAgentsResponse, error)
+	getAgentFn   func(ctx context.Context, req cpapi.GetAgentRequest) (*cpapi.GetAgentResponse, error)
+	getMissionFn func(ctx context.Context, req cpapi.GetMissionRequest) (*cpapi.GetMissionResponse, error)
+	peekFn       func(ctx context.Context, req cpapi.PeekRequest) (*cpapi.PeekResponse, error)
+	getLogsFn    func(ctx context.Context, req cpapi.GetLogsRequest) (*cpapi.GetLogsResponse, error)
+	sayFn        func(ctx context.Context, req cpapi.SayRequest) (*cpapi.SayResponse, error)
+	killFn       func(ctx context.Context, req cpapi.KillRequest) (*cpapi.KillResponse, error)
+	createObjFn  func(ctx context.Context, req cpapi.CreateObjectiveRequest) (*cpapi.CreateObjectiveResponse, error)
+	listObjsFn   func(ctx context.Context, req cpapi.ListObjectivesRequest) (*cpapi.ListObjectivesResponse, error)
+	getObjFn     func(ctx context.Context, req cpapi.GetObjectiveRequest) (*cpapi.GetObjectiveResponse, error)
 }
 
 func (m *mockClient) Spawn(ctx context.Context, req cpapi.SpawnRequest) (*cpapi.SpawnResponse, error) {
@@ -176,10 +176,10 @@ func TestToolRegistration(t *testing.T) {
 
 	// Verify no gateway/agent tools leak into the host surface.
 	gatewayOnly := []string{
-		"fracta_send",    // agent-facing
-		"fracta_inbox",   // agent-facing
-		"fracta_init",    // admin init
-		"fracta_merge",   // local-only
+		"fracta_send",  // agent-facing
+		"fracta_inbox", // agent-facing
+		"fracta_init",  // admin init
+		"fracta_merge", // local-only
 	}
 	for _, name := range gatewayOnly {
 		assert.NotContains(t, tools, name, "tool %q should NOT be on host surface", name)
@@ -203,13 +203,13 @@ func TestSpawnDispatch(t *testing.T) {
 
 	srv := New(mc)
 	result, err := srv.handleSpawn(context.Background(), makeToolRequest(map[string]interface{}{
-		"task":      "test-agent",
-		"contract":  "do the thing",
-		"model":     "opus",
-		"tier":      "heavy",
-		"runtime": "claude",
-		"mode":      "batch",
-		"dispatch":  "queued",
+		"task":     "test-agent",
+		"contract": "do the thing",
+		"model":    "opus",
+		"tier":     "heavy",
+		"runtime":  "claude",
+		"mode":     "batch",
+		"dispatch": "queued",
 	}))
 	require.NoError(t, err)
 	assert.False(t, result.IsError)

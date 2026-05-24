@@ -59,7 +59,7 @@ func TestWithLock_SpawnAgent(t *testing.T) {
 	err := store.WithLock(ctx, func(st *model.State) error {
 		st.Agents = append(st.Agents, model.AgentEntry{
 			Task:          "agent-1",
-			RuntimeType:      "claude",
+			RuntimeType:   "claude",
 			ResumeToken:   "tok-abc",
 			WorkspacePath: "/tmp/ws",
 			BranchName:    "feature/test",

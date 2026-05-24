@@ -17,11 +17,11 @@ import (
 	"github.com/darkquasar/fracta/internal/auth/credentials"
 	"github.com/darkquasar/fracta/internal/config"
 	"github.com/darkquasar/fracta/internal/events"
+	"github.com/darkquasar/fracta/internal/fractalog"
 	"github.com/darkquasar/fracta/internal/host"
 	"github.com/darkquasar/fracta/internal/host/codex"
 	"github.com/darkquasar/fracta/internal/host/opencode"
 	"github.com/darkquasar/fracta/internal/hostadapter"
-	"github.com/darkquasar/fracta/internal/fractalog"
 	"github.com/darkquasar/fracta/internal/model"
 	"github.com/darkquasar/fracta/internal/runtime"
 	"github.com/darkquasar/fracta/internal/workspace"
@@ -197,10 +197,10 @@ type spawnPrep struct {
 	resolvedModel  string
 	prompt         string
 	wsInfo         *workspace.Info // workspace metadata for cleanup
-	host           host.Host      // resolved host for this spawn
-	runtimeType    string         // resolved runtime type name
-	spec           ExecutionSpec  // canonical execution contract
-	artifacts      SpawnArtifacts // per-spawn runtime artifacts
+	host           host.Host       // resolved host for this spawn
+	runtimeType    string          // resolved runtime type name
+	spec           ExecutionSpec   // canonical execution contract
+	artifacts      SpawnArtifacts  // per-spawn runtime artifacts
 }
 
 // runtimeWorkDir returns the agent's working directory as seen by the runtime process.
@@ -373,7 +373,7 @@ func (o *Orchestrator) prepareSpawn(task, contractContent string, resolved *Reso
 			e.Detail = fmt.Sprintf("host=%s model=%s", resolved.RuntimeType, resolved.Model)
 			e.Attrs = map[string]string{
 				"runtime": resolved.RuntimeType,
-				"model":     resolved.Model,
+				"model":   resolved.Model,
 			}
 		})
 
@@ -402,14 +402,14 @@ func (o *Orchestrator) prepareSpawn(task, contractContent string, resolved *Reso
 		workspacePath:  wsInfo.Path,
 		runtimeWorkDir: rwd,
 		branchName:     wsInfo.BranchName,
-		logFile:       logFile,
-		resolvedModel: resolved.Model,
-		prompt:        prompt,
-		wsInfo:        wsInfo,
-		host:          resolved.Host,
-		runtimeType:   resolved.RuntimeType,
-		spec:          spec,
-		artifacts:     artifacts,
+		logFile:        logFile,
+		resolvedModel:  resolved.Model,
+		prompt:         prompt,
+		wsInfo:         wsInfo,
+		host:           resolved.Host,
+		runtimeType:    resolved.RuntimeType,
+		spec:           spec,
+		artifacts:      artifacts,
 	}, nil
 }
 
@@ -798,7 +798,7 @@ func (o *Orchestrator) collectStreamInit(task, runtimeType string, session host.
 		o.cleanupStreamPod(task)
 		registry.Remove(task)
 		o.transitionAgentToTerminal(context.Background(), task, model.StatusFailed, TerminalMeta{
-			Reason:   fmt.Sprintf("initial prompt failed: %v", err),
+			Reason:      fmt.Sprintf("initial prompt failed: %v", err),
 			RuntimeType: runtimeType,
 		})
 		return
@@ -984,9 +984,9 @@ func (o *Orchestrator) emitStreamHeartbeats(task, runtimeType string, session ho
 				Action:    "heartbeat",
 				Task:      task,
 				Attrs: map[string]string{
-					"runtime": runtimeType,
-					"phase":     phase,
-					"uptime_s":  fmt.Sprintf("%d", uptime),
+					"runtime":  runtimeType,
+					"phase":    phase,
+					"uptime_s": fmt.Sprintf("%d", uptime),
 				},
 			})
 		}
@@ -1045,7 +1045,6 @@ func rotateLog(path string, keepBytes int64) error {
 	}
 	return os.WriteFile(path, data, 0644)
 }
-
 
 // workspaceFileSpec maps a relative workspace path to its ConfigMap key.
 type workspaceFileSpec struct {
@@ -1118,4 +1117,4 @@ func BuildConfigSnapshot(cfg *config.Config) (string, error) {
 		return "", fmt.Errorf("marshaling config snapshot: %w", err)
 	}
 	return string(data), nil
-} 
+}

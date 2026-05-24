@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	diagnoseRuntime string
+	diagnoseRuntime    string
 	diagnoseConfigPath string
 )
 

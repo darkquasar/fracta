@@ -10,8 +10,8 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/darkquasar/fracta/internal/events"
-	"github.com/darkquasar/fracta/internal/model"
 	"github.com/darkquasar/fracta/internal/fractalog"
+	"github.com/darkquasar/fracta/internal/model"
 	"github.com/darkquasar/fracta/internal/state"
 )
 

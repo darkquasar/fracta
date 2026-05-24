@@ -744,4 +744,4 @@ func (w *Worker) transitionWorkerToTerminal(ctx context.Context, task string, st
 	if err != nil && err != agentlifecycle.ErrTransitionSkipped {
 		w.logger.Warn("lifecycle transition failed", "task", task, "status", status, "error", err)
 	}
-} 
+}

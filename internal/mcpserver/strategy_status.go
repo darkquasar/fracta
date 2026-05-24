@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/darkquasar/fracta/internal/graph"
 	"github.com/darkquasar/fracta/internal/fractalog"
+	"github.com/darkquasar/fracta/internal/graph"
 )
 
 // Strategy status constants.

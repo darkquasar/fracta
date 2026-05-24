@@ -32,11 +32,11 @@ func TestResolveEffectiveStatus_NoRows(t *testing.T) {
 func TestResolveEffectiveStatus_ExploratoryStays(t *testing.T) {
 	gc := &queryableGraphClient{
 		queryRows: []graph.Record{{
-			"status":     "exploratory",
-			"total_runs": int64(2),
-			"reliability": 0.5,
-			"composite_score":  0.3,
-			"last_run":   "",
+			"status":          "exploratory",
+			"total_runs":      int64(2),
+			"reliability":     0.5,
+			"composite_score": 0.3,
+			"last_run":        "",
 		}},
 	}
 	status, err := resolveEffectiveStatus(context.Background(), gc, "test", "1", false)
@@ -55,11 +55,11 @@ func TestResolveEffectiveStatus_ExploratoryStays(t *testing.T) {
 func TestResolveEffectiveStatus_ExploratoryToValidated(t *testing.T) {
 	gc := &queryableGraphClient{
 		queryRows: []graph.Record{{
-			"status":     "exploratory",
-			"total_runs": int64(5),
-			"reliability": 0.85,
-			"composite_score":  0.5,
-			"last_run":   "",
+			"status":          "exploratory",
+			"total_runs":      int64(5),
+			"reliability":     0.85,
+			"composite_score": 0.5,
+			"last_run":        "",
 		}},
 	}
 	status, err := resolveEffectiveStatus(context.Background(), gc, "test", "1", false)
@@ -81,11 +81,11 @@ func TestResolveEffectiveStatus_ExploratoryToValidated(t *testing.T) {
 func TestResolveEffectiveStatus_ValidatedStaysWithoutAutoPromote(t *testing.T) {
 	gc := &queryableGraphClient{
 		queryRows: []graph.Record{{
-			"status":     "validated",
-			"total_runs": int64(25),
-			"reliability": 0.98,
-			"composite_score":  0.8,
-			"last_run":   "",
+			"status":          "validated",
+			"total_runs":      int64(25),
+			"reliability":     0.98,
+			"composite_score": 0.8,
+			"last_run":        "",
 		}},
 	}
 	status, err := resolveEffectiveStatus(context.Background(), gc, "test", "1", false)
@@ -103,11 +103,11 @@ func TestResolveEffectiveStatus_ValidatedStaysWithoutAutoPromote(t *testing.T) {
 func TestResolveEffectiveStatus_ValidatedToPromotedAutoPromote(t *testing.T) {
 	gc := &queryableGraphClient{
 		queryRows: []graph.Record{{
-			"status":     "validated",
-			"total_runs": int64(25),
-			"reliability": 0.96,
-			"composite_score":  0.75,
-			"last_run":   "",
+			"status":          "validated",
+			"total_runs":      int64(25),
+			"reliability":     0.96,
+			"composite_score": 0.75,
+			"last_run":        "",
 		}},
 	}
 	status, err := resolveEffectiveStatus(context.Background(), gc, "test", "1", true)
@@ -125,11 +125,11 @@ func TestResolveEffectiveStatus_ValidatedToPromotedAutoPromote(t *testing.T) {
 func TestResolveEffectiveStatus_ValidatedNotPromotedBelowThreshold(t *testing.T) {
 	gc := &queryableGraphClient{
 		queryRows: []graph.Record{{
-			"status":     "validated",
-			"total_runs": int64(15), // below 20
-			"reliability": 0.96,
-			"composite_score":  0.75,
-			"last_run":   "",
+			"status":          "validated",
+			"total_runs":      int64(15), // below 20
+			"reliability":     0.96,
+			"composite_score": 0.75,
+			"last_run":        "",
 		}},
 	}
 	status, err := resolveEffectiveStatus(context.Background(), gc, "test", "1", true)
@@ -144,11 +144,11 @@ func TestResolveEffectiveStatus_ValidatedNotPromotedBelowThreshold(t *testing.T)
 func TestResolveEffectiveStatus_PromotedDemoted(t *testing.T) {
 	gc := &queryableGraphClient{
 		queryRows: []graph.Record{{
-			"status":     "promoted",
-			"total_runs": int64(30),
-			"reliability": 0.65, // below 0.7 threshold
-			"composite_score":  0.4,
-			"last_run":   "",
+			"status":          "promoted",
+			"total_runs":      int64(30),
+			"reliability":     0.65, // below 0.7 threshold
+			"composite_score": 0.4,
+			"last_run":        "",
 		}},
 	}
 	status, err := resolveEffectiveStatus(context.Background(), gc, "test", "1", false)
@@ -166,11 +166,11 @@ func TestResolveEffectiveStatus_PromotedDemoted(t *testing.T) {
 func TestResolveEffectiveStatus_PromotedStaysReliable(t *testing.T) {
 	gc := &queryableGraphClient{
 		queryRows: []graph.Record{{
-			"status":     "promoted",
-			"total_runs": int64(30),
-			"reliability": 0.9,
-			"composite_score":  0.7,
-			"last_run":   "",
+			"status":          "promoted",
+			"total_runs":      int64(30),
+			"reliability":     0.9,
+			"composite_score": 0.7,
+			"last_run":        "",
 		}},
 	}
 	status, err := resolveEffectiveStatus(context.Background(), gc, "test", "1", false)
@@ -188,11 +188,11 @@ func TestResolveEffectiveStatus_PromotedStaysReliable(t *testing.T) {
 func TestResolveEffectiveStatus_DeprecatedToRetired(t *testing.T) {
 	gc := &queryableGraphClient{
 		queryRows: []graph.Record{{
-			"status":     "deprecated",
-			"total_runs": int64(10),
-			"reliability": 0.5,
-			"composite_score":  0.3,
-			"last_run":   "2026-01-01T00:00:00Z", // >30 days ago
+			"status":          "deprecated",
+			"total_runs":      int64(10),
+			"reliability":     0.5,
+			"composite_score": 0.3,
+			"last_run":        "2026-01-01T00:00:00Z", // >30 days ago
 		}},
 	}
 	status, err := resolveEffectiveStatus(context.Background(), gc, "test", "1", false)
@@ -207,11 +207,11 @@ func TestResolveEffectiveStatus_DeprecatedToRetired(t *testing.T) {
 func TestResolveEffectiveStatus_DeprecatedStaysRecent(t *testing.T) {
 	gc := &queryableGraphClient{
 		queryRows: []graph.Record{{
-			"status":     "deprecated",
-			"total_runs": int64(10),
-			"reliability": 0.5,
-			"composite_score":  0.3,
-			"last_run":   "2099-01-01T00:00:00Z", // far future = recent
+			"status":          "deprecated",
+			"total_runs":      int64(10),
+			"reliability":     0.5,
+			"composite_score": 0.3,
+			"last_run":        "2099-01-01T00:00:00Z", // far future = recent
 		}},
 	}
 	status, err := resolveEffectiveStatus(context.Background(), gc, "test", "1", false)

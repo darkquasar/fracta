@@ -145,4 +145,4 @@ func (p *SidecarPool) Close() error {
 		}
 	}
 	return firstErr
-} 
+}

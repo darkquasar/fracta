@@ -213,4 +213,4 @@ func TestConfigMcpAddPlanRollback(t *testing.T) {
 	if _, err := os.Stat(manifestPath + ".bak"); !os.IsNotExist(err) {
 		t.Errorf(".bak should not exist; stat err=%v", err)
 	}
-} 
+}

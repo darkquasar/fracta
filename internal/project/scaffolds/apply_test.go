@@ -32,7 +32,7 @@ func TestApply_Materializes(t *testing.T) {
 	src := mkFS(map[string]*fstest.MapFile{
 		"fracta.yaml":                {Data: []byte("runtime: local"), Mode: 0o644},
 		"fracta/configs/x.yaml":      {Data: []byte("a"), Mode: 0o644},
-		".fracta/.gitkeep":           {Data: []byte{}, Mode: 0o644}, // dropped by walker
+		".fracta/.gitkeep":           {Data: []byte{}, Mode: 0o644},              // dropped by walker
 		"fracta/auth-helpers/foo.sh": {Data: []byte("#!/bin/sh\n"), Mode: 0o644}, // forced 0755
 	})
 
@@ -126,13 +126,13 @@ func TestApply_ModeAuthHelpersAlways0755(t *testing.T) {
 	}
 	src := mkFS(map[string]*fstest.MapFile{
 		// Helper reported 0644 by source — walker MUST force 0755.
-		"fracta/auth-helpers/script.sh":         {Data: []byte("x"), Mode: 0o644},
+		"fracta/auth-helpers/script.sh": {Data: []byte("x"), Mode: 0o644},
 		// Embed-style zero-mode entry under auth-helpers — also forced 0755.
-		".fracta/auth-helpers/embed-style.sh":   {Data: []byte("y"), Mode: 0},
+		".fracta/auth-helpers/embed-style.sh": {Data: []byte("y"), Mode: 0},
 		// Outside auth-helpers, source mode is preserved.
-		"fracta/configs/explicit-0640.yaml":     {Data: []byte("z"), Mode: 0o640},
+		"fracta/configs/explicit-0640.yaml": {Data: []byte("z"), Mode: 0o640},
 		// Outside auth-helpers, zero-mode falls to 0644.
-		"fracta.yaml":                           {Data: []byte("y"), Mode: 0},
+		"fracta.yaml": {Data: []byte("y"), Mode: 0},
 	})
 	dest := t.TempDir()
 	if _, err := Apply(context.Background(), src, dest, ApplyOpts{OnConflict: ConflictFail}); err != nil {

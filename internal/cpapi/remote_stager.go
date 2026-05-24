@@ -87,7 +87,7 @@ func (s *RemoteCredentialStager) Fetch(ctx context.Context, ref string) (*creden
 
 	var fetchResp struct {
 		SourceName string `json:"source_name"`
-		Data       string `json:"data"`      // base64-encoded
+		Data       string `json:"data"` // base64-encoded
 		MountPath  string `json:"mount_path"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&fetchResp); err != nil {

@@ -1023,4 +1023,4 @@ func (c *Config) EffectiveRuntimeConfig(runtimeType, root string) (RuntimeEntry,
 // EffectiveHostConfig is a deprecated alias for EffectiveRuntimeConfig.
 func (c *Config) EffectiveHostConfig(hostType, root string) (RuntimeEntry, bool) {
 	return c.EffectiveRuntimeConfig(hostType, root)
-} 
+}

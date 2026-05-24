@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	FractaDir     = ".fracta"
+	FractaDir   = ".fracta"
 	WorktreeDir = ".worktrees"
 	LogsDir     = "logs"
 )

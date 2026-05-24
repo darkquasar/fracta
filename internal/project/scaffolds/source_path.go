@@ -14,7 +14,7 @@ import (
 type pathSource struct {
 	root   string // absolute, cleaned
 	kind   Kind
-	rootFS fs.FS  // os.DirFS(root)
+	rootFS fs.FS // os.DirFS(root)
 }
 
 // PathSource returns a Source rooted at `<path>/<kind>/`. The kind directory

@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/darkquasar/fracta/internal/fractalog"
 	"github.com/darkquasar/fracta/internal/gateway"
 	"github.com/darkquasar/fracta/internal/graph"
-	"github.com/darkquasar/fracta/internal/fractalog"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 )
@@ -50,7 +50,7 @@ type searchToolEntry struct {
 	Name        string            `json:"name"`
 	Server      string            `json:"server"`
 	Description string            `json:"description"`
-	MatchType   string            `json:"match_type"`      // "graph", "keyword", "catalog"
+	MatchType   string            `json:"match_type"`       // "graph", "keyword", "catalog"
 	Grounded    bool              `json:"grounded"`         // true if result came from graph edges (semantic knowledge exists)
 	Fields      []searchToolField `json:"fields,omitempty"` // matched fields (semantic mode)
 }

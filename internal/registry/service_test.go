@@ -56,7 +56,7 @@ func (m *mockStore) ListAuditLog(context.Context, registry.AuditFilter) ([]regis
 	return nil, nil
 }
 func (m *mockStore) SyncConfigServers(context.Context, config.MCPServersConfig) error { return nil }
-func (m *mockStore) Close() error                                             { return nil }
+func (m *mockStore) Close() error                                                     { return nil }
 
 func adminCtx() context.Context {
 	return authz.WithSubject(context.Background(), authz.Subject{

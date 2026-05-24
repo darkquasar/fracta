@@ -99,4 +99,4 @@ func (g *Gateway) visibleCatalogEntries() []CatalogEntry {
 		}
 	}
 	return entries
-} 
+}

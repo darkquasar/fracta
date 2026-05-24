@@ -119,4 +119,4 @@ func (o *Orchestrator) cleanupAgent(ctx context.Context, agent *model.AgentEntry
 
 	logFile := filepath.Join(o.Root, model.FractaDir, model.LogsDir, agent.Task+".log")
 	os.Remove(logFile)
-} 
+}

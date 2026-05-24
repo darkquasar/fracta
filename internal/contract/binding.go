@@ -9,7 +9,7 @@ import (
 
 // PaginationConfig describes how to paginate an MCP tool call.
 type PaginationConfig struct {
-	Mode           string `yaml:"mode"`             // "offset" or "cursor"
+	Mode           string `yaml:"mode"` // "offset" or "cursor"
 	PageSize       int    `yaml:"page_size"`
 	OffsetParam    string `yaml:"offset_param"`     // arg name for offset (offset mode)
 	LimitParam     string `yaml:"limit_param"`      // arg name for page size (offset mode)
@@ -32,22 +32,22 @@ type PaginationConfig struct {
 // response_adapter for tool-specific parsing (e.g., "tabular_text"). These are
 // mutually exclusive. Default is JSON when neither is set.
 type SourceBinding struct {
-	Backend         string             `yaml:"backend"`
-	ConfigKey       string             `yaml:"config_key"`
-	Index           string             `yaml:"index,omitempty"`
-	QueryTemplate   string             `yaml:"query_template,omitempty"`
-	FetchMode       string             `yaml:"fetch_mode,omitempty"`
-	MaxRows         int                `yaml:"max_rows,omitempty"`
-	FieldMap        map[string]string  `yaml:"field_map,omitempty"`
-	MCPTool         string             `yaml:"mcp_tool,omitempty"`
-	MCPServer       string             `yaml:"mcp_server,omitempty"`
-	MCPArgs         map[string]any     `yaml:"mcp_args,omitempty"`
-	ItemsPath       string             `yaml:"items_path,omitempty"`
-	SingleItem      bool               `yaml:"single_item,omitempty"`
-	Timeout         string             `yaml:"timeout,omitempty"`
-	Pagination      *PaginationConfig  `yaml:"pagination,omitempty"`
-	ResponseFormat  string             `yaml:"response_format,omitempty"`  // "json" (default), "csv", "ndjson"
-	ResponseAdapter string             `yaml:"response_adapter,omitempty"` // tool-specific: "tabular_text", etc.
+	Backend         string            `yaml:"backend"`
+	ConfigKey       string            `yaml:"config_key"`
+	Index           string            `yaml:"index,omitempty"`
+	QueryTemplate   string            `yaml:"query_template,omitempty"`
+	FetchMode       string            `yaml:"fetch_mode,omitempty"`
+	MaxRows         int               `yaml:"max_rows,omitempty"`
+	FieldMap        map[string]string `yaml:"field_map,omitempty"`
+	MCPTool         string            `yaml:"mcp_tool,omitempty"`
+	MCPServer       string            `yaml:"mcp_server,omitempty"`
+	MCPArgs         map[string]any    `yaml:"mcp_args,omitempty"`
+	ItemsPath       string            `yaml:"items_path,omitempty"`
+	SingleItem      bool              `yaml:"single_item,omitempty"`
+	Timeout         string            `yaml:"timeout,omitempty"`
+	Pagination      *PaginationConfig `yaml:"pagination,omitempty"`
+	ResponseFormat  string            `yaml:"response_format,omitempty"`  // "json" (default), "csv", "ndjson"
+	ResponseAdapter string            `yaml:"response_adapter,omitempty"` // tool-specific: "tabular_text", etc.
 }
 
 // FetchModeOrDefault returns the effective fetch mode, defaulting to "mcp".
@@ -79,7 +79,7 @@ func (sb SourceBinding) ValidateFetchMode() error {
 
 // BindingSpec is the full parsed representation of a binding.yaml file.
 type BindingSpec struct {
-	SourceBindings map[string]SourceBinding   `yaml:"source_bindings"`
+	SourceBindings map[string]SourceBinding     `yaml:"source_bindings"`
 	FieldOverrides map[string]map[string]string `yaml:"field_overrides,omitempty"`
 }
 

@@ -54,10 +54,10 @@ func fromConfigBinding(cb *config.CredentialBinding) *CredentialBinding {
 		return nil
 	}
 	return &CredentialBinding{
-		Type:              cb.Type,
+		Type:                cb.Type,
 		RuntimeAuthResolver: cb.RuntimeAuthResolver,
-		AuthOrigin:        cb.AuthOrigin,
-		EnvName:           cb.EnvName,
+		AuthOrigin:          cb.AuthOrigin,
+		EnvName:             cb.EnvName,
 	}
 }
 

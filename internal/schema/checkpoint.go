@@ -14,11 +14,11 @@ type yamlCheckpointFile struct {
 }
 
 type yamlCheckpointRule struct {
-	Name        string              `yaml:"name"`
-	Layer       string              `yaml:"layer"`
-	Severity    string              `yaml:"severity"`
-	Query       string              `yaml:"query"`
-	GapTemplate yamlCheckpointGap   `yaml:"gap_template"`
+	Name        string            `yaml:"name"`
+	Layer       string            `yaml:"layer"`
+	Severity    string            `yaml:"severity"`
+	Query       string            `yaml:"query"`
+	GapTemplate yamlCheckpointGap `yaml:"gap_template"`
 }
 
 type yamlCheckpointGap struct {

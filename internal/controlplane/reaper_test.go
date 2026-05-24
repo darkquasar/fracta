@@ -37,11 +37,13 @@ func (m *mockStore) WithLock(_ context.Context, fn func(*model.State) error) err
 	return fn(&m.state)
 }
 
-func (m *mockStore) Close() error                                                                              { return nil }
-func (m *mockStore) Mailbox() mailbox.Mailbox                                                                  { return nil }
-func (m *mockStore) UpdateChessmaster(_ context.Context, _, _ string, _ time.Time) error                       { return nil }
-func (m *mockStore) UpdateAgentResult(_ context.Context, _ string, _ model.AgentStatus, _, _ string) error     { return nil }
-func (m *mockStore) UpdateAgentIntent(_ context.Context, _, _ string) error                                    { return nil }
+func (m *mockStore) Close() error                                                        { return nil }
+func (m *mockStore) Mailbox() mailbox.Mailbox                                            { return nil }
+func (m *mockStore) UpdateChessmaster(_ context.Context, _, _ string, _ time.Time) error { return nil }
+func (m *mockStore) UpdateAgentResult(_ context.Context, _ string, _ model.AgentStatus, _, _ string) error {
+	return nil
+}
+func (m *mockStore) UpdateAgentIntent(_ context.Context, _, _ string) error { return nil }
 func (m *mockStore) RemoveAgent(_ context.Context, task string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -513,7 +515,7 @@ func TestReaper_UpdateUsesLiveContext(t *testing.T) {
 // receives a cancelled context.
 type contextCheckingStore struct {
 	mockStore
-	updateCalled                bool
+	updateCalled                 bool
 	updateCalledWithCancelledCtx bool
 }
 
@@ -654,4 +656,4 @@ func TestReaper_ToleratesErrNotFound(t *testing.T) {
 	if agent == nil || agent.Status != model.StatusStopped {
 		t.Errorf("should transition even with ErrNotFound, got %v", agent)
 	}
-} 
+}

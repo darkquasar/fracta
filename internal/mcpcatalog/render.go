@@ -498,4 +498,4 @@ func strconv_Quote(s string) string {
 // quoted strings.
 func quoteHealthcheck(s string) string {
 	return "\"" + strings.ReplaceAll(s, "\"", "\\\"") + "\""
-} 
+}

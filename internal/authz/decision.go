@@ -4,10 +4,10 @@ import "fmt"
 
 // ForbiddenError is returned when a subject lacks permission for an action.
 type ForbiddenError struct {
-	Subject Subject
-	Action  Action
+	Subject  Subject
+	Action   Action
 	Resource Resource
-	Reason  string
+	Reason   string
 }
 
 func (e *ForbiddenError) Error() string {

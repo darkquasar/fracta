@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/darkquasar/fracta/internal/graph"
 	"github.com/darkquasar/fracta/internal/fractalog"
+	"github.com/darkquasar/fracta/internal/graph"
 	"github.com/darkquasar/fracta/internal/schema"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -15,8 +15,8 @@ import (
 
 // CheckpointGap describes a single missing graph element.
 type CheckpointGap struct {
-	Layer           string `json:"layer"`            // "universal" or "particular"
-	Type            string `json:"type"`             // gap category
+	Layer           string `json:"layer"` // "universal" or "particular"
+	Type            string `json:"type"`  // gap category
 	Description     string `json:"description"`
 	SuggestedAction string `json:"suggested_action"`
 }

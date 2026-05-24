@@ -143,4 +143,4 @@ func TestLoadProjectState_K8sManifestDeleted(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(dir, "deployment", "k8s", "manifests")); err == nil {
 		t.Fatalf("test invariant: manifests dir should not exist")
 	}
-} 
+}

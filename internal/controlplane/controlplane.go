@@ -11,8 +11,8 @@ import (
 	"github.com/darkquasar/fracta/internal/agentlifecycle"
 	"github.com/darkquasar/fracta/internal/config"
 	"github.com/darkquasar/fracta/internal/events"
-	"github.com/darkquasar/fracta/internal/mailbox"
 	"github.com/darkquasar/fracta/internal/fractalog"
+	"github.com/darkquasar/fracta/internal/mailbox"
 	"github.com/darkquasar/fracta/internal/objective"
 	"github.com/darkquasar/fracta/internal/proposal"
 	"github.com/darkquasar/fracta/internal/queue"
@@ -41,11 +41,11 @@ type ControlPlane struct {
 	Profile        Profile            // resolved profile — authoritative for backend type, workspace type, paths
 	Reaper         *Reaper
 	Admission      *admission.AdmissionController // nil when queue not configured
-	ObjectiveStore objective.ObjectiveStore        // nil when queue not configured
-	ProposalStore  proposal.ProposalStore          // nil when queue not configured
+	ObjectiveStore objective.ObjectiveStore       // nil when queue not configured
+	ProposalStore  proposal.ProposalStore         // nil when queue not configured
 	Config         *config.Config
-	Events         events.Bus                 // lifecycle event bus (always set — NoopBus when unconfigured)
-	Lifecycle      *agentlifecycle.Writer     // lifecycle transition coordinator
+	Events         events.Bus             // lifecycle event bus (always set — NoopBus when unconfigured)
+	Lifecycle      *agentlifecycle.Writer // lifecycle transition coordinator
 
 	// Observability stores (spec-35).
 	SnapshotStore *events.SnapshotStore // in-memory per-agent state projected from events
@@ -53,10 +53,10 @@ type ControlPlane struct {
 	SSEHub        *events.SSEHub        // subscriber management for SSE watch
 	SnapshotSink  *events.SnapshotSink  // sink that projects events to snapshots
 
-	mu              sync.RWMutex
-	logger          *slog.Logger
-	admissionStop   context.CancelFunc // cancels the admission controller goroutine
-	obsMaintenStop  context.CancelFunc // cancels the observability maintenance goroutine
+	mu             sync.RWMutex
+	logger         *slog.Logger
+	admissionStop  context.CancelFunc // cancels the admission controller goroutine
+	obsMaintenStop context.CancelFunc // cancels the observability maintenance goroutine
 }
 
 // NewControlPlane constructs a ControlPlane from config using the resolved
@@ -538,4 +538,4 @@ func buildAdmissionStores(store state.Store, profile Profile) (objective.Objecti
 	default:
 		return nil, nil, nil
 	}
-} 
+}

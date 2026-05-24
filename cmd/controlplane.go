@@ -18,8 +18,8 @@ import (
 	"github.com/darkquasar/fracta/internal/config"
 	"github.com/darkquasar/fracta/internal/controlplane"
 	"github.com/darkquasar/fracta/internal/cpapi"
-	"github.com/darkquasar/fracta/internal/graph"
 	"github.com/darkquasar/fracta/internal/fractalog"
+	"github.com/darkquasar/fracta/internal/graph"
 	"github.com/darkquasar/fracta/internal/orchestrator"
 	"github.com/darkquasar/fracta/internal/state"
 	"github.com/spf13/cobra"
@@ -141,7 +141,7 @@ func isDaemonRunning(root string) (bool, int) {
 // It starts `fracta serve --gateway-mode --transport http --listen <addr>`,
 // monitors for crashes, and restarts automatically.
 type gatewaySupervisor struct {
-	fractaBin    string // path to fracta binary (os.Args[0])
+	fractaBin  string // path to fracta binary (os.Args[0])
 	listenAddr string // gateway listen address (e.g. ":8080")
 	configPath string // path to fracta.yaml (passed to gateway via --config)
 
@@ -154,7 +154,7 @@ type gatewaySupervisor struct {
 
 func newGatewaySupervisor(listenAddr, configPath string) *gatewaySupervisor {
 	return &gatewaySupervisor{
-		fractaBin:    os.Args[0],
+		fractaBin:  os.Args[0],
 		listenAddr: listenAddr,
 		configPath: configPath,
 		log:        fractalog.Component("gateway-supervisor"),

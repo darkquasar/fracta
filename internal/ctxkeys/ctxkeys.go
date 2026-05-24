@@ -15,4 +15,4 @@ func WithAgentTask(ctx context.Context, task string) context.Context {
 func AgentTask(ctx context.Context) (string, bool) {
 	v, ok := ctx.Value(agentTaskKey).(string)
 	return v, ok && v != ""
-} 
+}

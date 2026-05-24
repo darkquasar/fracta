@@ -220,4 +220,4 @@ func describePolicyEffect(p *config.ToolPolicy) string {
 		return fmt.Sprintf("all tools visible except [%s]", strings.Join(p.Deny, ", "))
 	}
 	return "all tools visible"
-} 
+}

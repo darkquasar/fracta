@@ -301,4 +301,4 @@ func TestSearchTool_CallableFiltering_Integration(t *testing.T) {
 			t.Errorf("unexpected server %q — only elastic tools should be callable", tool.Server)
 		}
 	}
-} 
+}

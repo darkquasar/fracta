@@ -175,4 +175,4 @@ func ensureGitignore(root string) error {
 	}
 
 	return nil
-} 
+}

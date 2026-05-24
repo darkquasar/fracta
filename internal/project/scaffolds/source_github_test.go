@@ -61,8 +61,8 @@ func makeTarballGz(t *testing.T, topDir string, files map[string]string) []byte 
 
 func TestGithubSource_DownloadAndExtract(t *testing.T) {
 	tar := makeTarballGz(t, "myrepo-abc1234", map[string]string{
-		"local/fracta.yaml":    "runtime:\n  backend: local\n",
-		"k8s/fracta.yaml":      "runtime:\n  backend: kubernetes\n",
+		"local/fracta.yaml":     "runtime:\n  backend: local\n",
+		"k8s/fracta.yaml":       "runtime:\n  backend: kubernetes\n",
 		"k8s/manifests/ns.yaml": "kind: Namespace\n",
 	})
 
@@ -221,7 +221,7 @@ func TestGithubSource_BranchRefWarning(t *testing.T) {
 func TestParseGithubURL(t *testing.T) {
 	cases := []struct {
 		spec, wantOwner, wantRepo, wantRef string
-		wantOK                              bool
+		wantOK                             bool
 	}{
 		{"https://github.com/owner/repo", "owner", "repo", "main", true},
 		{"https://github.com/owner/repo/", "owner", "repo", "main", true},
@@ -246,7 +246,7 @@ func TestParseGithubURL(t *testing.T) {
 func TestParseGithubSSH(t *testing.T) {
 	cases := []struct {
 		spec, wantOwner, wantRepo, wantRef string
-		wantOK                              bool
+		wantOK                             bool
 	}{
 		{"git@github.com:owner/repo", "owner", "repo", "main", true},
 		{"git@github.com:owner/repo.git", "owner", "repo", "main", true},

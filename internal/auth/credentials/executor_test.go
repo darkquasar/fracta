@@ -10,8 +10,8 @@ func TestExecuteCredentialPlan_RuntimeOnlyPassthrough(t *testing.T) {
 		Profile: "test",
 		AuthOrigins: []AnnotatedSource{
 			{
-				Name:   "proxy",
-				Phase:  PhaseRuntimeOnly,
+				Name:       "proxy",
+				Phase:      PhaseRuntimeOnly,
 				AuthOrigin: &CredentialSource{Type: "http_header_token", Scope: "agent_runtime"},
 			},
 		},
@@ -46,8 +46,8 @@ func TestExecuteCredentialPlan_UnavailablePassthrough(t *testing.T) {
 		Profile: "test",
 		AuthOrigins: []AnnotatedSource{
 			{
-				Name:   "host_fallback",
-				Phase:  PhaseUnavailable,
+				Name:       "host_fallback",
+				Phase:      PhaseUnavailable,
 				AuthOrigin: &CredentialSource{Type: "command_output", Scope: "host_edge"},
 			},
 		},
@@ -216,10 +216,10 @@ func TestExecuteCredentialPlan_OptionalSourceFailureContinues(t *testing.T) {
 
 func TestExecuteCredentialPlan_AssertionFailure(t *testing.T) {
 	plan := &CredentialPlan{
-		Profile: "test",
+		Profile:     "test",
 		AuthOrigins: []AnnotatedSource{},
-		Binding: &CredentialBinding{Type: "claude_api_key_helper", RuntimeAuthResolver: "r"},
-		Env:     map[string]string{"CLAUDE_CODE_SIMPLE": "1"},
+		Binding:     &CredentialBinding{Type: "claude_api_key_helper", RuntimeAuthResolver: "r"},
+		Env:         map[string]string{"CLAUDE_CODE_SIMPLE": "1"},
 		Assertions: &CredentialAssertions{
 			ForbidEnv: []string{"CLAUDE_CODE_SIMPLE"},
 		},
@@ -235,9 +235,9 @@ func TestExecuteCredentialPlan_AssertionFailure(t *testing.T) {
 
 func TestExecuteCredentialPlan_EnvEntries(t *testing.T) {
 	plan := &CredentialPlan{
-		Profile: "test",
+		Profile:     "test",
 		AuthOrigins: []AnnotatedSource{},
-		Binding: &CredentialBinding{Type: "claude_api_key_helper", RuntimeAuthResolver: "r"},
+		Binding:     &CredentialBinding{Type: "claude_api_key_helper", RuntimeAuthResolver: "r"},
 		Env: map[string]string{
 			"AWS_REGION":                    "ap-southeast-2",
 			"CLAUDE_CODE_USE_BEDROCK":       "1",
@@ -267,7 +267,7 @@ func TestExecuteCredentialPlan_EnvEntries(t *testing.T) {
 
 func TestExecuteCredentialPlan_BearerEnvPassthrough(t *testing.T) {
 	plan := &CredentialPlan{
-		Profile: "test",
+		Profile:     "test",
 		AuthOrigins: []AnnotatedSource{},
 		Binding: &CredentialBinding{
 			Type:    "bearer_env",
@@ -311,9 +311,9 @@ func TestExecuteCredentialPlan_BearerEnvResolverSingleMaterializedSource(t *test
 			Command: "/bin/helper",
 		},
 		Binding: &CredentialBinding{
-			Type:     "bearer_env",
+			Type:                "bearer_env",
 			RuntimeAuthResolver: "helper",
-			EnvName:  "API_TOKEN",
+			EnvName:             "API_TOKEN",
 		},
 		Env: map[string]string{},
 	}
@@ -357,9 +357,9 @@ func TestExecuteCredentialPlan_BearerEnvResolverMultipleSourcesUsesDeprecatedOrd
 			Order:   []string{"second", "first"},
 		},
 		Binding: &CredentialBinding{
-			Type:     "bearer_env",
+			Type:                "bearer_env",
 			RuntimeAuthResolver: "helper",
-			EnvName:  "API_TOKEN",
+			EnvName:             "API_TOKEN",
 		},
 		Env: map[string]string{},
 	}
@@ -412,9 +412,9 @@ func TestExecuteCredentialPlan_BearerEnvResolverMultipleSourcesWithoutOrderIsAmb
 			Command: "/bin/helper",
 		},
 		Binding: &CredentialBinding{
-			Type:     "bearer_env",
+			Type:                "bearer_env",
 			RuntimeAuthResolver: "helper",
-			EnvName:  "API_TOKEN",
+			EnvName:             "API_TOKEN",
 		},
 		Env: map[string]string{},
 	}
@@ -447,10 +447,10 @@ func TestExecuteCredentialPlan_BearerEnvResolverMultipleSourcesWithoutOrderIsAmb
 
 func TestExecuteCredentialPlan_PlanBackref(t *testing.T) {
 	plan := &CredentialPlan{
-		Profile: "test",
+		Profile:     "test",
 		AuthOrigins: []AnnotatedSource{},
-		Binding: &CredentialBinding{Type: "claude_api_key_helper", RuntimeAuthResolver: "r"},
-		Env:     map[string]string{},
+		Binding:     &CredentialBinding{Type: "claude_api_key_helper", RuntimeAuthResolver: "r"},
+		Env:         map[string]string{},
 	}
 
 	output, err := ExecuteCredentialPlan(context.Background(), plan, PlanContext{

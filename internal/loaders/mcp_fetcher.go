@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/darkquasar/fracta/internal/contract"
-	"github.com/darkquasar/fracta/internal/mcpclient"
 	"github.com/darkquasar/fracta/internal/fractalog"
+	"github.com/darkquasar/fracta/internal/mcpclient"
 	"github.com/darkquasar/fracta/internal/staging"
 )
 
@@ -29,12 +29,12 @@ func NewMCPFetcher(caller mcpclient.ToolCaller) *MCPFetcher {
 type MCPFetchOpts struct {
 	Server          string
 	Tool            string
-	Args            map[string]any  // resolved tool arguments (mcp_args merged with strategy params)
-	Fields          []FieldMapping  // includes ColumnType from contract
-	ItemsPath       string          // dot-path to items array (e.g., "data")
-	SingleItem      bool            // true if response is one object, not array
-	MaxRows         int             // hard cap (default: 10,000)
-	Timeout         time.Duration   // per-call timeout (default: 30s)
+	Args            map[string]any // resolved tool arguments (mcp_args merged with strategy params)
+	Fields          []FieldMapping // includes ColumnType from contract
+	ItemsPath       string         // dot-path to items array (e.g., "data")
+	SingleItem      bool           // true if response is one object, not array
+	MaxRows         int            // hard cap (default: 10,000)
+	Timeout         time.Duration  // per-call timeout (default: 30s)
 	StagingDir      string
 	Table           string
 	RunID           string // namespaces Parquet: {StagingDir}/{RunID}/{Table}.parquet

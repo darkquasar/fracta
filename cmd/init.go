@@ -15,11 +15,11 @@ import (
 )
 
 var (
-	initScaffold        string
-	initSource          string
-	initSourceChecksum  string
-	initForce           bool
-	initYes             bool
+	initScaffold       string
+	initSource         string
+	initSourceChecksum string
+	initForce          bool
+	initYes            bool
 )
 
 var initCmd = &cobra.Command{

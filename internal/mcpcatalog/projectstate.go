@@ -277,4 +277,4 @@ func scalarAt(m *yaml.Node, keys ...string) string {
 		cur = next
 	}
 	return ""
-} 
+}

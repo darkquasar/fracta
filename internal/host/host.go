@@ -60,7 +60,7 @@ type Capabilities struct {
 // CommandSpec is the host-specific command to execute. Includes the binary
 // name so the orchestrator never hardcodes a CLI name.
 type CommandSpec struct {
-	Command string   // "claude", "llm", "ollama", etc.
+	Command string // "claude", "llm", "ollama", etc.
 	Args    []string
 	Env     []string // additional env vars for this invocation
 }

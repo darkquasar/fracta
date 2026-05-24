@@ -249,7 +249,7 @@ func TestMission_DAGFields(t *testing.T) {
 func TestMissionPayload_ObjectiveContext(t *testing.T) {
 	p := MissionPayload{
 		Task:        "test-task",
-		RuntimeType:    "claude",
+		RuntimeType: "claude",
 		ObjectiveID: "obj-1",
 		MissionID:   123,
 	}

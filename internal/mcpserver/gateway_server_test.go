@@ -50,7 +50,7 @@ func (m *mockStore) UpdateAgentIntent(_ context.Context, task, intent string) er
 	}
 	return nil
 }
-func (m *mockStore) ClaimAgent(_ context.Context, _ string) error                       { return nil }
+func (m *mockStore) ClaimAgent(_ context.Context, _ string) error { return nil }
 func (m *mockStore) UpdateAgentStatusIf(_ context.Context, _ string, _ []model.AgentStatus, _ model.AgentStatus, _ string) (bool, error) {
 	return true, nil
 }
@@ -58,8 +58,8 @@ func (m *mockStore) UpdateAgentResultIf(_ context.Context, _ string, _ []model.A
 	return true, nil
 }
 func (m *mockStore) UpdateChessmaster(_ context.Context, _, _ string, _ time.Time) error { return nil }
-func (m *mockStore) Mailbox() mailbox.Mailbox                                           { return m.mb }
-func (m *mockStore) Close() error                                                       { return nil }
+func (m *mockStore) Mailbox() mailbox.Mailbox                                            { return m.mb }
+func (m *mockStore) Close() error                                                        { return nil }
 
 var _ state.Store = (*mockStore)(nil)
 

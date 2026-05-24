@@ -7,19 +7,19 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/darkquasar/fracta/internal/auth/credentials"
 	"github.com/darkquasar/fracta/internal/config"
 	"github.com/darkquasar/fracta/internal/controlplane"
-	"github.com/darkquasar/fracta/internal/fractalog"
-	"github.com/darkquasar/fracta/internal/auth/credentials"
 	"github.com/darkquasar/fracta/internal/cpapi"
+	"github.com/darkquasar/fracta/internal/fractalog"
 	"github.com/darkquasar/fracta/internal/worker"
 	"github.com/spf13/cobra"
 )
 
 var (
-	workerConfigPath  string
-	workerCount       int
-	workerID          string
+	workerConfigPath    string
+	workerCount         int
+	workerID            string
 	workerWorkspaceBase string
 )
 

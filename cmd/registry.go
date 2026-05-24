@@ -272,4 +272,4 @@ func showRegistrySummary(ctx context.Context, store registry.Store) error {
 	fmt.Printf("  Tools: %d total (%d enabled)\n", len(tools), enabledTools)
 
 	return nil
-} 
+}

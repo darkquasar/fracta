@@ -90,10 +90,10 @@ func enqueueMission(t *testing.T, q queue.MissionQueue, store *sqlitestore.SQLit
 	payload := testPayload(t, hostType)
 	m := &queue.Mission{AgentTask: "agent-1", Payload: payload}
 	agent := &model.AgentEntry{
-		Task:     "agent-1",
+		Task:        "agent-1",
 		RuntimeType: hostType,
-		Status:   model.StatusQueued,
-		Mode:     "queued",
+		Status:      model.StatusQueued,
+		Mode:        "queued",
 	}
 	if err := q.Enqueue(ctx, m, agent); err != nil {
 		t.Fatal(err)
@@ -238,10 +238,10 @@ func TestWorker_CancellationBeforeExecution(t *testing.T) {
 	payload := testPayload(t, "claude")
 	m := &queue.Mission{AgentTask: "agent-cancel", Payload: payload}
 	agent := &model.AgentEntry{
-		Task:     "agent-cancel",
+		Task:        "agent-cancel",
 		RuntimeType: "claude",
-		Status:   model.StatusQueued,
-		Mode:     "queued",
+		Status:      model.StatusQueued,
+		Mode:        "queued",
 	}
 	if err := q.Enqueue(ctx, m, agent); err != nil {
 		t.Fatal(err)
@@ -295,10 +295,10 @@ func TestWorker_ResultWriteGuard(t *testing.T) {
 	payload := testPayload(t, "claude")
 	m := &queue.Mission{AgentTask: "agent-guard", Payload: payload}
 	agent := &model.AgentEntry{
-		Task:     "agent-guard",
+		Task:        "agent-guard",
 		RuntimeType: "claude",
-		Status:   model.StatusQueued,
-		Mode:     "queued",
+		Status:      model.StatusQueued,
+		Mode:        "queued",
 	}
 	if err := q.Enqueue(ctx, m, agent); err != nil {
 		t.Fatal(err)
@@ -368,10 +368,10 @@ func TestWorker_BootstrapAndCompletion(t *testing.T) {
 	payload := testPayload(t, "testhost")
 	m := &queue.Mission{AgentTask: "agent-bootstrap", Payload: payload}
 	agent := &model.AgentEntry{
-		Task:     "agent-bootstrap",
+		Task:        "agent-bootstrap",
 		RuntimeType: "testhost",
-		Status:   model.StatusQueued,
-		Mode:     "queued",
+		Status:      model.StatusQueued,
+		Mode:        "queued",
 	}
 	if err := q.Enqueue(ctx, m, agent); err != nil {
 		t.Fatal(err)
@@ -508,17 +508,17 @@ func TestWorker_ConfigSkewDetection_Matching(t *testing.T) {
 
 	// Enqueue with matching config hash.
 	payload := queue.MissionPayload{
-		Task:       "agent-skew-match",
-		RuntimeType:   "testhost",
-		ConfigHash: expectedHash,
+		Task:        "agent-skew-match",
+		RuntimeType: "testhost",
+		ConfigHash:  expectedHash,
 	}
 	payloadBytes, _ := json.Marshal(payload)
 	m := &queue.Mission{AgentTask: "agent-skew-match", Payload: payloadBytes}
 	agent := &model.AgentEntry{
-		Task:     "agent-skew-match",
+		Task:        "agent-skew-match",
 		RuntimeType: "testhost",
-		Status:   model.StatusQueued,
-		Mode:     "queued",
+		Status:      model.StatusQueued,
+		Mode:        "queued",
 	}
 	if err := q.Enqueue(ctx, m, agent); err != nil {
 		t.Fatal(err)
@@ -571,17 +571,17 @@ func TestWorker_ConfigSkewDetection_Mismatching(t *testing.T) {
 
 	// Enqueue with a DIFFERENT config hash to trigger skew detection.
 	payload := queue.MissionPayload{
-		Task:       "agent-skew-diff",
-		RuntimeType:   "testhost",
-		ConfigHash: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		Task:        "agent-skew-diff",
+		RuntimeType: "testhost",
+		ConfigHash:  "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 	}
 	payloadBytes, _ := json.Marshal(payload)
 	m := &queue.Mission{AgentTask: "agent-skew-diff", Payload: payloadBytes}
 	agent := &model.AgentEntry{
-		Task:     "agent-skew-diff",
+		Task:        "agent-skew-diff",
 		RuntimeType: "testhost",
-		Status:   model.StatusQueued,
-		Mode:     "queued",
+		Status:      model.StatusQueued,
+		Mode:        "queued",
 	}
 	if err := q.Enqueue(ctx, m, agent); err != nil {
 		t.Fatal(err)
@@ -654,16 +654,16 @@ func TestWorker_ConfigSkewDetection_EmptyPayloadHash(t *testing.T) {
 
 	// Enqueue without a config hash (legacy missions).
 	payload := queue.MissionPayload{
-		Task:     "agent-skew-empty",
+		Task:        "agent-skew-empty",
 		RuntimeType: "testhost",
 	}
 	payloadBytes, _ := json.Marshal(payload)
 	m := &queue.Mission{AgentTask: "agent-skew-empty", Payload: payloadBytes}
 	agent := &model.AgentEntry{
-		Task:     "agent-skew-empty",
+		Task:        "agent-skew-empty",
 		RuntimeType: "testhost",
-		Status:   model.StatusQueued,
-		Mode:     "queued",
+		Status:      model.StatusQueued,
+		Mode:        "queued",
 	}
 	if err := q.Enqueue(ctx, m, agent); err != nil {
 		t.Fatal(err)
@@ -708,7 +708,9 @@ func (r *recordingBackend) Spawn(ctx context.Context, opts runtime.SpawnOpts) (r
 	return r.inner.Spawn(ctx, opts)
 }
 
-func (r *recordingBackend) Kill(_ context.Context, id string) error { return r.inner.Kill(context.Background(), id) }
+func (r *recordingBackend) Kill(_ context.Context, id string) error {
+	return r.inner.Kill(context.Background(), id)
+}
 func (r *recordingBackend) Logs(_ context.Context, id string, lines int) (string, error) {
 	return r.inner.Logs(context.Background(), id, lines)
 }

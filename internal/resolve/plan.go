@@ -2,9 +2,9 @@ package resolve
 
 // FieldMapping maps a source field to a contract column via a shared semantic type.
 type FieldMapping struct {
-	SourceField  string `json:"source_field"`  // field name in data source / MCP response
-	TargetColumn string `json:"target_column"` // column name in the strategy's expected table
-	Semantic     string `json:"semantic"`      // shared semantic type that links them
+	SourceField  string `json:"source_field"`          // field name in data source / MCP response
+	TargetColumn string `json:"target_column"`         // column name in the strategy's expected table
+	Semantic     string `json:"semantic"`              // shared semantic type that links them
 	ColumnType   string `json:"column_type,omitempty"` // from contract: VARCHAR, INT64, FLOAT64, BOOLEAN, TIMESTAMP
 }
 

@@ -15,9 +15,9 @@ import (
 
 	"github.com/darkquasar/fracta/internal/contract"
 	"github.com/darkquasar/fracta/internal/events"
+	"github.com/darkquasar/fracta/internal/fractalog"
 	"github.com/darkquasar/fracta/internal/graph"
 	"github.com/darkquasar/fracta/internal/loaders"
-	"github.com/darkquasar/fracta/internal/fractalog"
 	"github.com/darkquasar/fracta/internal/resolve"
 	"github.com/darkquasar/fracta/internal/staging"
 	"github.com/darkquasar/fracta/internal/strategy"
@@ -267,7 +267,7 @@ func makeStrategyListHandler(sc strategy.Runner, gc graph.GraphClient, autoPromo
 // describeResult extends StrategyInfo with governance status and resolution plan.
 type describeResult struct {
 	strategy.StrategyInfo
-	Status         string                 `json:"status,omitempty"`
+	Status         string                  `json:"status,omitempty"`
 	ResolutionPlan *resolve.ResolutionPlan `json:"resolution_plan,omitempty"`
 }
 
@@ -445,19 +445,19 @@ func strategyInfoToContractSpec(info *strategy.StrategyInfo) *contract.ContractS
 
 // strategyRunResponse extends RunResult with auto-resolve information.
 type strategyRunResponse struct {
-	Status                  string              `json:"status"`                             // "complete", "staging", "pending", "executing", "error"
-	SessionID               string              `json:"session_id,omitempty"`               // run ID (replaces staging session ID)
-	Result                  any                 `json:"result,omitempty"`
-	PartialResults          any                 `json:"partial_results,omitempty"`          // completed step outputs on error (S1)
-	PartialResultsTruncated bool                `json:"partial_results_truncated,omitempty"` // true when partial results hit size limit
-	OmittedSteps            []string            `json:"omitted_steps,omitempty"`            // step names dropped due to size
-	Trace                   *strategy.TraceInfo `json:"trace,omitempty"`
-	Error                   string              `json:"error,omitempty"`
-	StructuredError         *strategy.StructuredError `json:"structured_error,omitempty"`   // categorized error (S7)
-	Staged                  []resolveStaged     `json:"staged,omitempty"`                   // tables auto-resolved
-	Pending                 []resolvePending    `json:"pending,omitempty"`                  // tables needing manual MCP fetch
-	StagingProgress         map[string]*tableProgress `json:"staging_progress,omitempty"`   // per-table staging progress
-	Message                 string              `json:"message,omitempty"`                  // guidance for pending/staging case
+	Status                  string                    `json:"status"`               // "complete", "staging", "pending", "executing", "error"
+	SessionID               string                    `json:"session_id,omitempty"` // run ID (replaces staging session ID)
+	Result                  any                       `json:"result,omitempty"`
+	PartialResults          any                       `json:"partial_results,omitempty"`           // completed step outputs on error (S1)
+	PartialResultsTruncated bool                      `json:"partial_results_truncated,omitempty"` // true when partial results hit size limit
+	OmittedSteps            []string                  `json:"omitted_steps,omitempty"`             // step names dropped due to size
+	Trace                   *strategy.TraceInfo       `json:"trace,omitempty"`
+	Error                   string                    `json:"error,omitempty"`
+	StructuredError         *strategy.StructuredError `json:"structured_error,omitempty"` // categorized error (S7)
+	Staged                  []resolveStaged           `json:"staged,omitempty"`           // tables auto-resolved
+	Pending                 []resolvePending          `json:"pending,omitempty"`          // tables needing manual MCP fetch
+	StagingProgress         map[string]*tableProgress `json:"staging_progress,omitempty"` // per-table staging progress
+	Message                 string                    `json:"message,omitempty"`          // guidance for pending/staging case
 }
 
 // tableProgress reports per-table staging status in the response.
@@ -710,9 +710,9 @@ func makeStrategyRunHandler(
 				"error": err.Error(),
 			})
 			resp := strategyRunResponse{
-				Status: "error",
-				Error:  fmt.Sprintf("strategy run failed: %v", err),
-				Staged: staged,
+				Status:          "error",
+				Error:           fmt.Sprintf("strategy run failed: %v", err),
+				Staged:          staged,
 				StructuredError: classifyExecutionError(err, name),
 			}
 			data, _ := json.Marshal(resp)
@@ -817,7 +817,7 @@ func handleRunReentry(
 	case strategy.RunStatusComplete:
 		// Already done — return cached result.
 		resp := strategyRunResponse{
-			Status: "complete",
+			Status:    "complete",
 			SessionID: runID,
 		}
 		if run.Result != nil {
@@ -1300,14 +1300,14 @@ func makeStrategyPromoteHandler(sc strategy.Runner, gc graph.GraphClient, autoPr
 
 // strategyMatchResult represents a single strategy match with scoring breakdown.
 type strategyMatchResult struct {
-	Name        string  `json:"name"`
-	Description string  `json:"description"`
-	Version     string  `json:"version"`
-	Status      string  `json:"status"`
-	Score       float64 `json:"score"`
-	TagScore    float64 `json:"tag_score"`
-	FieldScore  float64 `json:"field_score"`
-	SourceScore float64 `json:"source_score"`
+	Name        string   `json:"name"`
+	Description string   `json:"description"`
+	Version     string   `json:"version"`
+	Status      string   `json:"status"`
+	Score       float64  `json:"score"`
+	TagScore    float64  `json:"tag_score"`
+	FieldScore  float64  `json:"field_score"`
+	SourceScore float64  `json:"source_score"`
 	Reasons     []string `json:"reasons"`
 }
 
@@ -1923,7 +1923,7 @@ type tableStatusInfo struct {
 	RowsStaged         int64  `json:"rows_staged,omitempty"`
 	PagesCompleted     int    `json:"pages_completed,omitempty"`
 	LastError          string `json:"last_error,omitempty"`
-	WaitingOn          string `json:"waiting_on"`                        // fracta_fetch, agent_action, execution, none
+	WaitingOn          string `json:"waiting_on"` // fracta_fetch, agent_action, execution, none
 	ResumedFromRestart bool   `json:"resumed_from_restart,omitempty"`
 }
 
@@ -2012,24 +2012,24 @@ type resolveResponse struct {
 }
 
 type resolveStaged struct {
-	Table       string                `json:"table"`
-	Backend     string                `json:"backend"`
-	FetchMode   string                `json:"fetch_mode"` // "fracta_mcp_gateway" — used by manifest
-	RowsStaged  int64                 `json:"rows_staged"`
-	ParquetPath string                `json:"parquet_path"`
+	Table       string                 `json:"table"`
+	Backend     string                 `json:"backend"`
+	FetchMode   string                 `json:"fetch_mode"` // "fracta_mcp_gateway" — used by manifest
+	RowsStaged  int64                  `json:"rows_staged"`
+	ParquetPath string                 `json:"parquet_path"`
 	Fields      []resolve.FieldMapping `json:"fields"`
-	QueryUsed   string                `json:"query_used,omitempty"`
+	QueryUsed   string                 `json:"query_used,omitempty"`
 }
 
 type resolvePending struct {
-	Table             string                `json:"table"`
-	Backend           string                `json:"backend"`
-	FetchMode         string                `json:"fetch_mode"`
-	MCPTool           string                `json:"mcp_tool,omitempty"`
-	MCPServer         string                `json:"mcp_server,omitempty"`
-	QueryHint         string                `json:"query_hint,omitempty"`
+	Table             string                 `json:"table"`
+	Backend           string                 `json:"backend"`
+	FetchMode         string                 `json:"fetch_mode"`
+	MCPTool           string                 `json:"mcp_tool,omitempty"`
+	MCPServer         string                 `json:"mcp_server,omitempty"`
+	QueryHint         string                 `json:"query_hint,omitempty"`
 	Fields            []resolve.FieldMapping `json:"fields"`
-	StageInstructions string                `json:"stage_instructions"`
+	StageInstructions string                 `json:"stage_instructions"`
 }
 
 type resolveNative struct {
@@ -2596,9 +2596,9 @@ func buildStagingManifest(rr *resolveResult, cs *contract.ContractSpec) strategy
 // --- Background Staging (S4) ---
 
 const (
-	bgMaxRetries     = 2
-	bgBaseBackoff    = 2 * time.Second
-	bgBackoffFactor  = 2
+	bgMaxRetries    = 2
+	bgBaseBackoff   = 2 * time.Second
+	bgBackoffFactor = 2
 )
 
 // needsBackground determines if a table should be staged in background
@@ -2912,4 +2912,4 @@ func emitStrategyEvent(bus events.Bus, action, outcome, runID, strategyName stri
 	attrs["run_id"] = runID
 	e.Attrs = attrs
 	bus.Emit(context.Background(), e)
-} 
+}

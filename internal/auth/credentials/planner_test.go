@@ -34,7 +34,7 @@ func TestBuildCredentialPlan_PhaseAnnotation(t *testing.T) {
 			},
 		},
 		DefaultBinding: &CredentialBinding{
-			Type:     "claude_api_key_helper",
+			Type:                "claude_api_key_helper",
 			RuntimeAuthResolver: "bedrock_helper",
 		},
 	}
@@ -106,7 +106,7 @@ func TestBuildCredentialPlan_DeprecatedOrderStillBuilds(t *testing.T) {
 			},
 		},
 		DefaultBinding: &CredentialBinding{
-			Type:     "claude_api_key_helper",
+			Type:                "claude_api_key_helper",
 			RuntimeAuthResolver: "r",
 		},
 	}
@@ -142,15 +142,15 @@ func TestBuildCredentialPlan_HostBindingOverride(t *testing.T) {
 			"helper": {Type: "command", Command: "/bin/helper"},
 		},
 		DefaultBinding: &CredentialBinding{
-			Type:     "claude_api_key_helper",
+			Type:                "claude_api_key_helper",
 			RuntimeAuthResolver: "helper",
 		},
 	}
 
 	hostBinding := &CredentialBinding{
-		Type:    "bearer_env",
+		Type:       "bearer_env",
 		AuthOrigin: "proxy",
-		EnvName: "MY_TOKEN",
+		EnvName:    "MY_TOKEN",
 	}
 
 	plan, err := BuildCredentialPlan("test", profile, hostBinding, nil, PlanContext{
@@ -179,7 +179,7 @@ func TestBuildCredentialPlan_EnvMerging(t *testing.T) {
 			"SHARED_VAR":  "from_profile",
 		},
 		DefaultBinding: &CredentialBinding{
-			Type:     "claude_api_key_helper",
+			Type:                "claude_api_key_helper",
 			RuntimeAuthResolver: "r",
 		},
 	}
@@ -258,7 +258,7 @@ func TestBuildCredentialPlan_DefaultBindingFallback(t *testing.T) {
 			"r": {Type: "command", Command: "/bin/r"},
 		},
 		DefaultBinding: &CredentialBinding{
-			Type:     "claude_api_key_helper",
+			Type:                "claude_api_key_helper",
 			RuntimeAuthResolver: "r",
 		},
 	}

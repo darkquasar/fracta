@@ -502,4 +502,4 @@ func defaultJSON(data json.RawMessage) json.RawMessage {
 }
 
 // Verify interface compliance at compile time.
-var _ registry.Store = (*SQLiteRegistry)(nil) 
+var _ registry.Store = (*SQLiteRegistry)(nil)

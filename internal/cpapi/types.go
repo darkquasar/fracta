@@ -184,7 +184,7 @@ type CreateObjectiveRequest struct {
 	MaxDepth     int    `json:"max_depth,omitempty"`
 	MaxBranching int    `json:"max_branching,omitempty"`
 	// MaxRuntime is a duration string (e.g. "4h"). Parsed server-side.
-	MaxRuntime   string `json:"max_runtime,omitempty"`
+	MaxRuntime string `json:"max_runtime,omitempty"`
 }
 
 // CreateObjectiveResponse is returned after creating an objective.
@@ -200,16 +200,16 @@ type ListObjectivesRequest struct {
 
 // ObjectiveInfo is the per-objective detail returned in responses.
 type ObjectiveInfo struct {
-	ID           string                   `json:"id"`
-	Description  string                   `json:"description"`
+	ID           string                    `json:"id"`
+	Description  string                    `json:"description"`
 	Status       objective.ObjectiveStatus `json:"status"`
-	CreatedAt    time.Time                `json:"created_at"`
-	MissionCount int                      `json:"mission_count"`
-	FindingCount int                      `json:"finding_count"`
-	MaxMissions  int                      `json:"max_missions"`
-	MaxDepth     int                      `json:"max_depth"`
-	MaxBranching int                      `json:"max_branching"`
-	Outcome      string                   `json:"outcome,omitempty"`
+	CreatedAt    time.Time                 `json:"created_at"`
+	MissionCount int                       `json:"mission_count"`
+	FindingCount int                       `json:"finding_count"`
+	MaxMissions  int                       `json:"max_missions"`
+	MaxDepth     int                       `json:"max_depth"`
+	MaxBranching int                       `json:"max_branching"`
+	Outcome      string                    `json:"outcome,omitempty"`
 }
 
 // ListObjectivesResponse contains the list of objectives.

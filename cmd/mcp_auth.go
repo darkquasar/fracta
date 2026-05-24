@@ -68,7 +68,7 @@ func runMCPLogin(cmd *cobra.Command, args []string) error {
 	// Build OAuth handler from mcp-go
 	oauthCfg := transport.OAuthConfig{
 		RedirectURI:           redirectURI,
-		Scopes:               auth.Scopes,
+		Scopes:                auth.Scopes,
 		PKCEEnabled:           auth.EffectivePKCE(),
 		AuthServerMetadataURL: auth.MetadataURL,
 		TokenStore:            transport.NewMemoryTokenStore(),

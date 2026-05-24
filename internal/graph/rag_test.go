@@ -12,7 +12,7 @@ func (m *mockGraphClient) Query(_ context.Context, _ string, _ map[string]any) (
 	return nil, nil
 }
 func (m *mockGraphClient) Update(_ context.Context, _ string, _ map[string]any) error { return nil }
-func (m *mockGraphClient) Close() error                                                { return nil }
+func (m *mockGraphClient) Close() error                                               { return nil }
 
 func TestGraphRAGContextAcceptsAnySemantics(t *testing.T) {
 	ctx := context.Background()

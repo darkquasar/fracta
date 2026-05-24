@@ -52,7 +52,7 @@ func TestDuckDBCompatibility(t *testing.T) {
 	assertContains(t, typeOut, "active", "BOOLEAN")
 	assertContains(t, typeOut, "age", "BIGINT")
 	assertContains(t, typeOut, "created_at", "TIMESTAMP") // may be "TIMESTAMP WITH TIME ZONE"
-	assertContains(t, typeOut, "name", "VARCHAR")        // was BLOB before parquet.String() fix
+	assertContains(t, typeOut, "name", "VARCHAR")         // was BLOB before parquet.String() fix
 	assertContains(t, typeOut, "score", "DOUBLE")
 
 	// --- DuckDB: check values ---

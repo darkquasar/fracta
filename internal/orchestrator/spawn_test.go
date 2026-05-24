@@ -36,7 +36,7 @@ func TestResolveSpawn_TierBasedModelResolution(t *testing.T) {
 			},
 			Agents: config.AgentsConfig{
 				DefaultRuntime: "claude",
-				DefaultMode:     "batch",
+				DefaultMode:    "batch",
 			},
 			Runtimes: map[string]config.RuntimeEntry{
 				"claude": {
@@ -336,10 +336,10 @@ func setupWorkspaceFiles(t *testing.T, files map[string]string) string {
 
 func TestCollectWorkspaceFiles_Claude(t *testing.T) {
 	dir := setupWorkspaceFiles(t, map[string]string{
-		".claude/settings.json":    `{"permissions":{}}`,
-		".mcp.json":                `{"mcpServers":{}}`,
+		".claude/settings.json":      `{"permissions":{}}`,
+		".mcp.json":                  `{"mcpServers":{}}`,
 		".fracta/user-settings.json": `{"apiKeyHelper":"cmd"}`,
-		"CLAUDE.md":                "# Task",
+		"CLAUDE.md":                  "# Task",
 	})
 
 	artifacts := CollectWorkspaceFiles(dir, "claude")
@@ -481,7 +481,7 @@ func TestCollectWorkspaceFiles_EmptyWorkspace(t *testing.T) {
 // mockStreamBackend records KillStreamPod calls.
 type mockStreamBackend struct {
 	runtime.LocalBackend
-	killed []string
+	killed  []string
 	killErr error
 }
 

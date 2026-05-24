@@ -176,11 +176,11 @@ auth: env_token
 	}
 	out := string(data)
 	for _, want := range []string{
-		"fracta.yaml — operator config",                   // top-of-file comment
-		"# Edited by hand; preserve these comments.",      // second top comment
-		"# one of: local, kubernetes",                     // line comment on runtime.backend
-		"http://new-url:3000/mcp",                         // new value
-		"auth: env_token",                                 // new field
+		"fracta.yaml — operator config",              // top-of-file comment
+		"# Edited by hand; preserve these comments.", // second top comment
+		"# one of: local, kubernetes",                // line comment on runtime.backend
+		"http://new-url:3000/mcp",                    // new value
+		"auth: env_token",                            // new field
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("missing %q in:\n%s", want, out)

@@ -46,7 +46,7 @@ func TestSQLiteStore_WithLock(t *testing.T) {
 	err := s.WithLock(ctx, func(st *model.State) error {
 		st.Agents = append(st.Agents, model.AgentEntry{
 			Task:          "research",
-			RuntimeType:      "claude",
+			RuntimeType:   "claude",
 			ResumeToken:   "sess-123",
 			WorkspacePath: "/tmp/wt",
 			BranchName:    "feature/research",

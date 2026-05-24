@@ -235,4 +235,4 @@ func (b *LocalBackend) Logs(_ context.Context, id string, tailLines int) (string
 	}
 
 	return string(data), nil
-} 
+}

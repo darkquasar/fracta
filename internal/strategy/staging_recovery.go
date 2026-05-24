@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/darkquasar/fracta/internal/contract"
-	"github.com/darkquasar/fracta/internal/loaders"
 	"github.com/darkquasar/fracta/internal/fractalog"
+	"github.com/darkquasar/fracta/internal/loaders"
 )
 
 const (

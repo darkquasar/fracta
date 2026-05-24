@@ -464,4 +464,4 @@ func renderRemoteTable(w io.Writer, local, remote *mcpcatalog.Catalog, delta mcp
 		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\n", id, localCol, remoteCol, deltaCol, auth, desc)
 	}
 	return tw.Flush()
-} 
+}

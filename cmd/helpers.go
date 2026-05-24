@@ -11,11 +11,11 @@ import (
 
 	"github.com/darkquasar/fracta/internal/config"
 	"github.com/darkquasar/fracta/internal/cpapi"
+	"github.com/darkquasar/fracta/internal/fractalog"
 	"github.com/darkquasar/fracta/internal/host"
 	"github.com/darkquasar/fracta/internal/host/claude"
 	"github.com/darkquasar/fracta/internal/host/codex"
 	"github.com/darkquasar/fracta/internal/host/opencode"
-	"github.com/darkquasar/fracta/internal/fractalog"
 )
 
 // buildRuntimeRegistry creates the standard RuntimeRegistry with claude as the default.

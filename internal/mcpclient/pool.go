@@ -596,7 +596,7 @@ func (p *Pool) newOAuthTransport(remote config.MCPServerRemote, serverName strin
 
 	oauthCfg := transport.OAuthConfig{
 		RedirectURI:           auth.EffectiveRedirectURI(),
-		Scopes:               auth.Scopes,
+		Scopes:                auth.Scopes,
 		PKCEEnabled:           auth.EffectivePKCE(),
 		AuthServerMetadataURL: auth.MetadataURL,
 		ClientID:              clientID,
@@ -740,7 +740,6 @@ func (a *perServerTokenStoreAdapter) GetToken(ctx context.Context) (*transport.T
 func (a *perServerTokenStoreAdapter) SaveToken(ctx context.Context, token *transport.Token) error {
 	return a.store.SaveToken(ctx, a.server, token)
 }
-
 
 // normalizeResult extracts one JSON-bearing text block from CallToolResult.
 func normalizeResult(result *mcp.CallToolResult) (*ToolResult, error) {

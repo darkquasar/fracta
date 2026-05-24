@@ -12,8 +12,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/darkquasar/fracta/internal/host"
 	"github.com/darkquasar/fracta/internal/fractalog"
+	"github.com/darkquasar/fracta/internal/host"
 	"github.com/google/uuid"
 )
 
@@ -97,15 +97,15 @@ type ServeSession struct {
 
 	sessionID     string
 	mu            sync.Mutex // serializes Send calls
-	done      chan struct{}
-	closeDone sync.Once
-	err       error
-	output    *host.ByteBuffer
+	done          chan struct{}
+	closeDone     sync.Once
+	err           error
+	output        *host.ByteBuffer
 	eventObserver func([]byte) // optional external event observer
 
 	// SSE reader state
 	sseEvents chan sseEvent // buffered channel from SSE reader goroutine
-	sseCancel func()       // closes the SSE response body to stop reader
+	sseCancel func()        // closes the SSE response body to stop reader
 
 	// Step monitoring — guards against subagent overuse.
 	stepLimit int // max step_start events per Send() call (default 20)
@@ -131,8 +131,8 @@ type sessionCreateResponse struct {
 
 // sessionStatusPayload represents the session.status SSE event payload.
 type sessionStatusPayload struct {
-	Type   string `json:"type"` // "session.status"
-	Info   *sessionStatusInfo `json:"info,omitempty"`
+	Type string             `json:"type"` // "session.status"
+	Info *sessionStatusInfo `json:"info,omitempty"`
 }
 
 // sessionStatusInfo is the inner status object within session events.
@@ -147,8 +147,8 @@ type sessionStatusInfo struct {
 
 // messagePartPayload represents a message.part.updated SSE event.
 type messagePartPayload struct {
-	Type string              `json:"type"` // "message.part.updated"
-	Info *messagePartInfo    `json:"info,omitempty"`
+	Type string           `json:"type"` // "message.part.updated"
+	Info *messagePartInfo `json:"info,omitempty"`
 }
 
 type messagePartInfo struct {

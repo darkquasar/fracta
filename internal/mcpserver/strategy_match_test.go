@@ -17,7 +17,7 @@ func TestExtractKeywords(t *testing.T) {
 	}{
 		{"lateral movement detection from DNS logs", []string{"lateral", "movement", "detection", "dns", "logs"}},
 		{"", nil},
-		{"a an the", nil},                                  // all stop words
+		{"a an the", nil}, // all stop words
 		{"IP-based correlation", []string{"ip-based", "correlation"}},
 		{"find C2 beacons", []string{"find", "c2", "beacons"}},
 	}

@@ -28,10 +28,10 @@ var (
 	// Standalone-mode flags. Any one of these opts the command out of the
 	// "must be inside a fracta project" requirement (spec-49 §2.4). When set,
 	// the command uses the explicit target paths and skips project state.
-	addConfigPath        string
-	addComposeFile       string
-	addK8sManifestDir    string
-	addCatalogDirFlag    string
+	addConfigPath     string
+	addComposeFile    string
+	addK8sManifestDir string
+	addCatalogDirFlag string
 )
 
 var configMcpAddCmd = &cobra.Command{
@@ -657,4 +657,3 @@ func runBestEffort(w io.Writer, name string, args ...string) {
 		fmt.Fprintf(w, "warning: %s %s: %v\n", name, strings.Join(args, " "), err)
 	}
 }
- 

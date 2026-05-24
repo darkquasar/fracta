@@ -1004,4 +1004,4 @@ func TestSidecar_ExternalSocket_Timeout(t *testing.T) {
 	if !strings.Contains(err.Error(), "timeout") {
 		t.Errorf("expected timeout error, got: %v", err)
 	}
-} 
+}

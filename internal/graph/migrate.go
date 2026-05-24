@@ -121,7 +121,10 @@ func renameLogSourceToDomainSource(ctx context.Context, client GraphClient, log 
 
 // splitDataSources migrates each DataSource node into MCPServer + DataStore,
 // rewires edges, and deletes the original DataSource.
-func splitDataSources(ctx context.Context, client GraphClient, log interface{ Info(string, ...any); Warn(string, ...any) }, now string) error {
+func splitDataSources(ctx context.Context, client GraphClient, log interface {
+	Info(string, ...any)
+	Warn(string, ...any)
+}, now string) error {
 	// Find all DataSource nodes
 	records, err := client.Query(ctx, `MATCH (ds:DataSource) RETURN ds.config_key AS config_key, ds.type AS type, ds.index_pattern AS index_pattern`, nil)
 	if err != nil {
@@ -242,7 +245,10 @@ func splitDataSources(ctx context.Context, client GraphClient, log interface{ In
 
 // collapseToolRefs rewires Strategy USES_TOOL edges from ToolRef to MCPTool,
 // then deletes all ToolRef nodes.
-func collapseToolRefs(ctx context.Context, client GraphClient, log interface{ Info(string, ...any); Warn(string, ...any) }, now string) error {
+func collapseToolRefs(ctx context.Context, client GraphClient, log interface {
+	Info(string, ...any)
+	Warn(string, ...any)
+}, now string) error {
 	count, err := countNodes(ctx, client, "ToolRef")
 	if err != nil {
 		return err

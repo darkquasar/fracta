@@ -15,8 +15,8 @@ type ndEvent struct {
 
 // ndError is the error payload within an nd-JSON event.
 type ndError struct {
-	Name string       `json:"name"`
-	Data ndErrorData  `json:"data"`
+	Name string      `json:"name"`
+	Data ndErrorData `json:"data"`
 }
 
 // ndErrorData contains the error message details.

@@ -32,4 +32,4 @@ func init() {
 		Args:  cobra.MaximumNArgs(1),
 		RunE:  runRegistryStatus,
 	})
-} 
+}

@@ -86,10 +86,10 @@ func TestMCPFetcher_ObjectWithItemsPath(t *testing.T) {
 
 	dir := t.TempDir()
 	result, err := fetcher.Fetch(context.Background(), MCPFetchOpts{
-		Server:    "test-server",
-		Tool:      "list_users",
-		Fields:    []FieldMapping{{Source: "name", Column: "name", Type: "VARCHAR"}},
-		ItemsPath: "data",
+		Server:     "test-server",
+		Tool:       "list_users",
+		Fields:     []FieldMapping{{Source: "name", Column: "name", Type: "VARCHAR"}},
+		ItemsPath:  "data",
 		StagingDir: dir,
 		Table:      "users",
 		RunID:      "abc12345",

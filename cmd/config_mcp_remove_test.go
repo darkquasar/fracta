@@ -109,4 +109,4 @@ func TestConfigMcpRemoveAmbiguousModeError(t *testing.T) {
 	if !strings.Contains(err.Error(), "--target-deployment") {
 		t.Errorf("error should mention --target-deployment: %v", err)
 	}
-} 
+}

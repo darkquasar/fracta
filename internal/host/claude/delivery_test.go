@@ -291,7 +291,7 @@ func TestWriteWorkspace_AuthPodScript(t *testing.T) {
 		CredentialOutput: &credentials.CredentialOutput{
 			Plan: &credentials.CredentialPlan{
 				Binding: &credentials.CredentialBinding{
-					Type:     "claude_api_key_helper",
+					Type:                "claude_api_key_helper",
 					RuntimeAuthResolver: "bedrock_helper",
 				},
 				RuntimeAuthResolver: &credentials.CredentialResolver{
@@ -347,9 +347,9 @@ func TestWriteWorkspace_CredentialBearerEnv_NoUserSettings(t *testing.T) {
 		CredentialOutput: &credentials.CredentialOutput{
 			Plan: &credentials.CredentialPlan{
 				Binding: &credentials.CredentialBinding{
-					Type:    "bearer_env",
-					AuthOrigin:  "proxy",
-					EnvName: "API_TOKEN",
+					Type:       "bearer_env",
+					AuthOrigin: "proxy",
+					EnvName:    "API_TOKEN",
 				},
 			},
 		},
@@ -393,7 +393,7 @@ func TestWriteWorkspace_CredentialDefaultTTL(t *testing.T) {
 		CredentialOutput: &credentials.CredentialOutput{
 			Plan: &credentials.CredentialPlan{
 				Binding: &credentials.CredentialBinding{
-					Type:     "claude_api_key_helper",
+					Type:                "claude_api_key_helper",
 					RuntimeAuthResolver: "bedrock_helper",
 				},
 				RuntimeAuthResolver: &credentials.CredentialResolver{
@@ -620,9 +620,9 @@ func TestWriteWorkspace_NoGatewayPermissions(t *testing.T) {
 
 func TestBuildMCPServersJSON_K8sConfigPath(t *testing.T) {
 	cfg := host.WorkspaceConfig{
-		AgentMCP:    true,
-		Backend:     "kubernetes",
-		ConfigPath:  "/Users/me/fracta/fracta.yaml", // host-local path (should be overridden)
+		AgentMCP:   true,
+		Backend:    "kubernetes",
+		ConfigPath: "/Users/me/fracta/fracta.yaml", // host-local path (should be overridden)
 	}
 
 	servers := BuildMCPServersJSON(cfg)

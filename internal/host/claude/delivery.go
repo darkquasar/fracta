@@ -15,8 +15,8 @@ import (
 	"github.com/darkquasar/fracta/internal/agentpolicy"
 	"github.com/darkquasar/fracta/internal/assets"
 	"github.com/darkquasar/fracta/internal/auth/credentials"
-	"github.com/darkquasar/fracta/internal/host"
 	"github.com/darkquasar/fracta/internal/fractalog"
+	"github.com/darkquasar/fracta/internal/host"
 )
 
 //go:embed instructions/*
@@ -245,7 +245,6 @@ func serializeTopologyToClaudeJSON(topo agentpolicy.MCPTopology) map[string]inte
 
 	return servers
 }
-
 
 // AgentInstructions returns the Claude-specific CLAUDE.md section for agents.
 func (Host) AgentInstructions(task, baseBranch string) string {

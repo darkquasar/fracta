@@ -126,7 +126,7 @@ func TestChildSpecInheritsTopology(t *testing.T) {
 		},
 		Resolution: SpecResolution{
 			RuntimeType: "claude",
-			Model:    "opus-4",
+			Model:       "opus-4",
 		},
 		Topology: SpecTopology{
 			Backend:     "kubernetes",
@@ -227,7 +227,7 @@ func TestMissionPayloadRoundTrip_NilCredentials(t *testing.T) {
 // MissionPayloadForTest mirrors queue.MissionPayload for JSON round-trip testing
 // without creating an import cycle.
 type MissionPayloadForTest struct {
-	Task     string `json:"task"`
+	Task        string `json:"task"`
 	RuntimeType string `json:"host_type"`
 }
 

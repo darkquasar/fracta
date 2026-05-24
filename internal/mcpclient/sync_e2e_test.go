@@ -400,4 +400,4 @@ func TestE2E_ReAddServerToConfig(t *testing.T) {
 	if !srvReg2.ProxyEnabled {
 		t.Error("proxy_enabled should be true after re-add")
 	}
-} 
+}

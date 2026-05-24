@@ -231,4 +231,4 @@ func resolveMode(p string, d fs.DirEntry) os.FileMode {
 		}
 	}
 	return 0o644
-} 
+}

@@ -98,10 +98,10 @@ func TestParseFilter_MixedAndOr(t *testing.T) {
 
 func TestParseFilter_Errors(t *testing.T) {
 	bad := []string{
-		"=tested",     // empty key
-		"status=",     // empty value
-		"justavalue",  // no key in scope
-		" =x",         // empty key after trim
+		"=tested",    // empty key
+		"status=",    // empty value
+		"justavalue", // no key in scope
+		" =x",        // empty key after trim
 	}
 	for _, expr := range bad {
 		if _, err := ParseFilter(expr); err == nil {

@@ -129,10 +129,10 @@ type CredentialResolver struct {
 //   - resolver + env_name: inject the first materialized source used by the helper
 //   - env_name only: expect the env var to already exist in merged host/profile env
 type CredentialBinding struct {
-	Type     string `yaml:"type"`               // "claude_api_key_helper", "bearer_env", "token_file"
+	Type                string `yaml:"type"`                            // "claude_api_key_helper", "bearer_env", "token_file"
 	RuntimeAuthResolver string `yaml:"runtime_auth_resolver,omitempty"` // required for claude_api_key_helper
 	AuthOrigin          string `yaml:"auth_origin,omitempty"`           // for direct source consumption
-	EnvName  string `yaml:"env_name,omitempty"` // for bearer_env
+	EnvName             string `yaml:"env_name,omitempty"`              // for bearer_env
 }
 
 // CredentialAssertions are declarative validation rules for the final merged env.
@@ -147,9 +147,9 @@ type CredentialAssertions struct {
 type CredentialProfile struct {
 	AuthOrigins          map[string]CredentialSource   `yaml:"auth_origins"`
 	RuntimeAuthResolvers map[string]CredentialResolver `yaml:"runtime_auth_resolvers"`
-	Env            map[string]string             `yaml:"env,omitempty"`
-	Assertions     *CredentialAssertions         `yaml:"assertions,omitempty"`
-	DefaultBinding *CredentialBinding            `yaml:"default_binding,omitempty"`
+	Env                  map[string]string             `yaml:"env,omitempty"`
+	Assertions           *CredentialAssertions         `yaml:"assertions,omitempty"`
+	DefaultBinding       *CredentialBinding            `yaml:"default_binding,omitempty"`
 }
 
 // ---------------------------------------------------------------------------
@@ -171,12 +171,12 @@ type AnnotatedSource struct {
 // to use, which binding to apply, and what env/assertions to validate.
 // ALL sources stay in the plan regardless of phase — none are filtered out.
 type CredentialPlan struct {
-	Profile    string
-	AuthOrigins          []AnnotatedSource
-	RuntimeAuthResolver  *CredentialResolver
-	Binding    *CredentialBinding
-	Env        map[string]string
-	Assertions *CredentialAssertions
+	Profile             string
+	AuthOrigins         []AnnotatedSource
+	RuntimeAuthResolver *CredentialResolver
+	Binding             *CredentialBinding
+	Env                 map[string]string
+	Assertions          *CredentialAssertions
 }
 
 // CredentialOutput carries generic materialized artifacts produced by

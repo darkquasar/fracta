@@ -7,9 +7,9 @@ import (
 
 // Proposal status constants.
 const (
-	StatusPending  = "pending"
-	StatusApproved = "approved"
-	StatusRejected = "rejected"
+	StatusPending   = "pending"
+	StatusApproved  = "approved"
+	StatusRejected  = "rejected"
 	StatusDedupeHit = "dedupe_hit"
 )
 

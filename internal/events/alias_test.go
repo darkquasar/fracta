@@ -245,7 +245,7 @@ func TestLegacyAlias(t *testing.T) {
 			want: "worker_ping",
 		},
 		{
-			name: "unknown_empty",
+			name:  "unknown_empty",
 			event: Event{},
 			want:  "unknown",
 		},

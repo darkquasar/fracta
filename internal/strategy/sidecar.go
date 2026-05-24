@@ -105,13 +105,13 @@ type TraceInfo struct {
 
 // RunResult is the response from executing a strategy.
 type RunResult struct {
-	Status                 string    `json:"status"`
-	Result                 any       `json:"result"`
-	PartialResults         any       `json:"partial_results,omitempty"`
-	PartialResultsTruncated bool     `json:"partial_results_truncated,omitempty"`
-	OmittedSteps           []string  `json:"omitted_steps,omitempty"`
-	Trace                  TraceInfo `json:"trace"`
-	Error                  string    `json:"error,omitempty"`
+	Status                  string    `json:"status"`
+	Result                  any       `json:"result"`
+	PartialResults          any       `json:"partial_results,omitempty"`
+	PartialResultsTruncated bool      `json:"partial_results_truncated,omitempty"`
+	OmittedSteps            []string  `json:"omitted_steps,omitempty"`
+	Trace                   TraceInfo `json:"trace"`
+	Error                   string    `json:"error,omitempty"`
 }
 
 // StagingManifestEntry describes one table in the staging manifest sent to the runner.
@@ -218,19 +218,19 @@ func WithEventBus(bus events.Bus) SidecarOption {
 // Sidecar manages a long-lived Python strategy runner subprocess
 // communicating over a Unix socket with newline-delimited JSON.
 type Sidecar struct {
-	pythonBin     string
-	runnerPath    string
-	socketPath    string // Unix socket path (default: DefaultSockPath)
-	strategyDir   string
-	graphAddr  string
-	graphName  string
-	gatewayURL string
-	agentTask  string
-	uvBin      string
-	stagingDir    string
-	runTimeout    time.Duration
-	bus           events.Bus // optional; for strategy execution observability
-	externalMode  bool       // true: connect to existing socket, no subprocess
+	pythonBin    string
+	runnerPath   string
+	socketPath   string // Unix socket path (default: DefaultSockPath)
+	strategyDir  string
+	graphAddr    string
+	graphName    string
+	gatewayURL   string
+	agentTask    string
+	uvBin        string
+	stagingDir   string
+	runTimeout   time.Duration
+	bus          events.Bus // optional; for strategy execution observability
+	externalMode bool       // true: connect to existing socket, no subprocess
 
 	cmd    *exec.Cmd
 	conn   net.Conn
@@ -797,4 +797,4 @@ func (s *Sidecar) Close() error {
 		return fmt.Errorf("%s", strings.Join(errs, "; "))
 	}
 	return nil
-} 
+}

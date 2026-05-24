@@ -7,8 +7,8 @@ type Event struct {
 	Type     string      `json:"type"`
 	ThreadID string      `json:"thread_id,omitempty"` // present on thread.started
 	Item     *Item       `json:"item,omitempty"`      // present on item.completed/item.started
-	Usage    *Usage      `json:"usage,omitempty"`      // present on turn.completed
-	Error    *EventError `json:"error,omitempty"`      // present on error events
+	Usage    *Usage      `json:"usage,omitempty"`     // present on turn.completed
+	Error    *EventError `json:"error,omitempty"`     // present on error events
 }
 
 // EventError represents an error event from Codex.

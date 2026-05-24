@@ -45,12 +45,12 @@ type DiscoverySpec struct {
 
 // ContractSpec is the full parsed representation of a contract.yaml file.
 type ContractSpec struct {
-	Name           string               `yaml:"name"`
-	Version        string               `yaml:"version,omitempty"`
-	Description    string               `yaml:"description"`
-	Tags           []string             `yaml:"tags"`
-	Params         map[string]ParamSpec `yaml:"params,omitempty"`
-	Requires       RequiresSpec         `yaml:"requires"`
-	PinnedBackend  string               `yaml:"pinned_backend,omitempty"`
-	Discovery      *DiscoverySpec       `yaml:"discovery,omitempty"`
+	Name          string               `yaml:"name"`
+	Version       string               `yaml:"version,omitempty"`
+	Description   string               `yaml:"description"`
+	Tags          []string             `yaml:"tags"`
+	Params        map[string]ParamSpec `yaml:"params,omitempty"`
+	Requires      RequiresSpec         `yaml:"requires"`
+	PinnedBackend string               `yaml:"pinned_backend,omitempty"`
+	Discovery     *DiscoverySpec       `yaml:"discovery,omitempty"`
 }

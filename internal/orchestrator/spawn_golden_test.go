@@ -62,19 +62,19 @@ type goldenSpawnChain struct {
 
 // spawnChainInput defines the test input for a spawn chain golden test.
 type spawnChainInput struct {
-	Config       *config.Config
-	Task         string
-	Contract     string
-	RuntimeType  string
-	Model        string
-	Tier         string
-	BaseBranch   string
-	Mode         string
-	Backend      string
-	GatewayURL   string
-	ObjectiveID  string
-	MissionID    int64
-	MCPServers   config.MCPServersConfig
+	Config      *config.Config
+	Task        string
+	Contract    string
+	RuntimeType string
+	Model       string
+	Tier        string
+	BaseBranch  string
+	Mode        string
+	Backend     string
+	GatewayURL  string
+	ObjectiveID string
+	MissionID   int64
+	MCPServers  config.MCPServersConfig
 }
 
 func runSpawnChain(t *testing.T, input spawnChainInput) goldenSpawnChain {
@@ -201,7 +201,7 @@ func TestGoldenSpawnChain_LocalSubprocess(t *testing.T) {
 			},
 			Agents: config.AgentsConfig{
 				DefaultRuntime: "claude",
-				DefaultMode:     "batch",
+				DefaultMode:    "batch",
 			},
 			Runtimes: map[string]config.RuntimeEntry{
 				"claude": {Adapter: "claude", Model: "claude-sonnet-4-5"},
@@ -228,7 +228,7 @@ func TestGoldenSpawnChain_K8sQueued(t *testing.T) {
 			},
 			Agents: config.AgentsConfig{
 				DefaultRuntime: "claude",
-				DefaultMode:     "batch",
+				DefaultMode:    "batch",
 			},
 			Runtimes: map[string]config.RuntimeEntry{
 				"claude": {Adapter: "claude", Model: "claude-sonnet-4-5"},
@@ -259,7 +259,7 @@ func TestGoldenSpawnChain_ChildMission(t *testing.T) {
 			},
 			Agents: config.AgentsConfig{
 				DefaultRuntime: "claude",
-				DefaultMode:     "batch",
+				DefaultMode:    "batch",
 			},
 			Runtimes: map[string]config.RuntimeEntry{
 				"claude": {Adapter: "claude", Model: "claude-sonnet-4-5"},
@@ -283,7 +283,7 @@ func TestGoldenSpawnChain_GatewayServed(t *testing.T) {
 			},
 			Agents: config.AgentsConfig{
 				DefaultRuntime: "claude",
-				DefaultMode:     "batch",
+				DefaultMode:    "batch",
 			},
 			Runtimes: map[string]config.RuntimeEntry{
 				"claude": {Adapter: "claude", Model: "claude-sonnet-4-5"},
@@ -308,16 +308,16 @@ func TestGoldenSpawnChain_BatchOnlyHost(t *testing.T) {
 			},
 			Agents: config.AgentsConfig{
 				DefaultRuntime: "batch-host",
-				DefaultMode:     "batch",
+				DefaultMode:    "batch",
 			},
 			Runtimes: map[string]config.RuntimeEntry{
 				"batch-host": {Adapter: "batch", Model: "batch-model"},
 			},
 		},
-		Task:     "batch-task",
-		Contract: "Run batch job.",
+		Task:        "batch-task",
+		Contract:    "Run batch job.",
 		RuntimeType: "batch-host",
-		Backend:  "local",
+		Backend:     "local",
 	})
 	goldenSpawnChainTest(t, "batch-only-host.golden.json", got)
 }
@@ -331,7 +331,7 @@ func TestGoldenSpawnChain_TierResolution(t *testing.T) {
 			},
 			Agents: config.AgentsConfig{
 				DefaultRuntime: "claude",
-				DefaultMode:     "batch",
+				DefaultMode:    "batch",
 			},
 			Runtimes: map[string]config.RuntimeEntry{
 				"claude": {

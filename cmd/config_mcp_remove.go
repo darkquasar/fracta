@@ -101,9 +101,10 @@ func resolveRemoveMode(flag string, state *mcpcatalog.ProjectState) (removeMode,
 }
 
 // removeAction is one atomic step. kind determines the path through apply():
-//   "fracta-yaml"     removes mcp_servers.servers.<id>.<modeKey>
-//   "compose"         removes services.<id>-mcp from docker-compose.yml
-//   "delete-file"     deletes a file (e.g. k8s manifest, k8s secret)
+//
+//	"fracta-yaml"     removes mcp_servers.servers.<id>.<modeKey>
+//	"compose"         removes services.<id>-mcp from docker-compose.yml
+//	"delete-file"     deletes a file (e.g. k8s manifest, k8s secret)
 type removeAction struct {
 	kind        string
 	description string
@@ -254,4 +255,4 @@ func applyRemoveCompose(a removeAction) error {
 		return fmt.Errorf("remove service from %s: %w", a.composePath, err)
 	}
 	return mcpcatalog.WriteComposeYAMLAtomic(a.composePath, root)
-} 
+}

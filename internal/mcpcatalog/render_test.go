@@ -295,4 +295,4 @@ func TestKebabAfterPrefix(t *testing.T) {
 	if got != "url" {
 		t.Errorf("got %q, want url", got)
 	}
-} 
+}

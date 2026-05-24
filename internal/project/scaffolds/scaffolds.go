@@ -68,4 +68,4 @@ func ParseKind(s string) (Kind, error) {
 	default:
 		return 0, fmt.Errorf("unknown scaffold %q; valid: local, docker-compose, k8s", s)
 	}
-} 
+}
