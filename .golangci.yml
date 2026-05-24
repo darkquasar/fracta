@@ -1,0 +1,17 @@
+# Local-only lint config (not yet wired to CI).
+#
+# Run with: golangci-lint run ./...
+#
+# Truncation defaults intentionally match `--no-config`: each PR sees up to
+# ~99 findings at a time so we can burn the full backlog (~800 issues) down
+# in manageable bundles. Once the backlog is cleared, set both values to 0
+# and wire the linter into .github/workflows/ci.yml.
+version: "2"
+run:
+  timeout: 5m
+  tests: true
+linters:
+  default: standard   # errcheck, govet, ineffassign, staticcheck, unused
+issues:
+  max-issues-per-linter: 50
+  max-same-issues: 3
