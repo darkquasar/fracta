@@ -470,12 +470,11 @@ func (s *SQLiteStore) UpdateAgentResultIf(ctx context.Context, task string, expe
 	var query string
 	var args []any
 	placeholders := ""
-	for i, st := range expected {
+	for i := range expected {
 		if i > 0 {
 			placeholders += ", "
 		}
 		placeholders += "?"
-		args = append(args, string(st)) // will be reordered below
 	}
 
 	if resumeToken != "" {
