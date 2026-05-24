@@ -1,0 +1,18 @@
+type: CONTRADICTS
+description: >
+  A Highlight, Document, or Claim contradicts another Claim. Surfaces
+  tensions in your reading that deserve a follow-up Question.
+
+endpoints:
+  from: [Highlight, Document, Claim]
+  to: [Claim]
+
+properties:
+  strength:
+    type: float
+    required: false
+    description: 0.0-1.0 — how strongly the source refutes the claim
+  note:
+    type: string
+    required: false
+    description: Optional rationale for the contradiction

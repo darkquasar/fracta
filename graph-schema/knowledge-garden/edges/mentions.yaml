@@ -1,0 +1,30 @@
+type: MENTIONS
+description: >
+  A Highlight or Document mentions a Concept or Entity. The bread-and-butter
+  edge of the Reading Garden — most concepts emerge via MENTIONS extracted
+  by the highlight_distill strategy. Extractors scan both Highlight.text
+  and Highlight.note when emitting these edges.
+
+endpoints:
+  from: [Highlight, Document]
+  to: [Concept, Entity]
+
+properties:
+  weight:
+    type: float
+    required: false
+    description: Aggregate edge weight (derived from extraction_score × recency decay by cross_source_concepts)
+  extracted_by:
+    type: string
+    required: false
+    description: >
+      Pipe-joined list of extractor ids that contributed this mention,
+      e.g. "keybert|gliner|spacy", "strategy:highlight_distill", "agent:<name>", "user"
+  extraction_score:
+    type: float
+    required: false
+    description: 0.0-1.0 per-mention extraction confidence (asymmetric base from gliner where available; agreement bonuses applied)
+  agreement_n:
+    type: int
+    required: false
+    description: Number of NLP extractors that agreed on this mention (1, 2, or 3)

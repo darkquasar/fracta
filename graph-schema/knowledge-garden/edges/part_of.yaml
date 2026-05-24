@@ -1,0 +1,10 @@
+type: PART_OF
+description: >
+  Composition / containment edge. Highlights are PART_OF a Document;
+  Concepts, Questions, and Claims are PART_OF a Topic.
+
+endpoints:
+  from: [Highlight, Concept, Question, Claim]
+  to: [Document, Topic]
+
+properties: {}

@@ -53,6 +53,7 @@ ontology:
     - path: graph-schema/core
     - path: graph-schema/threat-hunting
     - path: graph-schema/fracta-mcp-gateway
+    - path: graph-schema/knowledge-garden
 
 
 # ---------------------------------------------------------------------------

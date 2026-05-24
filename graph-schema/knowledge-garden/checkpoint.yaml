@@ -1,0 +1,102 @@
+rules:
+  - name: orphaned_concept_no_mentions
+    layer: particular
+    severity: warning
+    query: |
+      MATCH (c:Concept)
+      WHERE NOT (c)<-[:MENTIONS]-()
+      RETURN c.name AS name
+    gap_template:
+      type: orphaned_concept
+      description: "Concept '{name}' has no MENTIONS — no Highlight or Document supports it"
+      suggested_action: "Either link supporting captures via MENTIONS, or delete the concept"
+
+  - name: highlight_missing_captured_from
+    layer: particular
+    severity: error
+    query: |
+      MATCH (h:Highlight)
+      WHERE NOT (h)-[:CAPTURED_FROM]->(:DomainSource)
+      RETURN h.id AS id
+    gap_template:
+      type: highlight_no_source
+      description: "Highlight '{id}' has no CAPTURED_FROM edge to a DomainSource — provenance is unknown"
+      suggested_action: "Wire (h)-[:CAPTURED_FROM]->(:DomainSource {name: '<source>'}) for highlight '{id}'"
+
+  - name: publication_missing_parent_concept
+    layer: particular
+    severity: error
+    query: |
+      MATCH (p:Publication)
+      WHERE NOT (:Concept)-[:PUBLISHED_AS]->(p)
+      RETURN p.id AS id, p.sink AS sink, p.external_id AS external_id
+    gap_template:
+      type: orphaned_publication
+      description: "Publication '{id}' on sink '{sink}' (external_id: {external_id}) has no parent Concept via PUBLISHED_AS"
+      suggested_action: "Either delete the Publication or wire (:Concept)-[:PUBLISHED_AS]->(p)"
+
+  - name: high_confidence_concept_without_topic
+    layer: particular
+    severity: warning
+    query: |
+      MATCH (c:Concept)
+      WHERE c.confidence > 0.8
+        AND NOT (c)-[:PART_OF]->(:Topic)
+      RETURN c.name AS name, c.confidence AS confidence
+    gap_template:
+      type: untagged_high_confidence_concept
+      description: "Concept '{name}' has confidence {confidence} but is not PART_OF any Topic — should be filed"
+      suggested_action: "Wire (c)-[:PART_OF]->(:Topic {name: '<topic>'}) so it surfaces in topic browses"
+
+  - name: publication_missing_required_props
+    layer: particular
+    severity: error
+    query: |
+      MATCH (p:Publication)
+      WHERE p.external_id IS NULL OR p.content_hash IS NULL OR p.sink IS NULL
+      RETURN p.id AS id
+    gap_template:
+      type: incomplete_publication
+      description: "Publication '{id}' is missing one of sink/external_id/content_hash — idempotent re-publish will break"
+      suggested_action: "SET sink, external_id, and content_hash on Publication '{id}'"
+
+  - name: claim_without_evidence
+    layer: particular
+    severity: warning
+    query: |
+      MATCH (c:Claim)
+      WHERE NOT (c)<-[:EVIDENCES]-()
+      RETURN c.id AS id, c.text AS text
+    gap_template:
+      type: unsupported_claim
+      description: "Claim '{id}' has no EVIDENCES — propositional claim with no source support"
+      suggested_action: "Either link supporting captures via EVIDENCES, or downgrade the claim"
+
+  - name: concept_low_extraction_high_confidence
+    layer: particular
+    severity: warning
+    query: |
+      MATCH (c:Concept)
+      WHERE c.confidence > 0.7
+        AND (c.extraction_score IS NULL OR c.extraction_score < 0.4)
+      RETURN c.name AS name, c.confidence AS confidence, c.extraction_score AS extraction_score
+    gap_template:
+      type: alias_drift
+      description: "Concept '{name}' has confidence {confidence} but extraction_score {extraction_score} — graph-corroborated but no extractor strongly endorsed it (likely alias of another concept)"
+      suggested_action: "Inspect MENTIONS edges and consider hand-merging into the canonical concept"
+
+  - name: concept_confidence_status_mismatch
+    layer: particular
+    severity: warning
+    query: |
+      MATCH (c:Concept)
+      WHERE c.confidence IS NOT NULL AND c.epistemic_status IS NOT NULL
+        AND (
+          (c.epistemic_status = 'evergreen' AND c.confidence < 0.8)
+          OR (c.epistemic_status = 'seedling' AND c.confidence > 0.4)
+        )
+      RETURN c.name AS name, c.confidence AS confidence, c.epistemic_status AS status
+    gap_template:
+      type: epistemic_status_mismatch
+      description: "Concept '{name}' has confidence {confidence} but epistemic_status '{status}' — engine score and qualitative label disagree"
+      suggested_action: "Re-run notion_publish to re-derive epistemic_status, or hand-correct the concept's status"

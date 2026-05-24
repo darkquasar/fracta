@@ -1,0 +1,26 @@
+label: Topic
+layer: universal
+description: >
+  A curated cluster of related Concepts — the "area of interest" grouping
+  layer above individual ideas. Distinct from Concept: a Concept is one
+  atomic idea, a Topic is a theme that several Concepts belong to.
+  Scaffold authority — accumulated over time, never auto-deleted. Concepts
+  attach to a Topic via PART_OF.
+
+properties:
+  name:
+    type: string
+    required: true
+    unique: true
+    description: Canonical topic label (e.g., "distributed-systems", "stoicism")
+  description:
+    type: string
+    required: false
+  color:
+    type: string
+    required: false
+    description: Optional UI hint (hex code or named color) for visualization
+
+indexes:
+  - properties: [name]
+    type: exact

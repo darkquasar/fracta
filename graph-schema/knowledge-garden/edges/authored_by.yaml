@@ -1,0 +1,13 @@
+type: AUTHORED_BY
+description: >
+  A Document was authored by an Entity (typically a person or organization).
+
+endpoints:
+  from: [Document]
+  to: [Entity]
+
+properties:
+  role:
+    type: string
+    required: false
+    description: "Authorship role: author, co-author, editor, translator, host"

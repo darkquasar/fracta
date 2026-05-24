@@ -550,3 +550,52 @@ func TestMergedSchema_ThreeWay(t *testing.T) {
 		t.Errorf("edge count = %d, want 27", got)
 	}
 }
+
+func TestLoadSchemaSet_KnowledgeGarden(t *testing.T) {
+	base := schemaBaseDir(t)
+	ss, err := LoadSchemaSet(filepath.Join(base, "knowledge-garden"))
+	if err != nil {
+		t.Fatalf("LoadSchemaSet(knowledge-garden): %v", err)
+	}
+	if ss.Name != "knowledge-garden" {
+		t.Errorf("Name = %q, want 'knowledge-garden'", ss.Name)
+	}
+	if ss.Version != 2 {
+		t.Errorf("Version = %d, want 2", ss.Version)
+	}
+	// 1 universal (Topic) + 7 particulars (Document, Highlight, Concept, Entity, Claim, Question, Publication) = 8 nodes
+	if got := len(ss.Registry.Nodes); got != 8 {
+		t.Errorf("knowledge-garden node count = %d, want 8", got)
+	}
+	// 9 edges: MENTIONS, EVIDENCES, CONTRADICTS, REFINES, PART_OF, AUTHORED_BY, CAPTURED_FROM, RELATES_TO, PUBLISHED_AS
+	if got := len(ss.Registry.Edges); got != 9 {
+		t.Errorf("knowledge-garden edge count = %d, want 9", got)
+	}
+	expectedNodes := []string{"Topic", "Document", "Highlight", "Concept", "Entity", "Claim", "Question", "Publication"}
+	for _, label := range expectedNodes {
+		if _, ok := ss.Registry.Nodes[label]; !ok {
+			t.Errorf("missing node: %s", label)
+		}
+	}
+	expectedEdges := []string{"MENTIONS", "EVIDENCES", "CONTRADICTS", "REFINES", "PART_OF", "AUTHORED_BY", "CAPTURED_FROM", "RELATES_TO", "PUBLISHED_AS"}
+	for _, label := range expectedEdges {
+		if _, ok := ss.Registry.Edges[label]; !ok {
+			t.Errorf("missing edge: %s", label)
+		}
+	}
+
+	// Authority section
+	if ss.Authority == nil {
+		t.Fatal("Authority is nil")
+	}
+	scaf := ss.Authority["scaffold"]
+	if !contains(scaf, "Topic") {
+		t.Errorf("scaffold = %v, want Topic", scaf)
+	}
+	disc := ss.Authority["discovered"]
+	for _, label := range []string{"Document", "Highlight", "Concept", "Entity", "Claim", "Question", "Publication"} {
+		if !contains(disc, label) {
+			t.Errorf("discovered missing %s; got %v", label, disc)
+		}
+	}
+}

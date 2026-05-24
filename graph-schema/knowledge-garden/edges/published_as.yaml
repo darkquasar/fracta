@@ -1,0 +1,18 @@
+type: PUBLISHED_AS
+description: >
+  A Concept, Topic, or Document has been published to an external sink as
+  a Publication. The notion_publish strategy (and any future Mintlify /
+  Quartz / Obsidian publisher) creates this edge for idempotent re-publish
+  detection — the Publication node carries the external_id and content_hash.
+
+endpoints:
+  from: [Concept, Topic, Document]
+  to: [Publication]
+
+properties:
+  first_published_at:
+    type: string
+    required: false
+  last_published_at:
+    type: string
+    required: false
