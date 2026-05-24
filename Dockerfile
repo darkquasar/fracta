@@ -44,6 +44,10 @@ RUN mkdir -p /opt/fracta/auth-helpers
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
+# Graph schema YAML families consumed at gateway startup
+# (cpConfig.Ontology.Schemas walks paths relative to WORKDIR).
+COPY graph-schema/ /workspace/graph-schema/
+
 WORKDIR /workspace
 
 ENTRYPOINT ["entrypoint.sh"]
