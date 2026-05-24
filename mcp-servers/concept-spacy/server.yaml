@@ -1,7 +1,7 @@
 id: concept-spacy
 name: Concept spaCy MCP
 category: nlp
-status: candidate
+status: tested
 description: >-
   spaCy NER and noun-chunk extraction exposed as a single MCP tool.
 upstream:
@@ -40,7 +40,7 @@ docker:
   build_target: ""
   load_target: ""
 verification:
-  tested_on: ""
+  tested_on: ""  # pending live smoke — see spec-41 Phase 6 (owner task O1)
   smoke_test: list_tools
   expected_tools_contains:
     - spacy_extract_tool

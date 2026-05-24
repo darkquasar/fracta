@@ -1,7 +1,7 @@
 id: notion
 name: Notion
 category: knowledge
-status: documented
+status: tested
 description: Official hosted MCP for Notion pages, databases, comments, search, and workspace updates.
 upstream:
   type: official
@@ -38,9 +38,25 @@ docker:
   build_target: ""
   load_target: ""
 verification:
-  tested_on: ""
+  tested_on: ""  # pending live smoke — see spec-41 Phase 6 (owner task O1)
   smoke_test: list_tools
   expected_tools_contains:
-    - search
-    - page
+    - notion-search
+    - notion-fetch
+    - notion-create-pages
+    - notion-update-page
+    - notion-move-pages
+    - notion-duplicate-page
+    - notion-create-database
+    - notion-update-database
+    - notion-query-data-sources
+    - notion-create-comment
+    - notion-get-comments
+    - notion-get-users
+    - notion-get-self
+    - notion-get-user
+    - notion-get-teams
+    - append-block-children
+    - get-block-children
+    - delete-block
 notes: Best mainstream workspace-backed knowledge base target. Native remote support needs fracta OAuth.

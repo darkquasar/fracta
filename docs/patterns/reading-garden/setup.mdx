@@ -1,0 +1,199 @@
+---
+title: Setup
+description: Install the Notion and Readwise MCP servers via mcp-remote, complete OAuth, and verify the stack — about 15 minutes.
+---
+
+Setup gets you from a fresh fracta install to a registry with five servers — `notion`, `readwise`, and the three concept extractors — all green. About 15 minutes of work, most of which is two OAuth pop-ups and one Notion sharing click that catches everyone the first time.
+
+The pipeline run itself lives on [First Run](/patterns/reading-garden/first-run); this page is purely the wiring.
+
+## Prerequisites
+
+<Steps>
+  <Step title="Fracta installed and a runtime configured">
+    Follow [Installation](/getting-started/installation) and [Your First Agent](/getting-started/first-agent). Confirm `fracta spawn --task hello --contract "say hi"` returns cleanly before continuing.
+  </Step>
+  <Step title="A Readwise (or Reader) account with at least one synced highlight">
+    Free accounts work. The pipeline reads through the hosted [Readwise MCP](https://readwise.io/mcp) — no API key is needed at the fracta layer; OAuth handles it.
+  </Step>
+  <Step title="A Notion workspace where you can create an integration and a database">
+    You need the ability to create a new database (or pick an empty one) and to share it with the hosted Notion MCP. Personal workspaces work; in shared workspaces you may need an admin to authorise the integration.
+  </Step>
+  <Step title="Node.js 18+ on the machine running fracta">
+    Both hosted MCPs are reached through [`mcp-remote`](https://github.com/geelen/mcp-remote), which fracta launches via `npx`. If `npx --version` fails, install Node before continuing.
+  </Step>
+  <Step title="Docker (or a Kubernetes cluster) for the concept extractors">
+    The three extractor MCPs (`concept-keybert`, `concept-gliner`, `concept-spacy`) ship as containers only — `local_process: not_supported` in the catalog. The footprint matters; see the box below before you commit.
+  </Step>
+</Steps>
+
+<Warning>
+  **Extractor footprint.** The three extractor containers together pull roughly **5.3 GB of images** and hold **1.5–2 GB of RAM resident** once their models are loaded (`concept-gliner` alone keeps ~1.4 GB of DeBERTa-v3 weights warm). Plan for a laptop or homelab-class host. A Raspberry Pi 4 will swap; a small VPS without 4 GB+ of RAM headroom will OOM under load.
+</Warning>
+
+## Step 1 — Wire the hosted MCPs through mcp-remote
+
+Both Notion and Readwise expose hosted MCP endpoints that require OAuth with PKCE. Until fracta has gateway-native OAuth (tracked separately under spec-37), the supported path is the [`mcp-remote`](https://github.com/geelen/mcp-remote) stdio proxy. The proxy opens a local browser callback, completes the auth dance, and caches the resulting tokens on disk.
+
+Add both servers to the `mcp_servers.servers:` block of your `fracta.yaml`:
+
+```yaml
+mcp_servers:
+  servers:
+    notion:
+      local_proxy:
+        command: npx
+        args:
+          - -y
+          - mcp-remote
+          - https://mcp.notion.com/mcp
+        transport: stdio
+
+    readwise:
+      local_proxy:
+        command: npx
+        args:
+          - -y
+          - mcp-remote
+          - https://mcp2.readwise.io/mcp
+        transport: stdio
+```
+
+The first time fracta launches either server, `mcp-remote` opens a browser window pointed at the provider's OAuth consent page. Approve the scopes; the callback returns to `http://localhost:3334/...` and the tokens are written under `~/.mcp-auth/`.
+
+<Warning>
+  **`mcp-remote` token cache is plaintext.** `~/.mcp-auth/` holds the OAuth refresh tokens unencrypted. On a shared machine, set `MCP_REMOTE_CONFIG_DIR=/path/inside/your/home` (or equivalent) so tokens live somewhere only your user can read. Treat that directory like an SSH private key.
+</Warning>
+
+<Note>
+  **Static Notion integration tokens do not work for the hosted MCP.** The internal-integration `secret_...` token issued by Notion's "My integrations" page authenticates the REST API, not `mcp.notion.com/mcp`. The hosted MCP only accepts OAuth via `mcp-remote`. If you have an existing integration token wired into other tools, leave it where it is — this stack uses a separate OAuth grant.
+</Note>
+
+If port 3334 is already in use (a previous `mcp-remote` invocation, a dev server, etc.) the callback will fail. Either free the port, or pass `--host 127.0.0.1 --port <free-port>` after the `mcp-remote` URL in the args list. `mcp-remote` also pins the Notion API version it sends; current builds use `Notion-Version: 2025-09-03`.
+
+## Step 2 — Provision the Notion database
+
+The Reading Garden pipeline publishes Concept pages into a Notion database you own. Create or pick that database now.
+
+<Steps>
+  <Step title="Create (or choose) a database">
+    In Notion, create a new database — full-page or inline, either works. Title it something memorable; "Reading Garden — Concepts" is fine.
+  </Step>
+  <Step title="Share the database with the Notion MCP integration">
+    Open the database, click `...` -> `Connections` -> `Add connections`, and authorise the **Notion MCP** integration. This is the step everyone misses the first time.
+  </Step>
+  <Step title="Copy the database ID">
+    The ID is the 32-character hex string in the database's URL (`https://www.notion.so/<workspace>/<DB_NAME>-<DB_ID>?...`). You will paste it into the [First Run](/patterns/reading-garden/first-run) prompt as `notion_database_id`.
+  </Step>
+</Steps>
+
+<Warning>
+  **The 404 trap.** If you skip Step 2.2, every Notion write returns `404 page not found` — the hosted MCP cannot see databases it has not been explicitly shared into, even if your user owns them. The error is unhelpful; the cause is always the missing `Connections` entry.
+</Warning>
+
+## Step 3 — Add the concept-extractor MCPs
+
+The three extractor servers run as containers shipped from [`fracta-mcp-servers`](https://github.com/darkquasar/fracta-mcp-servers). They speak `streamable-http` on port `8000` at path `/mcp`, require no auth at the MCP layer (the gateway envelope handles identity), and each expose a single tool: `keybert_extract_tool`, `gliner_extract_tool`, and `spacy_extract_tool` respectively.
+
+Bring them up via docker-compose (extend the file the gateway already uses, or copy the snippet from the [docker-compose deployment guide](/guides/deployment/docker-compose)):
+
+```yaml
+services:
+  # fracta gateway and existing services remain above
+
+  concept-keybert:
+    image: ghcr.io/darkquasar/fracta-mcp-servers/concept-keybert:latest
+    networks: [fracta]
+
+  concept-gliner:
+    image: ghcr.io/darkquasar/fracta-mcp-servers/concept-gliner:latest
+    networks: [fracta]
+
+  concept-spacy:
+    image: ghcr.io/darkquasar/fracta-mcp-servers/concept-spacy:latest
+    networks: [fracta]
+```
+
+Then append the matching registry entries to `mcp_servers.servers:` in your `fracta.yaml` so the gateway can route to them by compose-service DNS:
+
+```yaml
+mcp_servers:
+  servers:
+    # notion and readwise from Step 1 remain above
+
+    concept-keybert:
+      remote:
+        url: http://concept-keybert:8000/mcp
+        transport: streamable-http
+
+    concept-gliner:
+      remote:
+        url: http://concept-gliner:8000/mcp
+        transport: streamable-http
+
+    concept-spacy:
+      remote:
+        url: http://concept-spacy:8000/mcp
+        transport: streamable-http
+```
+
+In Kubernetes, swap the host for each server's `service_url` from the catalog (e.g. `http://concept-keybert.fracta.svc:8000/mcp`). See the [Kubernetes runbook](/guides/deployment/kubernetes-runbook) for the surrounding manifests.
+
+<Warning>
+  **Kubernetes readiness probes must be TCP, not `httpGet /mcp`.** The `streamable-http` transport returns HTTP 406 to plain GETs, which would mark the pod permanently unready. Use a `tcpSocket: { port: 8000 }` probe instead. The upstream manifests in [`fracta-mcp-servers`](https://github.com/darkquasar/fracta-mcp-servers) already follow this pattern; mirror it if you author your own.
+</Warning>
+
+<Note>
+  **Session pinning matters.** `concept-gliner` loads ~1.4 GB of DeBERTa-v3 weights once per MCP session, in its `_lifespan` hook. The fracta gateway must pin `mcp-session-id` to the same upstream pod for the lifetime of a session, or every call reloads the model (10–30 s per request — the strategy becomes unusable). The default gateway configuration already pins; if you replace it with a custom load balancer, preserve sticky sessions.
+</Note>
+
+## Step 4 — Verify the stack
+
+Three commands and a sanity-check spawn. By the end of this section you should see five servers in the registry, all green.
+
+```bash
+fracta registry list
+```
+
+Expected: `notion`, `readwise`, `concept-keybert`, `concept-gliner`, `concept-spacy` — each with status `ok`. If `notion` or `readwise` shows `auth_required`, fracta has not yet completed the `mcp-remote` OAuth flow; the next spawn against that server triggers the browser pop-up.
+
+Confirm each hosted MCP returns its expected tool list:
+
+```bash
+fracta spawn --task verify-notion \
+  --contract "Call notion-search with query='setup smoke' and report whether the call succeeded (any result count is fine; we are checking auth, not content)."
+fracta peek verify-notion
+```
+
+```bash
+fracta spawn --task verify-readwise \
+  --contract "Call list_highlights with page_size=1 and report the highlight's id and book_id."
+fracta peek verify-readwise
+```
+
+Both should return a real response, not an authentication error. If `verify-readwise` returns a 429, you have hit the **list-highlights 20-req/min** ceiling — wait one minute and retry. The `highlight-distill` strategy paginates against this same limit using a `watermark_iso` parameter, so the first real run uses a recent watermark to keep total request count bounded.
+
+<Note>
+  **Notion API limit: 3 req/s.** The hosted Notion MCP enforces the documented Notion REST limit. The `notion-publish` strategy spaces calls accordingly, but ad-hoc batch operations are easy to overshoot. As a rough number, publishing 100 Concept pages takes about 2.5 minutes wall-clock once retries and backoff are factored in.
+</Note>
+
+Finally, confirm the extractors are reachable through the gateway:
+
+```bash
+fracta spawn --task verify-extractors \
+  --contract "Call each of keybert_extract_tool, gliner_extract_tool, and spacy_extract_tool with text='Karl Popper argued for falsifiability as the demarcation criterion of science.' and report whether each call returned a non-empty result."
+fracta peek verify-extractors
+```
+
+If any extractor times out or returns an empty list, check container health (`docker compose ps` or `kubectl get pods -n fracta`) and confirm the gateway can resolve the service DNS from its own container.
+
+## What's next
+
+<Cards>
+  <Card title="Ontology" href="/patterns/reading-garden/ontology">
+    The eight node types the pipeline writes and the edges that connect them.
+  </Card>
+  <Card title="First Run" href="/patterns/reading-garden/first-run">
+    Spawn one Claude worker with one pipeline prompt; publish your first Concept page to Notion.
+  </Card>
+</Cards>
