@@ -339,12 +339,11 @@ func TestSyncConfigServers_ChangedConfig(t *testing.T) {
 	if err := s.SyncConfigServers(ctx, initial); err != nil {
 		t.Fatalf("initial sync: %v", err)
 	}
-	srv1, _ := s.GetServer(ctx, "elastic")
 
 	// Backdated updated_at to ensure the next sync produces a different timestamp.
 	past := time.Now().UTC().Add(-1 * time.Hour).Format(time.RFC3339)
 	s.db.ExecContext(ctx, `UPDATE registered_servers SET updated_at = ? WHERE name = 'elastic'`, past)
-	srv1, _ = s.GetServer(ctx, "elastic")
+	srv1, _ := s.GetServer(ctx, "elastic")
 
 	// Change the config.
 	changed := config.MCPServersConfig{
