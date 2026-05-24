@@ -91,14 +91,50 @@ Apply the manifest now (`kubectl apply -k deployment/k8s/manifests/`). The gatew
 
 ### 1.2 — Run the OAuth flow locally
 
-For each server, from your fracta project root:
+The `fracta config mcp auth login <server>` command reads its server definition from a **local** YAML file passed via `--config` — it does **not** introspect the in-cluster gateway ConfigMap you edited in step 1.1. You'll create two **throwaway "login config" files** in your fracta project root, one per server. They exist only to tell the CLI which OAuth endpoint to dance with; they hold no secrets and can be deleted (or kept for re-auth, your call) the moment step 1.4 succeeds.
+
+Copy-paste these two files verbatim into your project root:
+
+```yaml
+# notion-login.yaml — throwaway helper, only used by `fracta config mcp auth {login,export} notion --config ...`
+mcp_servers:
+  servers:
+    notion:
+      remote:
+        url: https://mcp.notion.com/mcp
+        transport: streamable-http
+        auth:
+          type: oauth
+          pkce: true
+```
+
+```yaml
+# readwise-login.yaml — throwaway helper, only used by `fracta config mcp auth {login,export} readwise --config ...`
+mcp_servers:
+  servers:
+    readwise:
+      remote:
+        url: https://mcp2.readwise.io/mcp
+        transport: streamable-http
+        auth:
+          type: oauth
+          pkce: true
+```
+
+These describe only the OAuth endpoint shape — no `token_file` / `client_registration_file` paths, because the CLI is about to write fresh tokens to your OS keyring, not read them from disk. The "real" server config — with the in-cluster token paths — already lives in the gateway ConfigMap you edited in step 1.1.
+
+Then, from your fracta project root:
 
 ```bash
-fracta config mcp auth login notion
-fracta config mcp auth login readwise
+fracta config mcp auth login notion   --config ./notion-login.yaml
+fracta config mcp auth login readwise --config ./readwise-login.yaml
 ```
 
 Each command opens your default browser at the provider's consent page. Approve, and the callback returns to a local port. The tokens (access + refresh, plus the dynamically-registered OAuth client) land in your OS keyring under service `fracta.oauth`, accounts `<server>:token` and `<server>:client`.
+
+<Note>
+  **Why a separate login config?** The CLI's auth subcommand is intentionally decoupled from the in-cluster gateway — you can run logins on a laptop that has never connected to your cluster, or rotate tokens for a server that isn't deployed yet. If you omit `--config`, the CLI looks at your default `fracta.yaml`, which in the kubernetes scaffold only describes the thin-client control-plane connection and won't contain the OAuth servers. The error is `server "<name>" not found in config`.
+</Note>
 
 <Note>
   **Static Notion integration tokens do not work for the hosted MCP.** The internal-integration `secret_...` token issued by Notion's "My integrations" page authenticates the REST API, not `mcp.notion.com/mcp`. The hosted MCP only accepts OAuth — which is exactly what `fracta config mcp auth login notion` performs. If you have an existing integration token wired into other tools, leave it where it is; this stack uses a separate OAuth grant.
@@ -107,13 +143,21 @@ Each command opens your default browser at the provider's consent page. Approve,
 ### 1.3 — Export the tokens as Kubernetes Secrets
 
 ```bash
-fracta config mcp auth export notion --format k8s-secret 2>/dev/null > notion-oauth-secret.yaml
-fracta config mcp auth export readwise --format k8s-secret 2>/dev/null > readwise-oauth-secret.yaml
+fracta config mcp auth export notion   --format k8s-secret --config ./notion-login.yaml   2>/dev/null > notion-oauth-secret.yaml
+fracta config mcp auth export readwise --format k8s-secret --config ./readwise-login.yaml 2>/dev/null > readwise-oauth-secret.yaml
 ```
 
-Each command emits an `Opaque` Secret named `fracta-mcp-<server>` with two keys: `token.json` (access + refresh tokens) and `client-registration.json` (the dynamically-registered client ID). The `2>/dev/null` suppresses a noisy parse warning from the thin-client config validator that doesn't affect output.
+Each command emits an `Opaque` Secret named `fracta-mcp-<server>` with two keys: `token.json` (access + refresh tokens) and `client-registration.json` (the dynamically-registered client ID). The `--config` flag points back at the same login YAML you used in step 1.2 — export and login share a single source of truth for which server they're operating on.
 
-Verify the first line of each file is `apiVersion: v1` before applying.
+The `2>/dev/null` swallows a non-fatal warning the thin-client config validator emits about `runtime.staging_dir` (the login YAML omits it, since OAuth login doesn't need staging). Without the redirect, that line lands inside the YAML you're writing to disk and corrupts the Secret. Confirm the first line of each output file is `apiVersion: v1` before applying.
+
+<Warning>
+  **The exported Secret YAMLs are transit artifacts, not config.** `notion-oauth-secret.yaml` and `readwise-oauth-secret.yaml` carry long-lived refresh tokens in plaintext — anyone with one of those files can call the hosted MCP as you until you revoke the grant.
+
+  **Preferred handling**: once `kubectl apply` has loaded them into the cluster (step 1.4), stash a copy in your password manager for re-auth or DR, then `rm` them from disk. The keyring entries on your laptop and the in-cluster Secret are the durable copies; the YAMLs are just the wire format that bridges them.
+
+  **At minimum**: add `*-oauth-secret.yaml` to your `.gitignore` **before** the first `git add`. The `notion-login.yaml` / `readwise-login.yaml` helpers from step 1.2 are harmless to commit (they contain no secrets), but you can gitignore them too if you'd rather not have throwaway files in version control.
+</Warning>
 
 ### 1.4 — Apply the Secrets and pick them up
 
@@ -133,7 +177,7 @@ kubectl logs -n fracta deploy/fracta-gateway --tail=60 | grep -iE "MCP client co
 You should see two `MCP client connected` lines — one per server — each reporting a tool count (18 for `notion`, ~22 for `readwise`).
 
 <Note>
-  **Re-authentication.** The OAuth refresh tokens are long-lived (Readwise's currently outlive the access token by months). When you do need to rotate — provider revoked, expired, or a new scope — repeat steps 1.2–1.4. There's no separate "logout" command needed on the cluster side; `kubectl apply` overwrites the existing Secret and the gateway rollout picks up the new file. Locally, `fracta config mcp auth logout <server>` clears the keyring entries before a fresh login.
+  **Re-authentication.** The OAuth refresh tokens are long-lived (Readwise's currently outlive the access token by months). When you do need to rotate — provider revoked, expired, or a new scope — repeat steps 1.2–1.4, reusing the same `<server>-login.yaml` files with `--config`. There's no separate "logout" command needed on the cluster side; `kubectl apply` overwrites the existing Secret and the gateway rollout picks up the new file. Locally, `fracta config mcp auth logout <server>` clears the keyring entries before a fresh login.
 </Note>
 
 ## Step 2 — Provision the Notion database
