@@ -1,0 +1,18 @@
+name: "cross-source-concepts"
+version: "1.0.0"
+description: >
+  Score Concepts by recency × frequency × source diversity × mean per-mention
+  extraction_score. Updates Concept.confidence, Concept.mention_count, and
+  derives MENTIONS.weight from extraction_score × recency. Reads
+  Concept.extraction_score but never writes it — ownership-seam invariant.
+tags: [correlation, knowledge-garden]
+params: {}
+requires:
+  graph: true
+  tables: {}
+pinned_backend: graph
+discovery:
+  description: >
+    Pure graph→graph computation. No source bindings; no DuckDB reads;
+    no MCP calls. Operates over Concept and MENTIONS nodes created by
+    highlight_distill.
