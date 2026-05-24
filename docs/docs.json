@@ -59,6 +59,24 @@
         ]
       },
       {
+        "group": "Patterns",
+        "pages": [
+          "patterns/overview",
+          "patterns/_template",
+          {
+            "group": "Reading Garden",
+            "pages": [
+              "patterns/reading-garden/overview",
+              "patterns/reading-garden/setup",
+              "patterns/reading-garden/ontology",
+              "patterns/reading-garden/strategies",
+              "patterns/reading-garden/first-run",
+              "patterns/reading-garden/extending"
+            ]
+          }
+        ]
+      },
+      {
         "group": "Guides",
         "pages": [
           {

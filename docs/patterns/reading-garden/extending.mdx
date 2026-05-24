@@ -1,0 +1,110 @@
+---
+title: Extending
+description: The seams — adding sources (Raindrop, Zotero, PDFs), publishing to public gardens (Mintlify, Quartz), and growing the ontology — without forking the pattern.
+---
+
+The Reading Garden is opinionated, but every opinion was placed where it could be cut. This page names the four seams the pattern was designed around, walks one worked extension end-to-end (adding Raindrop as a second source), and lists the limits the v1 pattern explicitly does not support — so you can decide whether your real workload fits before you invest.
+
+## The four seams
+
+The pattern is cut so each of these changes touches **one** layer, not all of them.
+
+1. **Add a source.** Register another MCP server, MERGE a new `DomainSource`, write a small adapter that emits `Highlight` / `Document` shapes. The graph slice, the scoring strategy, and the publishing strategy do not change.
+2. **Add a node type.** Extend the `knowledge-garden/` schema with a new node (e.g. re-introduce `Bookmark` or `Annotation` when their producers ship). Existing nodes and edges keep their writers-of-record; the new node gets its own.
+3. **Add a strategy.** Write a new `contract.yaml` + `strategy.py` that reads from existing tables and the existing graph. The most common shape is a sibling extractor (LLM-based concept distillation), a sibling publisher (Mintlify, Quartz), or a sibling correlator (claim-evidence linking).
+4. **Replace a backend.** Swap one MCP for another with the same shape — Notion-for-Obsidian on the publish side, Readwise-for-Reader-only on the ingest side. The strategy that talks to that backend changes; nothing else does.
+
+For each seam, the diff is bounded: a new file or two and a registry entry, not a fork of the pattern.
+
+## A worked extension — adding Raindrop as a second source
+
+Goal: ingest Raindrop bookmarks alongside Readwise highlights, so the same Concept extraction folds bookmarks into the same graph. The strategy you write is small; the rest of the pattern adapts automatically.
+
+<Steps>
+  <Step title="Register the Raindrop MCP">
+    Add a `raindrop:` entry to `mcp_servers.servers:` in your `fracta.yaml`. The catalog already has a candidate entry at [`mcp-servers/raindrop/server.yaml`](https://github.com/darkquasar/fracta/blob/main/mcp-servers/raindrop/server.yaml); copy the registration shape it documents. Run `fracta registry list` and confirm `raindrop` reaches `ok`.
+  </Step>
+  <Step title="MERGE a new DomainSource">
+    On the first strategy run, MERGE the source node so the 4-tier resolution chain stays whole:
+
+    ```cypher
+    MERGE (d:DomainSource {name: 'Raindrop Bookmarks'})
+      ON CREATE SET d._source = 'strategy:raindrop_distill'
+    MERGE (ds:DataStore {uri: 'fracta-mcp-gateway://raindrop/'})
+      ON CREATE SET ds._source = 'strategy:raindrop_distill'
+    MERGE (d)-[:STORED_IN]->(ds)
+    MATCH (ms:MCPServer {config_key: 'raindrop'})
+    MERGE (ds)-[:QUERYABLE_VIA]->(ms)
+    ```
+  </Step>
+  <Step title="Write a small `raindrop_distill` strategy">
+    Mirror `highlight_distill`'s shape, but read from Raindrop's `list_bookmarks` (or equivalent) instead of `readwise.list_highlights`. Emit `Highlight` nodes with `id` prefixed `raindrop:<id>`; emit `Document` nodes for the source URLs. **Reuse `highlight_distill`'s extractor fan-out** — call the same three `concept-*` MCPs and apply the same merge algorithm. The asymmetric scoring function and the routing thresholds are unchanged.
+  </Step>
+  <Step title="Run cross-source-concepts as usual">
+    `cross_source_concepts` already counts `domain_source_count` via `CAPTURED_FROM -> DomainSource`. The moment Raindrop highlights land in the graph, every Concept they mention sees its `diversity` term lift — Concepts present in both Readwise and Raindrop will rank higher than single-source Concepts. **No code change needed in this strategy.**
+  </Step>
+  <Step title="Publish via the existing `notion-publish`">
+    The publish strategy reads `Concept` nodes by name; it does not care which source they came from. Pages it renders will include supporting Highlights from both sources, with `extracted_by` and source attribution visible on each `MENTIONS` edge. **No code change needed.**
+  </Step>
+</Steps>
+
+That's the full diff: one new strategy file, two MERGE blocks, a new MCP registration. Three files changed; three files unchanged where they would have changed in a monolithic pipeline. That is what the seams are for.
+
+## Adding a node type
+
+The v1 schema is deliberately small. Two node types that were considered for v1 and held back are documented here so you know how to bring them back when their producers ship.
+
+### `Bookmark` and `Annotation`
+
+Held back because no producer in v1 emits them. Re-introduce when Raindrop (`Bookmark`) or a PDF / web annotator MCP (`Annotation`) lands. Add the node files under `graph-schema/knowledge-garden/particulars/`, wire `MENTIONS` from them to `Concept` / `Entity` (same shape as `Highlight -> Concept`), and give the producer strategy `discovered` authority over the new node type. Existing checkpoint rules continue to work; you may want to add `<node>_missing_captured_from` analogues.
+
+### Standalone `Note`
+
+Collapsed in v1 into a `note: string` property on `Highlight` (the Readwise highlight-note field). No daily-note producer ships, so the standalone node would have been empty. If you wire a daily-note source (Logseq, Obsidian daily journal), re-introduce `Note` as a particular and give the new producer authority — `Highlight.note` continues to serve Readwise's flavour separately.
+
+## Adding a sibling strategy
+
+The three slots that make sense as siblings to the v1 strategies:
+
+- **`highlight_distill_llm`** — same contract output as `highlight_distill`, but uses an LLM-based extractor instead of the three NLP MCPs. Useful when you want narrative-aware concept extraction (the NLP extractors are surface-form). Same `extraction_score` semantics; same routing thresholds.
+- **`mintlify_publish` / `quartz_publish` / `ghost_publish`** — alternate sinks. The `Publication.sink` property is the seam: each sibling populates the same node type with a different `sink` value. The graph stays canonical; sinks multiply.
+- **`claim_extract`** — the future writer-of-record for `Claim` nodes. Reads `Highlight` / `Document` text, emits `Claim` + `EVIDENCES` / `CONTRADICTS` edges. The `Claim` node type already exists in the schema waiting for a producer.
+
+## Replacing a backend
+
+Swapping backends works cleanly because the strategies talk to MCP servers by name and the gateway abstracts the transport. The two most common swaps:
+
+- **Notion -> Obsidian (publish).** Write an `obsidian_publish` strategy with the same `Publication` shape (`sink: obsidian`, `external_id: <vault-path>`, `content_hash`). The `actions:` block in `binding.yaml` points at a different MCP; the idempotency logic is identical.
+- **Readwise -> Reader-only (ingest).** Both share the same hosted MCP and most of the same tools; the difference is which `list_*` you call. A `reader_distill` strategy mirroring `highlight_distill` but reading `list_documents` only is a small fork — keep both around if you want.
+
+## What this pattern won't support
+
+The honest list. If any of these match your workload, the pattern needs more than an extension — it needs a redesign.
+
+- **Real-time streaming.** The pattern is batch by design. `highlight_distill` watermark-paginates against Readwise; `notion_publish` re-publishes on idempotent re-run. There is no event bus, no incremental delta beyond the watermark, no streaming subscription path. If you need sub-minute latency, this isn't the pattern.
+- **Multi-tenant graph isolation.** The graph slice is a single tenant — every Concept is global. Per-user namespacing would require schema changes and a routing layer in front of the publish strategy.
+- **More than ~5k highlights per single ingest.** The extractor fan-out is bounded by gateway concurrency and the Readwise 20-req/min ceiling. For multi-year first-pulls, bucket the watermark explicitly (`--watermark 2024-01-01` then `--watermark 2024-07-01`, etc.) rather than backfilling in one shot.
+- **Alias resolution beyond surface-form.** `popper` and `karl popper` commit as separate Concepts in v1; the `concept_low_extraction_high_confidence` checkpoint rule surfaces survivors for hand-merging. A future spec introduces either an embedder MCP or an LLM-based resolver. Until then, alias merging is a manual graph-edit step.
+- **Public-web garden publishing.** Notion is private-by-default; the pattern publishes to a private database. A `mintlify_publish` / `quartz_publish` sibling is the unblock — named here, not shipped.
+- **Long-form documents past extractor context.** Highlights longer than ~240 tokens log a warning and proceed with first-window extraction. Full chunking-with-merge is a planned follow-up; until then, long podcast transcripts and full articles are partially-processed.
+
+## Sibling patterns and future directions
+
+Where the Reading Garden is the **knowledge-garden** flavour of fracta's pattern library, sibling patterns answer different jobs with the same primitives:
+
+- **Project Companion** (PARA-shaped): adds `Project` / `Area` / `Resource` / `Archive` nodes alongside the knowledge-garden schema. Reuses `notion_publish` via `sink: notion`. Targeted at active-work tracking rather than reading.
+- **Code Garden**: ingests git commits + PR diffs + code-review threads; distills into `Module` / `Decision` / `Pattern` Concepts. Wires to GitHub MCP rather than Readwise.
+- **Research Notebook**: extends the schema with first-class `Claim` and `Question` writers; wires Zotero + ArXiv MCPs; produces a citation-graph-aware Notion publication.
+
+None of these ship yet. They are named so you can place your own work on the map, and so the seams in v1 stay justified — every choice here was made with the next pattern in mind.
+
+## What's next
+
+<Cards>
+  <Card title="Reading Garden — Overview" href="/patterns/reading-garden/overview">
+    Re-read the pattern's pitch with the seams in mind.
+  </Card>
+  <Card title="Patterns overview" href="/patterns/overview">
+    The catalogue of other patterns — and the template for writing your own.
+  </Card>
+</Cards>
