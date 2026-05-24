@@ -350,14 +350,14 @@ func rewriteStagedCatalogYAML(staging string, remote, local *Catalog) error {
 	type entry struct{ ID, Path string }
 	var rows []entry
 	for _, s := range remote.Servers {
-		rows = append(rows, entry{s.ID, s.Path})
+		rows = append(rows, entry(s))
 		seen[s.ID] = true
 	}
 	for _, s := range local.Servers {
 		if seen[s.ID] {
 			continue
 		}
-		rows = append(rows, entry{s.ID, s.Path})
+		rows = append(rows, entry(s))
 	}
 
 	var buf strings.Builder

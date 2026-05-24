@@ -151,5 +151,5 @@ func assertGitWorktree(root string) error {
 	}
 	return fmt.Errorf("local-process deployments require a git repository at the project root "+
 		"(no .git found in %s). Initialise one with 'git init' or switch the project to "+
-		"runtime.backend: kubernetes (or scaffold as docker-compose).", root)
+		"runtime.backend: kubernetes (or scaffold as docker-compose)", root)
 }

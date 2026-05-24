@@ -24,9 +24,9 @@ func (r RAGContext) String() string {
 	if len(r.DomainSources) > 0 {
 		b.WriteString("## Domain Sources & Join Paths\n")
 		for _, rec := range r.DomainSources {
-			b.WriteString(fmt.Sprintf("- %v (field: %v) joins with %v.%v [confidence: %v, method: %v]\n",
+			fmt.Fprintf(&b, "- %v (field: %v) joins with %v.%v [confidence: %v, method: %v]\n",
 				rec["source"], rec["field"], rec["target"], rec["target_field"],
-				rec["confidence"], rec["method"]))
+				rec["confidence"], rec["method"])
 		}
 		b.WriteString("\n")
 	}
@@ -34,8 +34,8 @@ func (r RAGContext) String() string {
 	if len(r.Strategies) > 0 {
 		b.WriteString("## Relevant Strategies\n")
 		for _, rec := range r.Strategies {
-			b.WriteString(fmt.Sprintf("- %v: %v (sources: %v)\n",
-				rec["name"], rec["description"], rec["sources"]))
+			fmt.Fprintf(&b, "- %v: %v (sources: %v)\n",
+				rec["name"], rec["description"], rec["sources"])
 		}
 		b.WriteString("\n")
 	}
@@ -43,8 +43,8 @@ func (r RAGContext) String() string {
 	if len(r.PriorHunts) > 0 {
 		b.WriteString("## Prior Hunts\n")
 		for _, rec := range r.PriorHunts {
-			b.WriteString(fmt.Sprintf("- %v [%v]: %v\n",
-				rec["id"], rec["status"], rec["hypothesis"]))
+			fmt.Fprintf(&b, "- %v [%v]: %v\n",
+				rec["id"], rec["status"], rec["hypothesis"])
 		}
 		b.WriteString("\n")
 	}

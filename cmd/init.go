@@ -180,6 +180,6 @@ func modeError(detected, want scaffolds.Kind) error {
 	return fmt.Errorf("this project is already scaffolded as %s; cannot re-init as %s without losing customizations.\n"+
 		"  - To switch modes destructively: rm -rf deployment/ fracta.yaml .fracta/ && fracta init --scaffold %s\n"+
 		"  - To keep your existing %s setup: re-run fracta init --scaffold %s\n"+
-		"  - For multi-mode patterns (one repo, multiple deployment targets), see the deployment overview in the docs.",
+		"  - For multi-mode patterns (one repo, multiple deployment targets), see the deployment overview in the docs",
 		detected, want, want, detected, detected)
 }
