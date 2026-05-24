@@ -5,6 +5,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/darkquasar/fracta/internal/fractalog"
 )
 
 // GitWorkspace creates agent directories as git worktrees on feature branches.
@@ -56,7 +58,12 @@ func (g *GitWorkspace) Remove(info *Info, keepFiles bool) error {
 	if info.BranchName != "" {
 		del := exec.Command("git", "branch", "-D", info.BranchName)
 		del.Dir = g.root
-		del.Run() // ignore error
+		if err := del.Run(); err != nil {
+			fractalog.Component("workspace").Warn(
+				"branch delete failed (best-effort)",
+				"branch", info.BranchName, "err", err,
+			)
+		}
 	}
 
 	return nil

@@ -66,7 +66,9 @@ func (w *StreamingParquetWriter) Flush() error {
 // row group, then writes the footer). Also closes the underlying file.
 func (w *StreamingParquetWriter) Close() error {
 	if err := w.writer.Close(); err != nil {
-		w.file.Close()
+		if cerr := w.file.Close(); cerr != nil {
+			return fmt.Errorf("close writer: %w (and close file: %v)", err, cerr)
+		}
 		return fmt.Errorf("close writer: %w", err)
 	}
 	return w.file.Close()

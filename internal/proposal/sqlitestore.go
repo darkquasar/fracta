@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/darkquasar/fracta/internal/fractalog"
 )
 
 // SQLiteStore implements ProposalStore backed by SQLite.
@@ -86,7 +88,11 @@ func (s *SQLiteStore) PendingProposals(ctx context.Context) ([]*MissionProposal,
 	if err != nil {
 		return nil, fmt.Errorf("proposal sqlitestore: pending: %w", err)
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			fractalog.Component("proposal").Warn("close rows", "err", err)
+		}
+	}()
 
 	var result []*MissionProposal
 	for rows.Next() {
@@ -149,7 +155,11 @@ func (s *SQLiteStore) PendingForObjective(ctx context.Context, objectiveID strin
 	if err != nil {
 		return nil, fmt.Errorf("proposal sqlitestore: pending for objective: %w", err)
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			fractalog.Component("proposal").Warn("close rows", "err", err)
+		}
+	}()
 
 	var result []*MissionProposal
 	for rows.Next() {

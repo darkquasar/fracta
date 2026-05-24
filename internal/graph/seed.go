@@ -9,17 +9,24 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/darkquasar/fracta/internal/fractalog"
 )
 
 // SeedFromFile loads a .cypher file and executes each non-empty, non-comment
 // line as a separate GRAPH.QUERY against the given GraphClient.
 // Returns the number of statements executed.
 func SeedFromFile(ctx context.Context, client GraphClient, path string) (int, error) {
+	log := fractalog.Component("graph")
 	f, err := os.Open(path)
 	if err != nil {
 		return 0, fmt.Errorf("open %s: %w", path, err)
 	}
-	defer f.Close()
+	defer func() {
+		if err := f.Close(); err != nil {
+			log.Warn("close seed file", "path", path, "err", err)
+		}
+	}()
 
 	scanner := bufio.NewScanner(f)
 	scanner.Buffer(make([]byte, 1024*1024), 1024*1024)

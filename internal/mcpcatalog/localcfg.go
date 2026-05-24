@@ -63,11 +63,16 @@ func WriteComposeYAMLAtomic(path string, root *yaml.Node) error {
 
 // readYAMLNode is the shared loader for fracta.yaml and docker-compose.yml.
 func readYAMLNode(path string) (*yaml.Node, error) {
+	log := fractalog.Component("mcpcatalog")
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() {
+		if err := f.Close(); err != nil {
+			log.Warn("close yaml file", "path", path, "err", err)
+		}
+	}()
 	var n yaml.Node
 	dec := yaml.NewDecoder(f)
 	if err := dec.Decode(&n); err != nil {

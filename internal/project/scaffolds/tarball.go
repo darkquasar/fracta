@@ -10,6 +10,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/darkquasar/fracta/internal/fractalog"
 )
 
 // maxScaffoldTarball caps response bodies for GitHub / HTTPS sources to limit
@@ -29,7 +31,11 @@ func downloadTarball(ctx context.Context, url string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("scaffolds: downloading %s: %w; check connectivity or use a local --source path", url, err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			fractalog.Component("scaffolds").Warn("close response body", "url", url, "err", err)
+		}
+	}()
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("scaffolds: downloading %s: HTTP %d", url, resp.StatusCode)
 	}
@@ -55,7 +61,11 @@ func extractTarballGz(data []byte, destDir string) error {
 	if err != nil {
 		return fmt.Errorf("scaffolds: gunzip: %w", err)
 	}
-	defer gz.Close()
+	defer func() {
+		if err := gz.Close(); err != nil {
+			fractalog.Component("scaffolds").Warn("close gzip reader", "err", err)
+		}
+	}()
 
 	tr := tar.NewReader(gz)
 	cleanDest, err := filepath.Abs(destDir)
