@@ -1,0 +1,68 @@
+label: Concept
+layer: particular
+description: >
+  An atomic, evergreen-shaped idea extracted from one or more Highlights.
+  Concepts are the central node of the Reading Garden — single-idea,
+  reusable, and refined over many encounters. Distinct from Topic, which
+  is a cluster of related Concepts. The highlight_distill strategy seeds
+  Concept nodes; cross_source_concepts updates confidence and mention_count;
+  notion_publish renders one Concept per Publication.
+
+properties:
+  name:
+    type: string
+    required: true
+    unique: true
+    description: Canonical concept label (lowercased, normalized)
+  display_name:
+    type: string
+    required: false
+    description: Human-readable form preserving original casing
+  description:
+    type: string
+    required: false
+    description: Short prose definition synthesized from supporting evidence
+  confidence:
+    type: float
+    required: false
+    description: 0.0-1.0 numeric score — recency × frequency × source diversity × mean(MENTIONS.extraction_score), written by cross_source_concepts
+  extraction_score:
+    type: float
+    required: false
+    description: >
+      0.0-1.0 per-extraction confidence — agreement across NLP extractors
+      (concept-keybert, concept-gliner, concept-spacy) and per-extractor signal,
+      written by highlight_distill on each MENTIONS creation as rolling max.
+      Distinct from `confidence`, which is graph-aware and owned by cross_source_concepts.
+  epistemic_status:
+    type: string
+    required: false
+    description: >
+      Qualitative readiness label rendered on published pages.
+      Allowed values: seedling, budding, evergreen.
+      Mapped from confidence by the publish strategy
+      (default mapping: <0.4 seedling, 0.4-0.8 budding, >0.8 evergreen).
+  mention_count:
+    type: int
+    required: false
+    description: Total MENTIONS edges pointing to this concept
+  first_seen_at:
+    type: string
+    required: false
+  last_seen_at:
+    type: string
+    required: false
+  _status:
+    type: string
+    required: false
+    description: "Lifecycle status: speculative, confirmed, stale"
+
+indexes:
+  - properties: [name]
+    type: exact
+  - properties: [confidence]
+    type: exact
+  - properties: [epistemic_status]
+    type: exact
+  - properties: [extraction_score]
+    type: exact

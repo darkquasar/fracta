@@ -1,0 +1,42 @@
+label: Publication
+layer: particular
+description: >
+  A page that has been published to an external sink (Notion, Mintlify,
+  Quartz, Obsidian, etc.). Sink-agnostic so future publishers reuse the
+  same node type. The notion_publish strategy uses external_id +
+  content_hash for idempotent create-or-update writes.
+
+properties:
+  id:
+    type: string
+    required: true
+    unique: true
+    description: Internal stable id (e.g., concept name + sink)
+  sink:
+    type: string
+    required: true
+    description: "Publish sink: notion, mintlify, quartz, obsidian, ghost"
+  external_id:
+    type: string
+    required: true
+    description: Sink-side identifier (e.g., notion_page_id) used for idempotent updates
+  content_hash:
+    type: string
+    required: true
+    description: Deterministic hash of rendered content; changes only when source changed
+  url:
+    type: string
+    required: false
+    description: Public URL to the published page if available
+  published_at:
+    type: string
+    required: false
+  last_updated_at:
+    type: string
+    required: false
+
+indexes:
+  - properties: [id]
+    type: exact
+  - properties: [external_id]
+    type: exact

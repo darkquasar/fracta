@@ -1,0 +1,45 @@
+label: Highlight
+layer: particular
+description: >
+  A verbatim passage marked from a Document — the atomic unit of the
+  Reading Garden. The user-authored Readwise-style note attached to a
+  Highlight at capture time lives directly on this node as the `note`
+  property; there is no separate Note node in v1.
+  Created via CAPTURED_FROM edge to a core/DomainSource.
+
+properties:
+  id:
+    type: string
+    required: true
+    unique: true
+    description: Stable highlight identifier (source-specific, e.g., readwise highlight id)
+  text:
+    type: string
+    required: true
+    description: The highlighted passage verbatim
+  location:
+    type: string
+    required: false
+    description: "Position within document (e.g., page number, kindle location, timestamp)"
+  note:
+    type: string
+    required: false
+    description: >
+      User-authored note attached to this highlight at capture time
+      (Readwise note field). Markdown-friendly. Both the text and this
+      note are scanned by extractors that emit MENTIONS edges.
+  highlighted_at:
+    type: string
+    required: false
+    description: RFC3339 timestamp when the user highlighted
+  color:
+    type: string
+    required: false
+    description: Optional highlight color from source app
+  _status:
+    type: string
+    required: false
+
+indexes:
+  - properties: [id]
+    type: exact

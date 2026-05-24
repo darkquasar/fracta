@@ -1,0 +1,15 @@
+type: CAPTURED_FROM
+description: >
+  A captured artifact (Highlight or Document) was sourced from a domain
+  source (Readwise, etc.). Cross-family edge — points at core/DomainSource.
+  Mirrors the threat-hunting USES_SOURCE precedent.
+
+endpoints:
+  from: [Highlight, Document]
+  to: [DomainSource]
+
+properties:
+  captured_at:
+    type: string
+    required: false
+    description: RFC3339 timestamp when the artifact was pulled into the garden
