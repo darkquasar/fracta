@@ -2,7 +2,6 @@ package cpapi
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -78,10 +77,4 @@ func (h *debugProxyHandler) handleGatewayPolicy(w http.ResponseWriter, r *http.R
 	if _, err := io.Copy(w, resp.Body); err != nil {
 		fractalog.Component("cpapi").Warn("gateway debug proxy copy failed", "error", err)
 	}
-}
-
-// gatewayPolicyTargetURL returns the URL the proxy would call (for logging
-// and tests).
-func (h *debugProxyHandler) gatewayPolicyTargetURL() string {
-	return fmt.Sprintf("%s/debug/policy", h.gatewayBaseURL)
 }

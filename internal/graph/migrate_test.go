@@ -86,11 +86,6 @@ func (c *recordingGraphClient) findUpdates(substr string) []updateCall {
 	return result
 }
 
-// countUpdates returns the number of updates whose cypher contains the substring.
-func (c *recordingGraphClient) countUpdates(substr string) int {
-	return len(c.findUpdates(substr))
-}
-
 // --- Test: Label Renames ---
 
 func TestMigration_MCPSourceRenamedToMCPTool(t *testing.T) {

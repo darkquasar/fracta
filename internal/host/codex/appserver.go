@@ -51,12 +51,6 @@ type threadStartedParams struct {
 	} `json:"thread"`
 }
 
-// turnCompletedParams is the params for a turn/completed notification.
-type turnCompletedParams struct {
-	ThreadID string `json:"threadId"`
-	TurnID   string `json:"turnId"`
-}
-
 // agentMessageDeltaParams is the params for an item/agentMessage/delta notification.
 type agentMessageDeltaParams struct {
 	ThreadID string `json:"threadId"`

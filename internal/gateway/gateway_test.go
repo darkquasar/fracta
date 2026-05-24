@@ -13,35 +13,6 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 )
 
-// --- Mock Pool ---
-
-type mockPool struct {
-	servers map[string][]mcpclient.ToolInfo
-	calls   []mockCallRecord
-}
-
-type mockCallRecord struct {
-	Server, Tool string
-	Args         map[string]any
-}
-
-func (p *mockPool) ServerNames() []string {
-	names := make([]string, 0, len(p.servers))
-	for n := range p.servers {
-		names = append(names, n)
-	}
-	return names
-}
-
-func (p *mockPool) DiscoverTools(_ context.Context, server string) ([]mcpclient.ToolInfo, error) {
-	return p.servers[server], nil
-}
-
-func (p *mockPool) CallToolRaw(_ context.Context, svr, tool string, args map[string]any) (*mcp.CallToolResult, error) {
-	p.calls = append(p.calls, mockCallRecord{Server: svr, Tool: tool, Args: args})
-	return mcp.NewToolResultText("mock result"), nil
-}
-
 // --- Mock Graph ---
 
 type mockGraph struct {
@@ -62,11 +33,6 @@ func (g *mockGraph) Update(_ context.Context, cypher string, params map[string]a
 }
 func (g *mockGraph) Ping(_ context.Context) error { return nil }
 func (g *mockGraph) Close() error                 { return nil }
-
-// --- Pool interface adapter ---
-// Gateway uses *mcpclient.Pool directly, so we need to adapt.
-// Instead, we'll test through the public API with real pool by using
-// the Gateway's internal methods via the exported interface.
 
 // For these tests, we construct the Gateway differently to inject mocks.
 // We'll test the catalog and graph registration logic directly.
