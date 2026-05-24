@@ -70,8 +70,8 @@ hosts:
 
 ontology:
   schemas:
-    - path: graph-schema/core
-    - path: graph-schema/threat-hunting
+    - uri: embed://graph-schema/core
+    - uri: embed://graph-schema/threat-hunting
 
 mcp_servers:
   servers:

@@ -56,7 +56,7 @@ The v1 schema is deliberately small. Two node types that were considered for v1 
 
 ### `Bookmark` and `Annotation`
 
-Held back because no producer in v1 emits them. Re-introduce when Raindrop (`Bookmark`) or a PDF / web annotator MCP (`Annotation`) lands. Add the node files under `graph-schema/knowledge-garden/particulars/`, wire `MENTIONS` from them to `Concept` / `Entity` (same shape as `Highlight -> Concept`), and give the producer strategy `discovered` authority over the new node type. Existing checkpoint rules continue to work; you may want to add `<node>_missing_captured_from` analogues.
+Held back because no producer in v1 emits them. Re-introduce when Raindrop (`Bookmark`) or a PDF / web annotator MCP (`Annotation`) lands. Add the node files under `internal/schema/embedfs/graph-schema/knowledge-garden/particulars/`, wire `MENTIONS` from them to `Concept` / `Entity` (same shape as `Highlight -> Concept`), and give the producer strategy `discovered` authority over the new node type. Existing checkpoint rules continue to work; you may want to add `<node>_missing_captured_from` analogues.
 
 ### Standalone `Note`
 

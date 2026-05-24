@@ -20,7 +20,7 @@ Flags:
       --listen string                 HTTP listen address (e.g. ':8080'); only used with --transport http
       --mission-id int                Mission ID for agent context (agent-mode only, set by worker)
       --objective-id string           Objective ID for agent context (agent-mode only, set by worker)
-      --schema-dir string             Path to graph-schema/ directory. Loads schema and seeds graph at startup when set.
+      --schema-dir string             Schema URI or local path. URIs: embed://graph-schema/<family>, file:///abs/path/to/<family>. Bare paths are auto-wrapped as file:// with a deprecation log.
       --strategy-dir string           Path to strategy directory. Enables strategy tools when set.
       --strategy-socket-mode string   Strategy runner socket mode: 'external' (connect to sidecar socket) or '' (spawn subprocess)
       --transport string              transport protocol: 'stdio' (default) or 'http'
