@@ -1,9 +1,10 @@
 package schema
 
 import (
+	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
+	"io/fs"
+	"path"
 
 	"gopkg.in/yaml.v3"
 )
@@ -27,13 +28,13 @@ type yamlCheckpointGap struct {
 	SuggestedAction string `yaml:"suggested_action"`
 }
 
-// LoadCheckpointRules reads an optional checkpoint.yaml from dir.
+// LoadCheckpointRules reads an optional checkpoint.yaml from fsys at base.
 // Returns an empty slice (not an error) if the file does not exist.
-func LoadCheckpointRules(dir string) ([]CheckpointRule, error) {
-	path := filepath.Join(dir, "checkpoint.yaml")
-	data, err := os.ReadFile(path)
+func LoadCheckpointRules(fsys fs.FS, base string) ([]CheckpointRule, error) {
+	p := path.Join(base, "checkpoint.yaml")
+	data, err := fs.ReadFile(fsys, p)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, fs.ErrNotExist) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("reading checkpoint.yaml: %w", err)

@@ -757,14 +757,45 @@ type RuntimeEntry struct {
 // HostConfig is a deprecated alias for RuntimeEntry.
 type HostConfig = RuntimeEntry
 
-// OntologySchemaEntry points to a single schema set directory.
+// OntologySchemaEntry points to a single schema set, identified by a URI.
+//
+// Supported schemes today:
+//   - embed://graph-schema/<family>     schemas baked into the fracta binary
+//   - file:///abs/path/to/<family>      operator-supplied override on disk
+//
+// Future schemes (s3://, https://, configmap://) register through
+// internal/schema/resolve without changing this struct.
+//
+// The legacy `path:` field is rejected at validation time with a one-line
+// migration message — see (OntologyConfig).Validate.
 type OntologySchemaEntry struct {
-	Path string `yaml:"path"`
+	URI string `yaml:"uri"`
+	// Path is the pre-v0.6 spelling. Detected during validation so operators
+	// get a clear error instead of silent omission.
+	Path string `yaml:"path,omitempty"`
 }
 
 // OntologyConfig controls multi-schema graph ontology loading.
 type OntologyConfig struct {
 	Schemas []OntologySchemaEntry `yaml:"schemas"`
+}
+
+// Validate rejects legacy `path:` entries with a migration message.
+// Called from the existing config Validate() chain.
+func (c OntologyConfig) Validate() error {
+	for i, e := range c.Schemas {
+		if e.Path != "" && e.URI == "" {
+			return fmt.Errorf(
+				"ontology.schemas[%d]: 'path' was removed in v0.6 — use 'uri: embed://graph-schema/<family>' "+
+					"(or 'uri: file:///abs/path' for operator overrides). See docs/reference/configuration/ontology.md",
+				i,
+			)
+		}
+		if e.URI == "" {
+			return fmt.Errorf("ontology.schemas[%d]: 'uri' is required", i)
+		}
+	}
+	return nil
 }
 
 // LoggingConfig controls where and how fracta logs.
@@ -909,6 +940,9 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("runtime.staging_dir must be set when profile is kubernetes")
 	}
 	if err := c.Runtime.Kubernetes.Validate(); err != nil {
+		return err
+	}
+	if err := c.Ontology.Validate(); err != nil {
 		return err
 	}
 	for name, entry := range c.MCPServers.Servers {

@@ -8,7 +8,7 @@ import (
 )
 
 func TestLoadCheckpointRules_MissingFile(t *testing.T) {
-	rules, err := LoadCheckpointRules(t.TempDir())
+	rules, err := LoadCheckpointRules(os.DirFS(t.TempDir()), ".")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -40,7 +40,7 @@ func TestLoadCheckpointRules_ValidFile(t *testing.T) {
 `
 	os.WriteFile(filepath.Join(dir, "checkpoint.yaml"), []byte(yaml), 0o644)
 
-	rules, err := LoadCheckpointRules(dir)
+	rules, err := LoadCheckpointRules(os.DirFS(dir), ".")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -97,7 +97,7 @@ func TestLoadCheckpointRules_EmptyName(t *testing.T) {
 `
 	os.WriteFile(filepath.Join(dir, "checkpoint.yaml"), []byte(yaml), 0o644)
 
-	_, err := LoadCheckpointRules(dir)
+	_, err := LoadCheckpointRules(os.DirFS(dir), ".")
 	if err == nil || !strings.Contains(err.Error(), "empty name") {
 		t.Errorf("expected empty name error, got: %v", err)
 	}
@@ -117,7 +117,7 @@ func TestLoadCheckpointRules_InvalidLayer(t *testing.T) {
 `
 	os.WriteFile(filepath.Join(dir, "checkpoint.yaml"), []byte(yaml), 0o644)
 
-	_, err := LoadCheckpointRules(dir)
+	_, err := LoadCheckpointRules(os.DirFS(dir), ".")
 	if err == nil || !strings.Contains(err.Error(), "invalid layer") {
 		t.Errorf("expected invalid layer error, got: %v", err)
 	}
@@ -137,7 +137,7 @@ func TestLoadCheckpointRules_InvalidSeverity(t *testing.T) {
 `
 	os.WriteFile(filepath.Join(dir, "checkpoint.yaml"), []byte(yaml), 0o644)
 
-	_, err := LoadCheckpointRules(dir)
+	_, err := LoadCheckpointRules(os.DirFS(dir), ".")
 	if err == nil || !strings.Contains(err.Error(), "invalid severity") {
 		t.Errorf("expected invalid severity error, got: %v", err)
 	}
@@ -157,7 +157,7 @@ func TestLoadCheckpointRules_EmptyQuery(t *testing.T) {
 `
 	os.WriteFile(filepath.Join(dir, "checkpoint.yaml"), []byte(yaml), 0o644)
 
-	_, err := LoadCheckpointRules(dir)
+	_, err := LoadCheckpointRules(os.DirFS(dir), ".")
 	if err == nil || !strings.Contains(err.Error(), "empty query") {
 		t.Errorf("expected empty query error, got: %v", err)
 	}
@@ -167,7 +167,7 @@ func TestLoadCheckpointRules_InvalidYAML(t *testing.T) {
 	dir := t.TempDir()
 	os.WriteFile(filepath.Join(dir, "checkpoint.yaml"), []byte("{{invalid yaml"), 0o644)
 
-	_, err := LoadCheckpointRules(dir)
+	_, err := LoadCheckpointRules(os.DirFS(dir), ".")
 	if err == nil || !strings.Contains(err.Error(), "parsing checkpoint.yaml") {
 		t.Errorf("expected parse error, got: %v", err)
 	}

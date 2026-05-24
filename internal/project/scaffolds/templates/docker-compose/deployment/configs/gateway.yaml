@@ -50,10 +50,13 @@ strategy:
 
 ontology:
   schemas:
-    - path: graph-schema/core
-    - path: graph-schema/threat-hunting
-    - path: graph-schema/fracta-mcp-gateway
-    - path: graph-schema/knowledge-garden
+    # embed:// resolves families baked into the fracta binary at compile time.
+    # For operator overrides, use file:///abs/path/to/<family>.
+    # See docs/reference/configuration/ontology.md.
+    - uri: embed://graph-schema/core
+    - uri: embed://graph-schema/threat-hunting
+    - uri: embed://graph-schema/fracta-mcp-gateway
+    - uri: embed://graph-schema/knowledge-garden
 
 
 # ---------------------------------------------------------------------------
