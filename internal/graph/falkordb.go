@@ -111,6 +111,27 @@ func buildCypherPrefix(params map[string]any) string {
 	return b.String()
 }
 
+// CreateUniqueConstraint issues a FalkorDB GRAPH.CONSTRAINT CREATE command for
+// a single-property uniqueness rule. FalkorDB rejects the Neo4j-style
+// CREATE CONSTRAINT ... ASSERT Cypher syntax — it expects a top-level Redis
+// command instead. The constraint requires a matching index to already exist
+// (callers create the index first via GRAPH.QUERY CREATE INDEX).
+//
+// FalkorDB returns "PENDING" while the constraint is enforced asynchronously;
+// repeated creates against an existing constraint return an error containing
+// "already exists" which the caller may safely ignore.
+func (c *FalkorDBClient) CreateUniqueConstraint(ctx context.Context, label, property string) error {
+	_, err := c.rdb.Do(ctx,
+		"GRAPH.CONSTRAINT", "CREATE", c.graphName,
+		"UNIQUE", "NODE", label,
+		"PROPERTIES", "1", property,
+	).Result()
+	if err != nil {
+		return fmt.Errorf("graph.constraint create %s.%s: %w", label, property, err)
+	}
+	return nil
+}
+
 // Close releases the Redis connection.
 func (c *FalkorDBClient) Close() error {
 	return c.rdb.Close()

@@ -818,6 +818,13 @@ func applySchemaToGraph(gc *graph.FalkorDBClient, reg *schema.SchemaRegistry) er
 		total++
 	}
 
+	for _, uc := range reg.GenerateConstraints() {
+		if err := gc.CreateUniqueConstraint(ctx, uc.Label, uc.Property); err != nil {
+			log.Warn("schema unique constraint (may already exist)", "error", err, "label", uc.Label, "property", uc.Property)
+		}
+		total++
+	}
+
 	for _, stmt := range reg.GenerateSeedCypher() {
 		if err := gc.Update(ctx, stmt, nil); err != nil {
 			return fmt.Errorf("seed statement: %w", err)
@@ -844,6 +851,13 @@ func loadAndApplySchema(gc *graph.FalkorDBClient, dir string) error {
 	for _, stmt := range registry.GenerateIndexCypher() {
 		if err := gc.Update(ctx, stmt, nil); err != nil {
 			log.Warn("schema index statement (may already exist)", "error", err, "stmt", stmt)
+		}
+		total++
+	}
+
+	for _, uc := range registry.GenerateConstraints() {
+		if err := gc.CreateUniqueConstraint(ctx, uc.Label, uc.Property); err != nil {
+			log.Warn("schema unique constraint (may already exist)", "error", err, "label", uc.Label, "property", uc.Property)
 		}
 		total++
 	}
