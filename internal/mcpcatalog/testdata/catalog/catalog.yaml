@@ -11,3 +11,5 @@ servers:
     path: notion/server.yaml
   - id: vendor
     path: vendor/server.yaml
+  - id: ghcr-fracta
+    path: ghcr-fracta/server.yaml

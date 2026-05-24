@@ -70,6 +70,52 @@ func TestRenderComposeService_ElasticGolden(t *testing.T) {
 	}
 }
 
+// TestRenderK8sManifest_GHCRFractaGolden covers the previously-broken case:
+// fracta-owned image distributed via GHCR (empty docker.dockerfile), with
+// service_url declaring a non-default port. Asserts:
+//   - imagePullPolicy is IfNotPresent (not Never — the image is published,
+//     not locally built; the old logic incorrectly used image_owner==fracta
+//     alone as the "Never" trigger).
+//   - containerPort and Service.port both come from service_url
+//     (8000), not the spec-default 3000.
+func TestRenderK8sManifest_GHCRFractaGolden(t *testing.T) {
+	e := loadFixture(t, "ghcr-fracta")
+	got, err := e.RenderK8sManifest(RenderOpts{})
+	if err != nil {
+		t.Fatalf("RenderK8sManifest: %v", err)
+	}
+	want := readGolden(t, "testdata/golden/ghcr-fracta/k8s.yaml")
+	if string(got) != string(want) {
+		writeOnMismatch(t, "ghcr_fracta_k8s_got.yaml", got)
+		t.Errorf("ghcr-fracta k8s render does not match golden\n--- GOT:\n%s--- WANT:\n%s", got, want)
+	}
+}
+
+// TestPortFromServiceURL covers the parser used by the port-resolution
+// cascade in RenderK8sManifest.
+func TestPortFromServiceURL(t *testing.T) {
+	cases := []struct {
+		name string
+		in   string
+		want int
+	}{
+		{"empty", "", 0},
+		{"with port", "http://foo.svc:8000/mcp", 8000},
+		{"with port high", "http://foo.svc:30000/path", 30000},
+		{"no port", "http://foo.svc/mcp", 0},
+		{"https no port", "https://example.com/mcp", 0},
+		{"malformed", "::not-a-url::", 0},
+		{"port-only-no-scheme", "foo.svc:8000", 0}, // url.Parse treats foo.svc as scheme
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := portFromServiceURL(c.in); got != c.want {
+				t.Errorf("portFromServiceURL(%q) = %d, want %d", c.in, got, c.want)
+			}
+		})
+	}
+}
+
 func TestRenderK8sManifest_NotionBlocked(t *testing.T) {
 	e := loadFixture(t, "notion")
 	_, err := e.RenderK8sManifest(RenderOpts{})

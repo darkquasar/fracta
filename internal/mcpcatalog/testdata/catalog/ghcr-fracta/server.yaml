@@ -1,0 +1,35 @@
+id: ghcr-fracta
+name: GHCR Fracta MCP
+category: testing
+status: tested
+description: >-
+  Fixture for a fracta-owned MCP server distributed via GHCR (no local
+  Dockerfile). Used to assert imagePullPolicy=IfNotPresent and port
+  resolution from service_url.
+upstream:
+  type: first_party
+  url: https://github.com/darkquasar/fracta-mcp-servers
+auth:
+  modes:
+    - none
+variants:
+  container:
+    image: ghcr.io/darkquasar/fracta-mcp-servers/ghcr-fracta:latest
+    image_owner: fracta
+    transport: streamable-http
+    service_url: http://ghcr-fracta.fracta.svc:8000/mcp
+support:
+  local_process: not_supported
+  docker_compose: supported
+  kubernetes: supported
+docker:
+  dockerfile: ""
+  build_target: ""
+  load_target: ""
+verification:
+  tested_on: ""
+  smoke_test: list_tools
+notes: |
+  Test fixture. Mirrors the concept-extractor pattern: fracta-owned image
+  published to GHCR (not locally built), service_url declares port 8000,
+  no explicit container_port/service_port.

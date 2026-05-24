@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ghcr-fracta-mcp
+  namespace: fracta
+  labels:
+    app: fracta
+    component: ghcr-fracta-mcp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fracta
+      component: ghcr-fracta-mcp
+  template:
+    metadata:
+      labels:
+        app: fracta
+        component: ghcr-fracta-mcp
+    spec:
+      containers:
+        - name: ghcr-fracta-mcp
+          image: ghcr.io/darkquasar/fracta-mcp-servers/ghcr-fracta:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+              name: mcp
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"
+          readinessProbe:
+            tcpSocket:
+              port: mcp
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ghcr-fracta-mcp
+  namespace: fracta
+  labels:
+    app: fracta
+    component: ghcr-fracta-mcp
+spec:
+  selector:
+    app: fracta
+    component: ghcr-fracta-mcp
+  ports:
+    - port: 8000
+      targetPort: mcp
+      name: mcp

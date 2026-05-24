@@ -15,8 +15,8 @@ func TestLoadCatalog_Fixture(t *testing.T) {
 	if cat.Version != "2" {
 		t.Errorf("version = %q, want 2", cat.Version)
 	}
-	if len(cat.Entries) != 3 {
-		t.Errorf("entries = %d, want 3", len(cat.Entries))
+	if len(cat.Entries) != 4 {
+		t.Errorf("entries = %d, want 4", len(cat.Entries))
 	}
 	notion, ok := cat.Get("notion")
 	if !ok {
@@ -25,7 +25,7 @@ func TestLoadCatalog_Fixture(t *testing.T) {
 	if len(notion.Auth.Modes) != 1 || notion.Auth.Modes[0] != "oauth" {
 		t.Errorf("notion auth.modes = %v, want [oauth]", notion.Auth.Modes)
 	}
-	wantIDs := []string{"elastic", "notion", "vendor"}
+	wantIDs := []string{"elastic", "notion", "vendor", "ghcr-fracta"}
 	got := cat.IDs()
 	if len(got) != len(wantIDs) {
 		t.Fatalf("IDs() = %v, want %v", got, wantIDs)
@@ -93,8 +93,8 @@ func TestLoadCatalog_IgnoresFractaSource(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadCatalog: %v", err)
 	}
-	if len(cat.Entries) != 3 {
-		t.Errorf("entries = %d, want 3", len(cat.Entries))
+	if len(cat.Entries) != 4 {
+		t.Errorf("entries = %d, want 4", len(cat.Entries))
 	}
 }
 

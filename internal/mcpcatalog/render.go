@@ -3,7 +3,9 @@ package mcpcatalog
 import (
 	"bytes"
 	"fmt"
+	"net/url"
 	"sort"
+	"strconv"
 	"strings"
 	"text/template"
 
@@ -183,15 +185,34 @@ func (e *Entry) RenderK8sManifest(opts RenderOpts) ([]byte, error) {
 	if image == "" {
 		return nil, fmt.Errorf("mcpcatalog: server %q has no container image", e.ID)
 	}
+	// Never pull is correct only when the image is built locally and loaded
+	// into the cluster (kind load / minikube load / etc.). That's the
+	// RequiresImageBuild() condition: fracta-owned AND docker.dockerfile set.
+	// Fracta-owned images that are *published* (empty docker.dockerfile,
+	// distributed via GHCR or similar) still need IfNotPresent so the
+	// cluster can pull them.
 	pullPolicy := "IfNotPresent"
-	if v.ImageOwner == "fracta" || e.Docker.ImageOwner == "fracta" {
+	if e.RequiresImageBuild() {
 		pullPolicy = "Never"
 	}
+	// Port resolution cascade: explicit container_port/service_port win;
+	// otherwise fall back to whatever port the variant's service_url carries
+	// (the catalog author already declared it there); otherwise the spec
+	// default of 3000. Catalog entries that ship `service_url:...:8000/mcp`
+	// previously rendered as 3000 and required a manual edit; this honours
+	// the URL the catalog author wrote.
+	urlPort := portFromServiceURL(v.ServiceURL)
 	containerPort := v.ContainerPort
+	if containerPort == 0 {
+		containerPort = urlPort
+	}
 	if containerPort == 0 {
 		containerPort = 3000
 	}
 	servicePort := v.ServicePort
+	if servicePort == 0 {
+		servicePort = urlPort
+	}
 	if servicePort == 0 {
 		servicePort = 3000
 	}
@@ -343,6 +364,24 @@ func renderTemplate(path string, data any) ([]byte, error) {
 		return nil, fmt.Errorf("mcpcatalog: execute template %s: %w", path, err)
 	}
 	return buf.Bytes(), nil
+}
+
+// portFromServiceURL parses the port out of a service_url like
+// "http://foo.fracta.svc:8000/mcp" and returns it as an int. Returns 0 when
+// the URL is empty, malformed, or has no explicit port.
+func portFromServiceURL(raw string) int {
+	if raw == "" {
+		return 0
+	}
+	u, err := url.Parse(raw)
+	if err != nil || u.Port() == "" {
+		return 0
+	}
+	p, err := strconv.Atoi(u.Port())
+	if err != nil {
+		return 0
+	}
+	return p
 }
 
 // yamlQuote wraps a string in double quotes with minimal escaping for YAML values.

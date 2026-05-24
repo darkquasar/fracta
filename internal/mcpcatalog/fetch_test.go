@@ -23,10 +23,11 @@ import (
 func makeFixtureTarball(t *testing.T, topDir string) []byte {
 	t.Helper()
 	files := map[string]string{
-		"mcp-servers/catalog.yaml":            mustReadFile(t, "testdata/catalog/catalog.yaml"),
-		"mcp-servers/elastic/server.yaml":     mustReadFile(t, "testdata/catalog/elastic/server.yaml"),
-		"mcp-servers/notion/server.yaml":      mustReadFile(t, "testdata/catalog/notion/server.yaml"),
-		"mcp-servers/vendor/server.yaml":      mustReadFile(t, "testdata/catalog/vendor/server.yaml"),
+		"mcp-servers/catalog.yaml":              mustReadFile(t, "testdata/catalog/catalog.yaml"),
+		"mcp-servers/elastic/server.yaml":       mustReadFile(t, "testdata/catalog/elastic/server.yaml"),
+		"mcp-servers/notion/server.yaml":        mustReadFile(t, "testdata/catalog/notion/server.yaml"),
+		"mcp-servers/vendor/server.yaml":        mustReadFile(t, "testdata/catalog/vendor/server.yaml"),
+		"mcp-servers/ghcr-fracta/server.yaml":   mustReadFile(t, "testdata/catalog/ghcr-fracta/server.yaml"),
 	}
 	var buf bytes.Buffer
 	gw := gzip.NewWriter(&buf)
@@ -172,8 +173,8 @@ func TestFetch_GithubCodeload(t *testing.T) {
 	if res.CatalogVersion != "2" {
 		t.Errorf("CatalogVersion = %q", res.CatalogVersion)
 	}
-	if len(res.RemoteCatalog.Entries) != 3 {
-		t.Errorf("entries = %d, want 3", len(res.RemoteCatalog.Entries))
+	if len(res.RemoteCatalog.Entries) != 4 {
+		t.Errorf("entries = %d, want 4", len(res.RemoteCatalog.Entries))
 	}
 }
 
