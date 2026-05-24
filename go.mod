@@ -3,6 +3,7 @@ module github.com/darkquasar/fracta
 go 1.25.5
 
 require (
+	github.com/coder/websocket v1.8.14
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.9.2
 	github.com/mark3labs/mcp-go v0.50.0
@@ -18,7 +19,6 @@ require (
 	k8s.io/apimachinery v0.35.3
 	k8s.io/client-go v0.35.3
 	modernc.org/sqlite v1.47.0
-	nhooyr.io/websocket v1.8.17
 	sigs.k8s.io/yaml v1.6.0
 )
 

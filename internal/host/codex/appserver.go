@@ -13,8 +13,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/coder/websocket"
+
 	"github.com/darkquasar/fracta/internal/host"
-	"nhooyr.io/websocket"
 )
 
 // Verify AppServerSession implements host.StreamSession at compile time.
