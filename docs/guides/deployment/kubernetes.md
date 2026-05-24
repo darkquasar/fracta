@@ -5,7 +5,7 @@ description: Deploy fracta to a Kubernetes cluster — control plane and gateway
 
 Fracta deploys to a Kubernetes cluster. The control plane and gateway run as Deployments, agents spawn as K8s Jobs, and the control plane is exposed to the host as a Kubernetes Service. On the host, the thin client connects to that Service — the **golden path** is to run `fracta serve` as an MCP server in your AI CLI's config so your CLI talks MCP to it and it talks HTTP to the in-cluster control plane. The same thin client is also usable from the command line (`fracta spawn`, `fracta list`, …) when you want operator-style access without going through an AI CLI.
 
-How the host reaches the in-cluster Service depends on the cluster: `kubectl port-forward` for a quick dev loop, a `LoadBalancer` service on Docker Desktop, an Ingress for a real cluster. None of those choices change the architecture — they're just transports.
+How the host reaches the in-cluster Service depends on the cluster: `kubectl port-forward` for a quick dev loop (the default on kind), a `LoadBalancer` service on Docker Desktop, an Ingress for a real cluster. None of those choices change the architecture — they're just transports.
 
 This quickstart covers the golden path. For the complete guide with troubleshooting, observability, and teardown, see the [Kubernetes runbook](/guides/deployment/kubernetes-runbook).
 
@@ -15,7 +15,7 @@ This quickstart covers the golden path. For the complete guide with troubleshoot
 
 - **fracta CLI** installed and on PATH (`fracta --help` works). See [installation](/getting-started/installation).
 - **Docker** + **kubectl**.
-- A local Kubernetes cluster (Docker Desktop K8s, kind, minikube, or k3d) with a current kube-context.
+- A local Kubernetes cluster with a current kube-context. **kind is the recommended default** — see [the kind quickstart](https://kind.sigs.k8s.io/docs/user/quick-start/). Docker Desktop Kubernetes, minikube, and k3d also work; cluster choice doesn't change the architecture, only how the host reaches the in-cluster Service.
 - **A git repository** to scaffold into. `fracta init` runs in your own project root.
 
 Verify:
@@ -137,7 +137,7 @@ The control plane is exposed inside the cluster as the `fracta-controlplane` Ser
 kubectl port-forward -n fracta svc/fracta-controlplane 9090:9090
 ```
 
-This opens `localhost:9090` → `fracta-controlplane` (the scaffolded `fracta.yaml` already points at `http://localhost:9090`). For Docker Desktop with a `LoadBalancer` Service, the Service may publish directly on `localhost:9090` without port-forward. For real clusters, expose via an Ingress and update `control_plane_api.url` in `fracta.yaml` to match.
+This opens `localhost:9090` → `fracta-controlplane` (the scaffolded `fracta.yaml` already points at `http://localhost:9090`). Port-forward is the canonical path on kind — kind's LoadBalancer Services stay `<pending>` because there's no cloud provisioner. On Docker Desktop, a `LoadBalancer` Service may publish directly on `localhost:9090` without port-forward; for real clusters, expose via an Ingress and update `control_plane_api.url` in `fracta.yaml` to match.
 
 <hr />
 

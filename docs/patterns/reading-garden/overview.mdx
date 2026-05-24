@@ -28,7 +28,7 @@ The Reading Garden does not invent a methodology — it wires fracta into the on
 
 | CODE stage | What it means | Fracta primitive | Reading Garden artifact |
 |---|---|---|---|
-| **Capture** | Pull raw input from the source | MCP servers ingesting via the gateway | Readwise MCP via `mcp-remote` — pulls `Highlight`s and `Document`s |
+| **Capture** | Pull raw input from the source | MCP servers ingesting via the gateway | Readwise MCP via fracta-native OAuth — pulls `Highlight`s and `Document`s |
 | **Organize** | Land the input in structured tables | DuckDB-staged tables in strategies | `highlight-distill` stages Readwise paginated results into per-run DuckDB tables (`recent_highlights`, `recent_documents`) |
 | **Distill** | Compress raw input into atomic, linkable units | Strategies + agent calls writing to the graph | NLP-extractor fan-out (`concept-keybert` + `concept-gliner` + `concept-spacy`) merges into Concept / Entity nodes; `cross-source-concepts` rescores them graph-wide |
 | **Express** | Surface the result back into a venue | A publishing strategy or downstream MCP write | `notion-publish` renders the top-N Concepts as Notion pages, idempotent via `Publication.content_hash` |

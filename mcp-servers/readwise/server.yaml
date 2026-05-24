@@ -9,13 +9,13 @@ upstream:
 auth:
   modes:
     - oauth
-  notes: Hosted server requires OAuth. Use mcp-remote until fracta has gateway-owned OAuth.
+  notes: Hosted server requires OAuth with PKCE. Drive the flow with `fracta config mcp auth login readwise`; tokens persist to the OS keyring under service `fracta.oauth`.
 variants:
   remote:
     transport: streamable-http
     url: https://mcp2.readwise.io/mcp
     auth: oauth
-    fracta_native: blocked_until_gateway_oauth
+    fracta_native: supported  # OAuth driven by `fracta config mcp auth login readwise`; tokens exported as k8s Secret and mounted into the gateway
   local_proxy:
     transport: stdio
     command: npx
@@ -24,10 +24,11 @@ variants:
       - mcp-remote
       - https://mcp2.readwise.io/mcp
     auth: oauth_via_mcp_remote
+    notes: Fallback for environments without a fracta gateway (e.g. local-process mode against a hosted MCP). Caches tokens in ~/.mcp-auth/ as plaintext.
 support:
   local_process: supported_via_local_proxy
-  docker_compose: blocked_until_gateway_oauth_or_proxy_packaging
-  kubernetes: blocked_until_gateway_oauth_token_store
+  docker_compose: supported_via_secret_mount  # native OAuth: export with `fracta config mcp auth export readwise --format env` and mount as compose secrets/env
+  kubernetes: supported  # native OAuth: see docs/patterns/reading-garden/setup.mdx Step 1
 docker:
   dockerfile: ""
   build_target: ""

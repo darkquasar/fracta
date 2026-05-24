@@ -12,7 +12,7 @@ It assumes you have already done the one-time install. If you have not:
     Follow [Installation](/getting-started/installation) and [Your First Agent](/getting-started/first-agent). Confirm `fracta spawn --task hello --contract "say hi"` returns cleanly before continuing.
   </Step>
   <Step title="Complete pattern Setup">
-    Walk through [Setup](/patterns/reading-garden/setup) once — it covers the Notion + Readwise OAuth dance (via `mcp-remote`), the `fracta.yaml` blocks for those two servers, and the catalog gotchas (Notion DB sharing, Readwise rate limits, plaintext token cache). The current page does not repeat that material.
+    Walk through [Setup](/patterns/reading-garden/setup) once — it covers the Notion + Readwise OAuth flow (via `fracta config mcp auth login`, with tokens exported as Kubernetes Secrets), the gateway ConfigMap entries for those two servers, and the catalog gotchas (Notion DB sharing, Readwise rate limits, extractor footprint). The current page does not repeat that material.
   </Step>
 </Steps>
 

@@ -1,13 +1,13 @@
 ---
 title: Local K8s Mode
-description: Operations reference — run fracta against Docker Desktop, kind, minikube, or k3d for development and testing.
+description: Operations reference — run fracta against kind (recommended), Docker Desktop, minikube, or k3d for development and testing.
 ---
 
-Run  fracta with a local Kubernetes cluster for development and testing. The default Makefile path targets Docker Desktop Kubernetes, but repo-built image loading can also target kind, minikube, or k3d. Agents spawn as K8s Jobs, the gateway proxies MCP tools, and state lives in Postgres.
+Run fracta with a local Kubernetes cluster for development and testing. **kind is the recommended default** — it's reproducible, cluster-agnostic, and matches what CI uses. Docker Desktop, minikube, and k3d also work; the Makefile's image-loading helpers handle each. Agents spawn as K8s Jobs, the gateway proxies MCP tools, and state lives in Postgres.
 
 ## Prerequisites
 
-- A local Kubernetes cluster. Docker Desktop Kubernetes is the default path; kind, minikube, and k3d are also supported for image loading.
+- A local Kubernetes cluster. **kind is the recommended default** (`kind create cluster --name fracta`). Docker Desktop Kubernetes, minikube, and k3d are also supported for image loading.
 - `kubectl`, `make`, `op` (1Password CLI) on PATH
 - `psql` for event queries (optional)
 
@@ -76,7 +76,7 @@ kubectl port-forward -n fracta svc/fracta-controlplane 9090:9090
 
 Runs in the foreground. Opens `localhost:9090` → fracta-controlplane Service.
 
-For non-dev clusters, expose the Service via a `LoadBalancer` (Docker Desktop) or an Ingress and update `control_plane_api.url` in `fracta.yaml` to match. The rest of the flow is identical.
+Port-forward is the canonical path on kind: kind's LoadBalancer Services stay `<pending>` because there's no cloud provisioner. For Docker Desktop, a `LoadBalancer` Service may publish directly without port-forward; for non-dev clusters, expose via an Ingress. In all cases, update `control_plane_api.url` in `fracta.yaml` to match. The rest of the flow is identical.
 
 ### 5. Connect via MCP (golden path)
 
