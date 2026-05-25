@@ -20,13 +20,23 @@ It assumes you have already done the one-time install. If you have not:
 
 Add the three concept-extraction MCP servers, spawn one Claude worker with one prompt, and read back the result. The pipeline framing — "run the reading-garden pipeline" — lets Claude orchestrate the three strategies internally; you do not call them one at a time.
 
-The whole thing should fit in under 15 minutes once Setup is complete.
+The whole thing should fit in under 20 minutes once Setup is complete.
+
+<Note>
+  **Pick your deployment target.** Examples on this page are written for Docker Compose; if you are running Kubernetes (the path [Setup](/patterns/reading-garden/setup) defaulted to), the equivalent operations are `kubectl apply`-style — see [Kubernetes deployment guide](/guides/deployment/kubernetes) for the manifests. The pipeline framing in Step 2 onwards is deployment-agnostic.
+</Note>
+
+<Note>
+  **Strategy runner gateway plumbing.** The Reading Garden strategies (`highlight-distill`, `notion-publish`) call MCP tools inline via `ctx.mcp.call_tool(...)`. Since v0.5.2 this is wired by default in the scaffold: the gateway ConfigMap (k8s) or `configs/gateway.yaml` (compose) ships with `strategy.gateway_access: true`, and the runner sidecar/service is started with `--gateway-url http://gateway:8080 --agent-task default`. If you upgraded from an older deploy, verify both flags before running the pipeline — without them the runner refuses with `requires.mcp: true but ctx.mcp is None`.
+</Note>
 
 ## Step 1 — Add the concept-extractor MCP servers
 
 Setup wired up `notion` and `readwise` (the two OAuth-gated knowledge sources). The Reading Garden pipeline also needs three small extractor MCP servers — KeyBERT, GLiNER, and spaCy — that turn raw highlight text into ranked concept candidates. They run as containers (no OAuth required), are first-party fracta images published to GHCR, and are catalogued at `mcp-servers/concept-{keybert,gliner,spacy}/server.yaml` in the fracta repo.
 
-This guide assumes you are running fracta with [docker-compose deployment](/guides/deployment/docker-compose) — these three servers are `local_process: not_supported` in the catalog (they ship as containers only). Bring up the three sidecars alongside your gateway by appending their compose services to `deployment/docker-compose.yml`:
+These three servers are `local_process: not_supported` in the catalog (they ship as containers only). Depending on your deployment target, bring them up alongside your gateway:
+
+**Docker Compose** — append the sidecars to `deployment/docker-compose.yml`:
 
 ```yaml
 services:

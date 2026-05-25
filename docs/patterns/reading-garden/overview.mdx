@@ -60,6 +60,9 @@ flowchart LR
     GLINER["concept-gliner<br/>(container)"]
     SPACY["concept-spacy<br/>(container)"]
     NOTION["Notion<br/>hosted MCP"]
+    NSOURCES[("Notion Sources DB")]
+    NHIGHLIGHTS[("Notion Highlights DB")]
+    NCONCEPTS[("Notion Concepts DB")]
 
     GW["fracta gateway<br/>+ strategy engine"]
     KG[("Knowledge Graph<br/>knowledge-garden ontology")]
@@ -73,7 +76,14 @@ flowchart LR
     STR --> KG
     KG --> STR
     STR -->|write| NOTION
+    NOTION --> NSOURCES
+    NOTION --> NHIGHLIGHTS
+    NOTION --> NCONCEPTS
+    NCONCEPTS -.->|RELATION:highlights| NHIGHLIGHTS
+    NHIGHLIGHTS -.->|RELATION:source| NSOURCES
 ```
+
+The publishing layer is a **three-database mirror** in Notion: Sources (one page per Readwise book/article), Highlights (one page per Readwise highlight), and Concepts (one page per atomic Concept). The Concepts DB links to the Highlights that mention it; the Highlights DB links back to its Source. This is how the published artefact stays navigable — you walk from a concept page back into the evidence that produced it.
 
 ## Pattern at a glance
 
@@ -82,8 +92,8 @@ flowchart LR
 | **MCP servers** | `readwise`, `notion`, `concept-keybert`, `concept-gliner`, `concept-spacy` |
 | **Ontology nodes** | `Topic`, `Highlight`, `Document`, `Concept`, `Entity`, `Claim`, `Question`, `Publication` |
 | **Strategies** | `highlight-distill`, `cross-source-concepts`, `notion-publish` |
-| **Estimated setup time** | About 15 minutes (most of it OAuth pop-ups and one Notion sharing click) |
-| **End-to-end first run** | Under 30 minutes from `git clone` to first published Notion page |
+| **Estimated setup time** | About 30 minutes (OAuth pop-ups, three Notion `Connections` clicks, one `kubectl rollout`) |
+| **End-to-end first run** | Under 45 minutes from `git clone` to first published Concept / Highlight / Source page |
 
 ## What's next
 

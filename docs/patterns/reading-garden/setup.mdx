@@ -1,11 +1,15 @@
 ---
 title: Setup
-description: Wire Notion and Readwise to the fracta gateway via native OAuth, stand up the concept extractors, and verify the stack — about 15 minutes.
+description: Wire Notion and Readwise to the fracta gateway via native OAuth, stand up the concept extractors, provision the three Notion databases, and verify the stack — about 30 minutes.
 ---
 
-Setup gets you from a fresh fracta install to a registry with five servers — `notion`, `readwise`, and the three concept extractors — all green. About 15 minutes of work: two OAuth pop-ups, one Notion sharing click that catches everyone the first time, and a `kubectl rollout restart` to pick up the rotated tokens.
+Setup gets you from a fresh fracta install to a registry with five MCP servers — `notion`, `readwise`, and the three concept extractors — all green, plus three Notion databases shared with the integration. About 30 minutes of work: two OAuth pop-ups, three `Connections -> Add connections` clicks that catch everyone the first time, and a `kubectl rollout restart` to pick up the rotated tokens.
 
 The pipeline run itself lives on [First Run](/patterns/reading-garden/first-run); this page is purely the wiring.
+
+<Note>
+  **Strategy gateway access.** This pattern's strategies (`highlight-distill`, `notion-publish`) call MCP tools inline via `ctx.mcp.call_tool(...)` — so the strategy runner must be able to dial the gateway during a run. Since v0.5.2 the scaffold ships with `strategy.gateway_access: true` in the gateway ConfigMap and the runner sidecar wired with `--gateway-url`. If you upgraded from an older deploy, confirm the flag is present in your `fracta-gateway` ConfigMap before running the pipeline — the runner refuses to start (`requires.mcp: true but ctx.mcp is None`) without it.
+</Note>
 
 ## Prerequisites
 
@@ -180,25 +184,60 @@ You should see two `MCP client connected` lines — one per server — each repo
   **Re-authentication.** The OAuth refresh tokens are long-lived (Readwise's currently outlive the access token by months). When you do need to rotate — provider revoked, expired, or a new scope — repeat steps 1.2–1.4, reusing the same `<server>-login.yaml` files with `--config`. There's no separate "logout" command needed on the cluster side; `kubectl apply` overwrites the existing Secret and the gateway rollout picks up the new file. Locally, `fracta config mcp auth logout <server>` clears the keyring entries before a fresh login.
 </Note>
 
-## Step 2 — Provision the Notion database
+## Step 2 — Provision the three Notion databases
 
-The Reading Garden pipeline publishes Concept pages into a Notion database you own. Create or pick that database now.
+Since v0.5.2 the Reading Garden pipeline publishes into a **three-database mirror** — Sources, Highlights, and Concepts — linked by Notion RELATION columns. Each Notion page comes back from the API with its `data_source_id`, which is what the strategy params take. Create all three now and capture their IDs.
 
 <Steps>
-  <Step title="Create (or choose) a database">
-    In Notion, create a new database — full-page or inline, either works. Title it something memorable; "Reading Garden — Concepts" is fine.
+  <Step title="Create the Sources database">
+    In Notion, create a database titled something like "Reading Garden — Sources". Add these properties (default `Name` plus):
+    - `readwise_book_id` (text)
+    - `author` (text)
+    - `category` (text)
+    - `source_kind` (text)
+    - `source_url` (URL)
+    - `cover_url` (URL)
+    - `document_note` (text)
   </Step>
-  <Step title="Share the database with the Notion MCP integration">
-    Open the database, click `...` -> `Connections` -> `Add connections`, and authorise the **Notion MCP** integration that fracta's OAuth grant created. This is the step everyone misses the first time.
+  <Step title="Create the Highlights database">
+    Title: "Reading Garden — Highlights". Properties:
+    - `readwise_highlight_id` (text)
+    - `note` (text)
+    - `highlighted_at` (date)
+    - `source` (**RELATION** -> Sources database) — this is what links a highlight to its book/article page.
   </Step>
-  <Step title="Copy the database ID">
-    The ID is the 32-character hex string in the database's URL (`https://www.notion.so/<workspace>/<DB_NAME>-<DB_ID>?...`). You will paste it into the [First Run](/patterns/reading-garden/first-run) prompt as `notion_database_id`.
+  <Step title="Create the Concepts database">
+    Title: "Reading Garden — Concepts". Properties:
+    - `concept_name` (text)
+    - `epistemic_status` (select: seedling / budding / evergreen)
+    - `confidence` (number)
+    - `mention_count` (number)
+    - `last_updated` (date)
+    - `highlights` (**RELATION** -> Highlights database) — this is what links a concept to the highlights that mention it.
+  </Step>
+  <Step title="Share all three databases with the Notion MCP integration">
+    For each of the three: open the database, click `...` -> `Connections` -> `Add connections`, and authorise the **Notion MCP** integration that fracta's OAuth grant created. This is the step everyone misses the first time — and now you have to do it three times.
+  </Step>
+  <Step title="Capture the three data_source_id values">
+    For each database, the `data_source_id` is what the strategy params take. The fastest way to read it is via the gateway:
+
+    ```bash
+    fracta spawn --task get-ds-ids \
+      --contract "Call notion-search for each of 'Reading Garden — Sources', 'Reading Garden — Highlights', 'Reading Garden — Concepts'. For each hit, call notion-fetch and report the data_source_id."
+    fracta peek get-ds-ids
+    ```
+
+    You will paste these into the [First Run](/patterns/reading-garden/first-run) prompt as `notion_sources_database_id`, `notion_highlights_database_id`, and `notion_concepts_database_id`.
   </Step>
 </Steps>
 
 <Warning>
-  **The 404 trap.** If you skip Step 2.2, every Notion write returns `404 page not found` — the hosted MCP cannot see databases it has not been explicitly shared into, even if your user owns them. The error is unhelpful; the cause is always the missing `Connections` entry.
+  **The 404 trap.** If you skip the sharing step on any of the three databases, every write to that database returns `404 page not found` — the hosted MCP cannot see databases it has not been explicitly shared into, even if your user owns them. The error is unhelpful; the cause is always the missing `Connections` entry. Set a reminder to share **all three**.
 </Warning>
+
+<Note>
+  **Why three databases?** The v3 architecture mirrors the graph's three-tier `DomainSource -> Document -> Highlight` into Notion, with `Concept` as a separate dimension. Each Concept page links to the highlights that triggered it; each highlight links to its source book/article. This is what makes Notion useful as a reading garden rather than a flat dump of concept pages — you navigate from a concept back into its evidence.
+</Note>
 
 ## Step 3 — Add the concept-extractor MCPs
 

@@ -3,7 +3,9 @@ title: Ontology
 description: The eight node types — Topic, Highlight, Document, Concept, Entity, Claim, Question, Publication — and the edges that wire your reading into a queryable graph.
 ---
 
-The Reading Garden ontology is a small, opinionated slice of the knowledge graph — eight node types and nine edges — designed for one job: turn raw highlights into atomic, queryable, idempotently-publishable Concept pages without forcing every reader to commit to a single PKM methodology.
+The Reading Garden ontology is a small, opinionated slice of the knowledge graph — eight node types and nine edges — designed for one job: turn raw highlights into atomic, queryable, idempotently-publishable Concept pages **plus the navigable evidence around them** (the Sources and Highlights they came from), without forcing every reader to commit to a single PKM methodology.
+
+Since v0.5.2 the published artefact is a **three-database mirror in Notion** (Sources / Highlights / Concepts, linked via RELATION columns), not a flat dump of Concept pages — see the "Publishing layer" section below.
 
 The slice lives at `internal/schema/embedfs/graph-schema/knowledge-garden/` in the fracta repo (see [`internal/schema/embedfs/graph-schema/knowledge-garden`](https://github.com/darkquasar/fracta/tree/main/internal/schema/embedfs/graph-schema/knowledge-garden) for the loader-validated source of truth) and is resolved at runtime as `embed://graph-schema/knowledge-garden`. It plugs into the broader fracta schema via the `core/DomainSource` cross-family edge, so Reading Garden nodes show up in the same 4-tier resolution chain (`DomainSource -> DataStore -> MCPServer -> MCPTool`) as every other family.
 
@@ -64,16 +66,20 @@ A single highlight pulled from a source — typically a Kindle/article highlight
 
 | Property | Type | Required | Source | Description |
 |---|---|---|---|---|
-| `id` | string | yes | `readwise.list_highlights` | Stable identifier, prefixed `readwise:<id>` for v1. |
-| `text` | string | yes | `readwise.list_highlights` | The highlight body. |
-| `note` | string | no | `readwise.list_highlights` | The Readwise highlight-note field (your own annotation, if any). Extractors scan this too. |
-| `book_id` | string | no | `readwise.list_highlights` | Foreign key to the source `Document`. |
-| `location` | string | no | `readwise.list_highlights` | Position in the source (page, percent, timestamp). |
-| `tags` | string | no | `readwise.list_highlights` | Comma-joined Readwise tags. |
-| `highlighted_at` | string | no | `readwise.list_highlights` | ISO-8601 timestamp of the original highlight. |
+| `id` | string | yes | `readwise_list_highlights` | Stable identifier, prefixed `readwise:<id>`. |
+| `text` | string | yes | `readwise_list_highlights` | The highlight body. |
+| `note` | string | no | `readwise_list_highlights` | The Readwise highlight-note field (your own annotation, if any). Extractors scan this too. |
+| `book_id` | string | no | `readwise_list_highlights` | Foreign key to the source `Document`. |
+| `location` | string | no | `readwise_list_highlights` | Position in the source (page, percent, timestamp). |
+| `tags` | string | no | `readwise_list_highlights` | Comma-joined Readwise tags. |
+| `highlighted_at` | string | no | `readwise_list_highlights` | ISO-8601 timestamp of the original highlight. |
 | `captured_at` | string | yes | `highlight_distill` | ISO-8601 timestamp of when fracta ingested it. |
 
-Populated by `highlight_distill`. Every Highlight must be wired to a `DomainSource` via `CAPTURED_FROM` (enforced by checkpoint `highlight_missing_captured_from`).
+Populated by `highlight-distill`. Every Highlight must be wired to a `DomainSource` via `CAPTURED_FROM` (enforced by checkpoint `highlight_missing_captured_from`).
+
+<Note>
+  **Denormalised book fields.** Since v0.5.2 the Readwise binding pulls a set of `book_*` fields (`book_title`, `book_author`, `book_category`, `book_source`, `book_source_url`, `book_cover_image_url`, `book_document_note`) alongside each highlight via the explicit `response_fields` argument. These are NOT stored on the Highlight node — they're used only to MERGE the parent `Document` node (one per `book_id`). Resolve denormalised metadata by walking `Highlight -[:PART_OF]-> Document`. Closes Bug 13: the v1 reader-documents namespace mismatch meant `PART_OF` never fired; v3 derives Documents from highlights themselves.
+</Note>
 
 ### Document
 
@@ -81,13 +87,19 @@ The container a Highlight comes from — a book, article, podcast, paper, or web
 
 | Property | Type | Required | Source | Description |
 |---|---|---|---|---|
-| `id` | string | yes | `readwise.list_documents` | Stable identifier, prefixed `<source>:<id>`. |
-| `title` | string | yes | `readwise.list_documents` | Title of the work. |
-| `author` | string | no | `readwise.list_documents` | Author name (may be free-form). |
-| `url` | string | no | `readwise.list_documents` | Canonical URL where available. |
-| `kind` | string | no | `readwise.list_documents` | One of `book`, `article`, `podcast`, `paper`. |
-| `source_kind` | string | no | `highlight_distill` | The upstream source (e.g. `readwise`). |
-| `captured_at` | string | yes | `highlight_distill` | ISO-8601 ingest timestamp. |
+| `id` | string | yes | `highlight-distill` | Stable identifier; v3 form is `readwise:book:<book_id>` (derived from highlights, see Note below). |
+| `title` | string | yes | `highlight-distill` | Title of the work. Sourced from `Highlight.book_title` (denormalised). |
+| `author` | string | no | `highlight-distill` | Author name. Sourced from `Highlight.book_author` (denormalised). |
+| `url` | string | no | `highlight-distill` | Canonical URL — `Highlight.book_source_url`. |
+| `cover_url` | string | no | `highlight-distill` | Cover image URL — `Highlight.book_cover_image_url`. |
+| `category` | string | no | `highlight-distill` | Document category — `Highlight.book_category` (e.g. `book`, `article`). |
+| `source_kind` | string | no | `highlight-distill` | Upstream source kind — `Highlight.book_source` (e.g. `kindle`, `airr`). |
+| `document_note` | string | no | `highlight-distill` | The Readwise document-note field (book-level annotation) — `Highlight.book_document_note`. |
+| `captured_at` | string | yes | `highlight-distill` | ISO-8601 ingest timestamp. |
+
+<Note>
+  **v3 Document derivation (Bug 13 fix).** v1/v2 attempted to MERGE Documents from the separate `reader_list_documents` MCP call, which lives in a different ID namespace from Readwise highlights — so `Highlight -[:PART_OF]-> Document` edges never fired. v3 derives Documents directly from the highlights themselves (`MERGE (d:Document {id: 'readwise:book:' + book_id})`) using the denormalised `book_*` properties listed above. The Readwise binding's `response_fields` argument is what makes those fields non-null on every highlight.
+</Note>
 
 ### Concept
 
@@ -152,7 +164,7 @@ A record of a Concept (or Topic / Document) published to an external sink. The i
 | Property | Type | Required | Source | Description |
 |---|---|---|---|---|
 | `id` | string | yes | `notion_publish` | Stable identifier. |
-| `sink` | string | yes | `notion_publish` | One of `notion`, `mintlify`, `quartz`, `obsidian`, `ghost`. Defaults to `notion` in v1. |
+| `sink` | string | yes | `notion_publish` | v3 distinguishes per-database sinks: `notion:source`, `notion:highlight`, `notion:concept`. Future sinks: `mintlify`, `quartz`, `obsidian`, `ghost`. |
 | `external_id` | string | yes | `notion_publish` | Sink-side identifier (e.g. the Notion page UUID). |
 | `content_hash` | string | yes | `notion_publish` | Hash of the rendered content; basis for skip-vs-update decisions. |
 | `url` | string | no | `notion_publish` | Direct URL to the published page. |
@@ -191,6 +203,22 @@ Eight validation rules ship with the family. The two most consequential:
 - `concept_low_extraction_high_confidence` (warning): flags Concepts where `confidence > 0.7` but `extraction_score < 0.4` (or null) — the alias-drift detector. A graph-corroborated Concept that no NLP extractor strongly endorsed is almost always an alias to another Concept, surfaced for hand-merging until a future strategy (embedder MCP or LLM-based resolution) can do it automatically.
 
 The remaining six (`orphaned_concept_no_mentions`, `publication_missing_parent_concept`, `high_confidence_concept_without_topic`, `publication_missing_required_props`, `claim_without_evidence`, `concept_confidence_status_mismatch`) live in [`internal/schema/embedfs/graph-schema/knowledge-garden/checkpoint.yaml`](https://github.com/darkquasar/fracta/blob/main/internal/schema/embedfs/graph-schema/knowledge-garden/checkpoint.yaml). Run `graph_checkpoint(mcp_servers='notion,readwise,concept-keybert,concept-gliner,concept-spacy')` after any ingest to surface them.
+
+## Publishing layer (Notion three-database mirror)
+
+Since v0.5.2 the published artefact is a navigable Notion structure, not a flat dump of Concept pages. The publishing layer maps the graph's three-tier `DomainSource -> Document -> Highlight` onto three Notion databases connected by RELATION columns:
+
+| Graph tier | Notion database | Sink | Page-per | RELATION |
+|---|---|---|---|---|
+| `Document` (from `Highlight.book_id`) | Sources DB | `notion:source` | Readwise book / article | — |
+| `Highlight` | Highlights DB | `notion:highlight` | Readwise highlight | `source` -> Sources DB |
+| `Concept` | Concepts DB | `notion:concept` | Atomic concept | `highlights` -> Highlights DB |
+
+Each tier is idempotent independently: a `Publication` node is MERGEd per page with `sink: 'notion:<tier>'` and a tier-specific `external_id` (`readwise_book_id`, `readwise_highlight_id`, `concept_name`). Re-running `notion-publish` after no graph changes is a no-op (content-hash skip) at all three levels.
+
+The three RELATION values are written as **JSON-stringified arrays of page IDs**, not native arrays — that is the on-the-wire convention the hosted Notion MCP expects for properties of type RELATION.
+
+See [Strategies — notion-publish](/patterns/reading-garden/strategies#notion-publish) for the call shape and the 7-step DAG (`load_target_concepts -> load_supporting_highlights -> load_sources -> publish_sources -> publish_highlights -> render_concepts -> publish_concepts`).
 
 ## What's next
 

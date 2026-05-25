@@ -3,7 +3,7 @@ title: Strategies
 description: The bundled strategies — highlight_distill, cross_source_concepts, notion_publish — that turn captured highlights into idempotent Notion concept pages.
 ---
 
-The Reading Garden ships three strategies, each owning one stage of the CODE flow (Capture+Organize, Distill, Express). They live under `strategies/_example/knowledge-garden/` and follow the standard fracta strategy shape: `contract.yaml` + `strategy.py` + `binding.yaml`.
+The Reading Garden ships three strategies, each owning one stage of the CODE flow (Capture+Organize, Distill, Express). Since v0.5.2 they live under `strategies/knowledge-garden/` (promoted out of `_example/` so a fresh deploy discovers them automatically) and follow the standard fracta strategy shape: `contract.yaml` + `strategy.py` + `binding.yaml`.
 
 Strategies are deterministic Python DAGs run by the fracta strategy runner — not LLM calls. The pipeline prompt on [First Run](/patterns/reading-garden/first-run) is the only place an LLM holds the framing; each `strategy_run` is a Python pipeline.
 
@@ -11,9 +11,9 @@ Strategies are deterministic Python DAGs run by the fracta strategy runner — n
 
 | Strategy | Category | Purpose | Source |
 |---|---|---|---|
-| `highlight-distill` | enrichment | Pull Readwise highlights and documents, extract Concept and Entity candidates via three NLP MCPs, write to graph. | [strategies/_example/knowledge-garden/enrichment/highlight_distill](https://github.com/darkquasar/fracta/tree/main/strategies/_example/knowledge-garden/enrichment/highlight_distill) |
-| `cross-source-concepts` | correlation | Rescore every Concept by graph-wide signal; update `Concept.confidence`, `Concept.mention_count`, and `MENTIONS.weight`. | [strategies/_example/knowledge-garden/correlation/cross_source_concepts](https://github.com/darkquasar/fracta/tree/main/strategies/_example/knowledge-garden/correlation/cross_source_concepts) |
-| `notion-publish` | traversal | Render a Concept (or top-N batch) as a Notion page; create-or-update idempotently via `Publication.content_hash`. | [strategies/_example/knowledge-garden/traversal/notion_publish](https://github.com/darkquasar/fracta/tree/main/strategies/_example/knowledge-garden/traversal/notion_publish) |
+| `highlight-distill` | enrichment | Pull Readwise highlights and documents, extract Concept and Entity candidates via three NLP MCPs, write to graph. | [strategies/knowledge-garden/enrichment/highlight_distill](https://github.com/darkquasar/fracta/tree/main/strategies/knowledge-garden/enrichment/highlight_distill) |
+| `cross-source-concepts` | correlation | Rescore every Concept by graph-wide signal; update `Concept.confidence`, `Concept.mention_count`, and `MENTIONS.weight`. | [strategies/knowledge-garden/correlation/cross_source_concepts](https://github.com/darkquasar/fracta/tree/main/strategies/knowledge-garden/correlation/cross_source_concepts) |
+| `notion-publish` | traversal | Render a Concept (or top-N batch) as a Notion page; create-or-update idempotently via `Publication.content_hash`. | [strategies/knowledge-garden/traversal/notion_publish](https://github.com/darkquasar/fracta/tree/main/strategies/knowledge-garden/traversal/notion_publish) |
 
 The three are designed to run as a pipeline (in order), but each is independently invocable — useful for iterating on one stage without re-pulling raw data.
 
@@ -29,7 +29,7 @@ This is the **Capture + Organize** stage. It is the only strategy in the pattern
 
 | Param | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `watermark_iso` | string | no | `"1970-01-01T00:00:00Z"` | Pull only highlights with `updated > watermark`. Set this to a recent date on first run to keep the Readwise call count bounded. |
+| `watermark_iso` | string | no | `"1970-01-01T00:00:00Z"` | Pull only highlights with `updated > watermark`. The contract default is the documented "backfill from the beginning" timestamp; **pass an explicit recent ISO (e.g. `2026-04-01T00:00:00Z`) on incremental runs** to keep the Readwise call count bounded. The strategy also accepts a rolling sentinel `-7d` (resolved at runtime for DuckDB filtering); see `contract.yaml` for the current behaviour. |
 | `page_size` | int | no | `100` | Readwise `list_highlights` page size. The hosted MCP caps at 20 req/min, so larger pages mean fewer round-trips. |
 
 ### Outputs
@@ -145,48 +145,66 @@ ctx.runner.call("cross-source-concepts")
 
 ## notion-publish
 
-**Purpose.** Given a Concept name (or a batch of top-N by confidence), render a Notion page from the Concept and its supporting Highlights, and create-or-update the Notion page idempotently via `Publication.content_hash`. Computes `Concept.epistemic_status` (`seedling` / `budding` / `evergreen`) from `Concept.confidence` and writes it back before render.
+**Purpose.** Mirror the knowledge-garden into Notion as a **three-database structure** — Sources, Highlights, and Concepts — linked via RELATION columns so a reader can navigate from a published Concept back into the highlights and books that produced it. Idempotent across all three sinks via `Publication.content_hash` keyed by `sink + external_id`. Computes `Concept.epistemic_status` from `Concept.confidence` and writes it back to the graph before rendering.
 
-This is the **Express** stage. It is the only write-strategy in the pattern, and the introduction of the `actions:` block to the binding framework — see [Bindings](/strategies/bindings) for the framework reference.
+This is the **Express** stage. Since v0.5.2 the published artefact is the three-DB mirror, not a flat dump of Concept pages.
 
 ### Inputs
 
 | Param | Type | Required | Default | Description |
 |---|---|---|---|---|
 | `concept_name` | string | no | — | Publish a single Concept by canonical name. Omit for batch mode. |
-| `notion_database_id` | string | yes | — | The 32-character hex ID of the Notion database to publish into. |
+| `notion_concepts_database_id` | string | yes | — | `data_source_id` of the Concepts DB. (Legacy: `notion_database_id` is still accepted.) |
+| `notion_highlights_database_id` | string | yes | — | `data_source_id` of the Highlights DB. |
+| `notion_sources_database_id` | string | yes | — | `data_source_id` of the Sources DB. |
 | `batch_size` | int | no | `10` | In batch mode, publish the top-N Concepts by confidence. |
 
 ### Outputs
 
-- A new or updated Notion page in the configured database.
-- A `Publication` node MERGEd with `sink: notion`, `external_id`, and `content_hash`.
-- A `PUBLISHED_AS` edge wiring the source `Concept` to the new `Publication`.
+For each Concept published:
+
+- A new or updated Notion page in the Concepts database, with a `highlights` RELATION column pointing at one or more rows in the Highlights database.
+- One Notion page in the Highlights database per supporting highlight (de-duped across concepts), with a `source` RELATION column pointing at the Source database row for its Readwise book.
+- One Notion page in the Sources database per distinct Readwise book/article/podcast referenced.
+- A `Publication` node MERGEd per page with `sink: notion:source | notion:highlight | notion:concept`, `external_id`, and `content_hash`.
+- A `PUBLISHED_AS` edge wiring the source graph node to its `Publication`.
+
+### Pipeline
+
+The strategy is a 7-step DAG:
+
+1. `load_target_concepts` — top-N Concepts by `confidence` (or a single concept by `concept_name`).
+2. `load_supporting_highlights` — Highlights mentioning each target Concept, with their denormalised `book_*` properties.
+3. `load_sources` — distinct Documents reachable from the loaded Highlights.
+4. `publish_sources` — idempotent per `readwise_book_id`; sink `notion:source`.
+5. `publish_highlights` — idempotent per `readwise_highlight_id`; sink `notion:highlight`; carries a `source` RELATION to its Source page.
+6. `render_concepts` — produces the Markdown body + properties dict per Concept.
+7. `publish_concepts` — idempotent per Concept; sink `notion:concept`; carries the `highlights` RELATION assembled from step 5's `id_to_url` map.
+
+### Notion MCP tool surface (v0.5.2)
+
+The strategy calls **four** hosted Notion MCP tools:
+
+- `notion-search` + `notion-fetch` — locate-or-adopt path. After a `notion-search` hit, the strategy calls `notion-fetch` and requires an exact match on `properties.concept_name` (or equivalent) before adopting. Avoids the v1 cross-overwrite trap.
+- `notion-create-pages` — creates new pages. The payload shape is `{parent: {data_source_id: ...}, pages: [{properties: {...}, content: "markdown..."}]}`. Properties are **flat scalars** (text, number, date), not the v1 wrapped objects. `content` is **enhanced-Markdown**, not block JSON.
+- `notion-update-page` — updates properties and/or content. Use `command: replace_content` for a content-hash-driven full refresh; `command: insert_content` for appends.
+- RELATION properties are sent as **JSON-stringified arrays** of page IDs, not native arrays.
 
 ### Idempotency
 
-The publish sequence (per Concept):
+The Publication node is the source of truth — local lookup first, then API. The publish sequence per page (Source, Highlight, or Concept):
 
-1. Local lookup — `MATCH (p:Publication {sink:'notion', id:'<concept_name>:notion'})`.
+1. `MATCH (p:Publication {sink: <sink>, external_id: <book_id|highlight_id|concept_name>})`.
 2. If found and `p.content_hash == new_hash` -> skip; no API calls.
-3. If found and hash differs -> `notion-update-page` (properties) + `append-block-children` (replace blocks).
-4. If not found -> `notion-query-data-sources` by `concept_name` property.
-   - If Notion has the page -> adopt (MERGE Publication with that `external_id`), go to step 3.
-   - Else -> `notion-create-pages`, MERGE Publication with the returned `external_id`.
-5. Update `Publication.content_hash`, `last_updated_at`.
-6. Wire `MATCH (c:Concept {name:$name}) MERGE (c)-[:PUBLISHED_AS]->(p)`.
+3. If found and hash differs -> `notion-update-page` with `command: replace_content`.
+4. If not found -> `notion-search` + `notion-fetch` strict-match; on hit, adopt; otherwise `notion-create-pages`.
+5. Update `Publication.content_hash`, `last_updated_at`. Wire `PUBLISHED_AS`.
 
 The `epistemic_status` mapping at publish time:
 
 - `confidence < 0.4` -> `seedling`
 - `0.4 <= confidence <= 0.8` -> `budding`
 - `confidence > 0.8` -> `evergreen`
-
-Storing the status on `Concept` (rather than deriving on every read) keeps the graph as the canonical record of what was published, and lets the `concept_confidence_status_mismatch` checkpoint rule detect drift after a later rescore.
-
-### Block update strategy
-
-Default: **wipe and replace** — `append-block-children` after deleting existing children. Opt-out flag preserves history for users who want it; see the strategy source for the env var name and the trade-off (re-runs become non-deterministic when history is preserved).
 
 ### Call it
 
@@ -195,13 +213,13 @@ Default: **wipe and replace** — `append-block-children` after deleting existin
 ```bash CLI via agent (single concept)
 fracta spawn \
   --task publish-one \
-  --contract "Call strategy_run(name='notion-publish', params={'concept_name': 'falsifiability', 'notion_database_id': 'YOUR_DB_ID'}) and report the Notion page URL."
+  --contract "Call strategy_run(name='notion-publish', params={'concept_name': 'falsifiability', 'notion_concepts_database_id': 'CONCEPTS_DS', 'notion_highlights_database_id': 'HIGHLIGHTS_DS', 'notion_sources_database_id': 'SOURCES_DS'}) and report the URLs of every created or updated page."
 ```
 
 ```bash CLI via agent (top-N batch)
 fracta spawn \
   --task publish-top \
-  --contract "Call strategy_run(name='notion-publish', params={'notion_database_id': 'YOUR_DB_ID', 'batch_size': 10}) and report the URLs of every created or updated page."
+  --contract "Call strategy_run(name='notion-publish', params={'notion_concepts_database_id': 'CONCEPTS_DS', 'notion_highlights_database_id': 'HIGHLIGHTS_DS', 'notion_sources_database_id': 'SOURCES_DS', 'batch_size': 10})."
 ```
 
 ```python In Python (inside a strategy)
@@ -209,7 +227,9 @@ ctx.runner.call(
     "notion-publish",
     params={
         "concept_name": "falsifiability",
-        "notion_database_id": "YOUR_DB_ID",
+        "notion_concepts_database_id": "CONCEPTS_DS",
+        "notion_highlights_database_id": "HIGHLIGHTS_DS",
+        "notion_sources_database_id": "SOURCES_DS",
     },
 )
 ```
