@@ -68,10 +68,8 @@ registered Notion MCP server config_key if it is named differently.
 - **Notion rate limit: 3 req/s.** Each create costs 1 call; each update
   costs 2 (`notion-update-page` + `append-block-children`). Batch of
   100 concepts ≈ 2.5 minutes wall-clock.
-- **OAuth via mcp-remote.** Static Notion integration tokens do not
-  work with the hosted Notion MCP; mcp-remote with browser OAuth is the
-  v1 path. The token cache at `~/.mcp-auth/` is plaintext on shared
-  machines — set `MCP_REMOTE_CONFIG_DIR` to override.
-- **Database must be shared with the connection.** A 404 on the first
-  `notion-create-pages` call almost always means the Notion DB has not
-  been shared with the integration; see setup.mdx.
+- **OAuth via the fracta gateway.** Static Notion integration tokens
+  do not work with the hosted Notion MCP. The fracta gateway drives the
+  PKCE OAuth dance itself (see `fracta config mcp auth login notion`)
+  and the resulting grant carries the same Notion permissions as the
+  user who authorised it — no per-database sharing step is required.

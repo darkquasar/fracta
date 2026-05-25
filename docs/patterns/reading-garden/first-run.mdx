@@ -116,7 +116,7 @@ If the `agents:` block is missing or `default_runtime` is set to something else,
 
 ## Step 3 — Spawn the worker with the pipeline prompt
 
-This is the one prompt. Copy it as-is, swap the database ID, and run:
+This is the one prompt. Copy it as-is, swap the three database IDs, and run:
 
 ```bash
 fracta spawn \
@@ -126,13 +126,13 @@ fracta spawn \
 Steps:
 1. Call strategy_run(name='highlight-distill', params={'watermark_iso': '2025-10-01T00:00:00Z', 'page_size': 100}). This pulls recent Readwise highlights and writes Highlight, Document, and candidate Concept nodes into the graph. Report how many of each were written.
 2. Call strategy_run(name='cross-source-concepts'). This rescores every Concept by recency, frequency, and source diversity, then updates Concept.confidence and Concept.mention_count in the graph. Report the top five concepts by confidence.
-3. Pick the single highest-confidence Concept from step 2. Call strategy_run(name='notion-publish', params={'concept_name': '<that concept name>', 'notion_database_id': 'YOUR_NOTION_DATABASE_ID'}). Report the returned Notion page URL.
+3. Pick the single highest-confidence Concept from step 2. Call strategy_run(name='notion-publish', params={'concept_name': '<that concept name>', 'notion_concepts_database_id': 'CONCEPTS_DS_ID', 'notion_highlights_database_id': 'HIGHLIGHTS_DS_ID', 'notion_sources_database_id': 'SOURCES_DS_ID'}). Report the URLs of every Notion page created or updated (one for the concept, plus pages in the Highlights and Sources databases).
 4. Call graph_checkpoint(mcp_servers='notion,readwise') and report whether all_clear is true.
 
-Finish by summarizing: highlights ingested, concepts extracted, top concept published, Notion URL, checkpoint status."
+Finish by summarizing: highlights ingested, concepts extracted, top concept published, Notion URLs, checkpoint status."
 ```
 
-Replace `YOUR_NOTION_DATABASE_ID` with the database ID you set up in [Setup](/patterns/reading-garden/setup#share-the-notion-database). Adjust the `watermark_iso` to whatever cutoff date you want — keeping it recent on the first run avoids long Readwise pulls (the API caps at 20 requests/minute).
+Replace `CONCEPTS_DS_ID`, `HIGHLIGHTS_DS_ID`, and `SOURCES_DS_ID` with the three `data_source_id` values you captured in [Setup — Step 2](/patterns/reading-garden/setup#step-2--provision-the-three-notion-databases). Adjust the `watermark_iso` to whatever cutoff date you want — keeping it recent on the first run avoids long Readwise pulls (the API caps at 20 requests/minute).
 
 <Tip>
   The prompt is intentionally pipeline-framed. You are not asking Claude to "find concepts in my highlights" — you are asking it to run a named pipeline whose steps are spelled out. That framing keeps the worker deterministic and makes the run easy to replay.
