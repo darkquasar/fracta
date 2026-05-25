@@ -105,6 +105,4 @@ Releases that have crossed that two-year mark may be used under
 Apache-2.0 like any other permissively-licensed software, with no
 commercial license required.
 
-See [`LICENSE`](./LICENSE) for the full FSL text and
-[`LICENSE-HISTORY.md`](./LICENSE-HISTORY.md) for the project's licensing
-timeline.
+See [`LICENSE`](./LICENSE) for the full FSL text.

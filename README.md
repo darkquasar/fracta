@@ -229,6 +229,4 @@ Fracta is released under the **Functional Source License v1.1 with Apache Licens
 - **Commercial license required** for offering Fracta (or a fork/derivative) as a hosted product or managed service, or for productizing it as a branded consulting offering. See [COMMERCIAL.md](./COMMERCIAL.md) for the full guide and how to request a license.
 - **Auto-converts to Apache-2.0** two years after each release, per the standard FSL terms.
 
-See [LICENSE-HISTORY.md](./LICENSE-HISTORY.md) for the project's licensing timeline (including the original MIT phase through commit `90b1864` on 2026-05-20).
-
 For commercial licensing questions: Diego Perez — <diego.perez@quasarops.com> / <https://www.linkedin.com/in/diegope/>.
