@@ -6,7 +6,8 @@
        k8s-teardown \
        k8s-secrets k8s-refresh-auth k8s-status k8s-smoke \
        k8s-ensure-image \
-       docs-gen docs-gen-check
+       docs-gen docs-gen-check \
+       verify-bindings lint-strategies
 
 # IMPORTANT: Must build to bin/fracta — .mcp.json points Claude Code to this location
 build:
@@ -197,3 +198,24 @@ docs-gen:
 # Exits non-zero if the generated tree would differ from what's committed.
 docs-gen-check:
 	python3 scripts/gen-strategy-catalogue.py --check
+
+# --- Strategy lint (spec-50 §7.1, §7.2) ---
+#
+# verify-bindings walks every strategy's binding.yaml and asserts the
+# referenced mcp_tool exists on its mcp_server (against recorded tools/list
+# fixtures for hermetic CI runs, live for nightly). Closes Bug 5/6/7/8 +
+# 16/17/18/19/23 regression class.
+verify-bindings:
+	python3 scripts/verify-bindings.py
+
+# lint-strategies blocks `ctx.graph.execute(` from creeping back into any
+# strategy. The FalkorDB SDK Graph object only exposes .query() — .execute()
+# was hallucinated and led to Bugs 11/14/15. Cheap and effective.
+lint-strategies:
+	@hits=$$(grep -rn 'ctx\.graph\.execute(' strategies/ 2>/dev/null || true); \
+	if [ -n "$$hits" ]; then \
+	  echo "ERROR: ctx.graph.execute(...) is not a valid FalkorDB SDK call. Use ctx.graph.query(...) instead."; \
+	  echo "$$hits"; \
+	  exit 1; \
+	fi
+	@echo "lint-strategies: no ctx.graph.execute( hits"
