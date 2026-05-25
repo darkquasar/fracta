@@ -23,7 +23,7 @@ import pytest
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _MERGE_PATH = os.path.join(
-    _HERE, "..", "_example", "knowledge-garden",
+    _HERE, "..", "knowledge-garden",
     "enrichment", "highlight_distill", "merge.py",
 )
 

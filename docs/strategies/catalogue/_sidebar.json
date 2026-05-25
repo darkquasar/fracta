@@ -1,4 +1,13 @@
 {
   "group": "Catalogue",
-  "pages": []
+  "pages": [
+    {
+      "group": "knowledge-garden",
+      "pages": [
+        "strategies/catalogue/knowledge-garden/correlation/cross_source_concepts",
+        "strategies/catalogue/knowledge-garden/enrichment/highlight_distill",
+        "strategies/catalogue/knowledge-garden/traversal/notion_publish"
+      ]
+    }
+  ]
 }
