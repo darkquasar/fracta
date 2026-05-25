@@ -12,7 +12,14 @@ params:
     type: str
     required: false
     default: "1970-01-01T00:00:00Z"
-    description: "Pull only highlights with updated_at > watermark"
+    description: >
+      Pull only highlights with updated_at > watermark. The strategy accepts
+      either an absolute ISO-8601 timestamp ("2026-01-15T00:00:00Z") or a
+      rolling sentinel of the form "-Nd" / "-Nh" (relative to now, UTC) for
+      DuckDB-side filtering. The Readwise binding does NOT resolve the
+      sentinel today, so the default is the well-known backfill timestamp;
+      for incremental runs, pass an explicit ISO via the strategy params.
+      Sentinel-aware binding interpolation is tracked separately.
   page_size:
     type: int
     required: false
@@ -20,9 +27,12 @@ params:
     description: "Readwise pagination page size for the source binding"
 requires:
   graph: true
+  # Calls ctx.mcp.call_tool() for the three concept extractors (keybert,
+  # gliner, spacy). Runner refuses to start if gateway access isn't wired.
+  mcp: true
   tables:
     recent_highlights:
-      description: "Recent Readwise highlights (pre-staged via binding)"
+      description: "Recent Readwise highlights with denormalised book metadata (pre-staged via binding)"
       optional: false
       columns:
         highlight_id:
@@ -32,6 +42,16 @@ requires:
         book_title:
           type: VARCHAR
         author:
+          type: VARCHAR
+        book_category:
+          type: VARCHAR
+        book_source_kind:
+          type: VARCHAR
+        book_source_url:
+          type: VARCHAR
+        book_cover_url:
+          type: VARCHAR
+        book_document_note:
           type: VARCHAR
         text:
           type: VARCHAR

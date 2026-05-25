@@ -2,15 +2,30 @@
 
 Reference strategies, complete with `contract.yaml`, `strategy.py`, **and** a
 `binding.yaml`. These are not picked up by the runner — directory names
-beginning with `_` are skipped during discovery — so they exist purely as
-copy-and-modify starting points.
+beginning with `_` are skipped during discovery (see
+`strategies/runner.py:77`) — so they exist purely as copy-and-modify
+starting points.
 
 Examples here mirror the production layout: `_example/<domain>/<category>/<slug>/`,
-e.g. `_example/security/enrichment/elastic_field_survey/`. Copy into the
+e.g. `_example/security/enrichment/splunk_field_survey/`. Copy into the
 matching path under `strategies/` (without the leading `_example/`) to make
 a strategy live.
 
-## Why this directory exists
+## What lives here vs. what is live
+
+| Strategy | Status | Where it lives |
+|---|---|---|
+| `knowledge-garden/correlation/cross_source_concepts` | **Promoted** (v0.5.2) | `strategies/knowledge-garden/correlation/cross_source_concepts/` |
+| `knowledge-garden/enrichment/highlight_distill` | **Promoted** (v0.5.2) | `strategies/knowledge-garden/enrichment/highlight_distill/` |
+| `knowledge-garden/traversal/notion_publish` | **Promoted** (v0.5.2) | `strategies/knowledge-garden/traversal/notion_publish/` |
+| `security/enrichment/splunk_field_survey` | Template only | `strategies/_example/security/enrichment/splunk_field_survey/` |
+
+The three knowledge-garden strategies were promoted out of `_example/` so
+fresh deploys discover them automatically. The security example stays here
+because it requires per-environment binding work (Elastic index pattern,
+field-mapping conventions) before it's useful.
+
+## Why this directory still exists
 
 A strategy ships as two publishable files: `contract.yaml` (what data it
 needs) and `strategy.py` (the DAG of steps). Those are environment-agnostic
@@ -27,20 +42,36 @@ directory solves that: every example here is a runnable strategy with a
 reference binding, intended to be copied into your own
 `strategies/<domain>/<category>/` tree and adapted.
 
-## How to use an example
+## How to promote a template
+
+You have two options:
+
+### Option A — copy (operator-local override)
 
 ```bash
 # Copy the whole directory into your real strategies tree, preserving the
 # domain/category path
 mkdir -p strategies/security/enrichment
-cp -r strategies/_example/security/enrichment/elastic_field_survey \
+cp -r strategies/_example/security/enrichment/splunk_field_survey \
       strategies/security/enrichment/
 
 # Edit the binding to match your environment
-$EDITOR strategies/security/enrichment/elastic_field_survey/binding.yaml
+$EDITOR strategies/security/enrichment/splunk_field_survey/binding.yaml
 ```
 
-Once it's outside `_example/`, the runner picks it up on the next
+Use this when you only want the strategy in your deploy, not in source.
+
+### Option B — `git mv` (contribute upstream)
+
+```bash
+git mv strategies/_example/security/enrichment/splunk_field_survey \
+       strategies/security/enrichment/splunk_field_survey
+```
+
+Use this when you're promoting a template to ship with fracta — the way
+the three knowledge-garden strategies were promoted in v0.5.2.
+
+Once a strategy is outside `_example/`, the runner picks it up on the next
 `strategy_list` or `strategy_run` call. No restart needed.
 
 ## What changes between environments

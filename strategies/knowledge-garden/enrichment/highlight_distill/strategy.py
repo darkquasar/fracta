@@ -22,6 +22,7 @@ import concurrent.futures
 import datetime as _dt
 import json
 import os
+import re
 import sys
 from typing import Any
 
@@ -62,26 +63,55 @@ def _iso_now() -> str:
     return _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+_RELATIVE_WATERMARK = re.compile(r"^-(\d+)([dh])$")
+
+
+def _resolve_watermark(ctx, *, default_relative: str = "-7d") -> str:
+    raw = ctx.params.get("watermark_iso") if hasattr(ctx, "params") else None
+    if not raw:
+        raw = _watermark_from_table(ctx) or default_relative
+    m = _RELATIVE_WATERMARK.match(raw.strip())
+    if not m:
+        return raw
+    n = int(m.group(1))
+    unit = m.group(2)
+    delta = _dt.timedelta(days=n) if unit == "d" else _dt.timedelta(hours=n)
+    return (_dt.datetime.now(_dt.timezone.utc) - delta).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _watermark_from_table(ctx) -> str | None:
+    try:
+        row = ctx.duckdb.execute(
+            "SELECT watermark FROM _watermark WHERE strategy = 'highlight-distill'"
+        ).fetchone()
+    except Exception:
+        return None
+    return row[0] if row else None
+
+
 class HighlightDistill(Strategy):
 
     # --- step 1 ---
     @step("Load recent highlights from staged DuckDB table")
     def load_highlights(self, ctx) -> list[dict]:
-        watermark = ctx.params.get("watermark_iso", "1970-01-01T00:00:00Z")
+        watermark = _resolve_watermark(ctx)
         rows = ctx.duckdb.execute(
-            "SELECT highlight_id, book_id, book_title, author, text, note, tags, "
-            "highlighted_at, updated_at "
+            "SELECT highlight_id, book_id, book_title, author, "
+            "book_category, book_source_kind, book_source_url, book_cover_url, "
+            "book_document_note, text, note, tags, highlighted_at, updated_at "
             "FROM recent_highlights WHERE updated_at > ?",
             [watermark],
         ).fetchall()
-        cols = ["highlight_id", "book_id", "book_title", "author", "text",
-                "note", "tags", "highlighted_at", "updated_at"]
+        cols = ["highlight_id", "book_id", "book_title", "author",
+                "book_category", "book_source_kind", "book_source_url",
+                "book_cover_url", "book_document_note",
+                "text", "note", "tags", "highlighted_at", "updated_at"]
         return [dict(zip(cols, r)) for r in rows]
 
     # --- step 2 ---
     @step("Load recent documents from staged DuckDB table")
     def load_documents(self, ctx) -> list[dict]:
-        watermark = ctx.params.get("watermark_iso", "1970-01-01T00:00:00Z")
+        watermark = _resolve_watermark(ctx)
         rows = ctx.duckdb.execute(
             "SELECT document_id, title, author, url, location, updated_at "
             "FROM recent_documents WHERE updated_at > ?",
@@ -143,18 +173,30 @@ class HighlightDistill(Strategy):
                 "errors": errors,
             }
 
+        total_budget_s = 180  # wall-clock cap for the whole fan-out
         with concurrent.futures.ThreadPoolExecutor(max_workers=FANOUT_MAX_WORKERS) as pool:
             futures = {pool.submit(_call_one, h): h for h in load_highlights}
             results = []
-            for fut in concurrent.futures.as_completed(futures, timeout=None):
-                try:
-                    results.append(fut.result(timeout=EXTRACTOR_TIMEOUT_S))
-                except Exception as exc:
-                    h = futures[fut]
-                    results.append({
-                        "highlight_id": h["highlight_id"],
-                        "errors": {"fanout": str(exc)},
-                    })
+            try:
+                for fut in concurrent.futures.as_completed(futures, timeout=total_budget_s):
+                    try:
+                        results.append(fut.result(timeout=EXTRACTOR_TIMEOUT_S))
+                    except Exception as exc:
+                        h = futures[fut]
+                        results.append({
+                            "highlight_id": h["highlight_id"],
+                            "errors": {"fanout": str(exc)},
+                        })
+            except concurrent.futures.TimeoutError:
+                # Wall-clock budget elapsed; record remaining highlights as timed
+                # out and move on. Running threads can't be killed in Python.
+                for fut, h in futures.items():
+                    if not fut.done():
+                        results.append({
+                            "highlight_id": h["highlight_id"],
+                            "errors": {"fanout": "wall-clock timeout"},
+                        })
+                        fut.cancel()
         return results
 
     # --- step 4 ---
@@ -184,7 +226,7 @@ class HighlightDistill(Strategy):
             return {"error": "no graph configured"}
 
         # MERGE the DomainSource / DataStore / QUERYABLE_VIA chain (CLAUDE.md §3.6).
-        ctx.graph.execute(
+        ctx.graph.query(
             "MERGE (d:DomainSource {name: 'Readwise Highlights'}) "
             "ON CREATE SET d._source = 'strategy:highlight_distill' "
             "MERGE (ds:DataStore {uri: 'fracta-mcp-gateway://readwise/'}) "
@@ -195,26 +237,53 @@ class HighlightDistill(Strategy):
             "MERGE (ds)-[:QUERYABLE_VIA]->(ms)"
         )
 
-        docs_by_id = {d["document_id"]: d for d in load_documents}
         highlights_by_id = {h["highlight_id"]: h for h in load_highlights}
         now = _iso_now()
         counts = {"documents": 0, "highlights": 0, "concepts": 0,
                   "entities": 0, "mentions": 0, "staged": 0, "discarded": 0}
 
-        # Pre-MERGE all documents referenced by these highlights.
-        for d in load_documents:
-            doc_id = f"readwise:{d['document_id']}"
-            ctx.graph.execute(
+        # v3: Derive Sources/Documents from the highlights themselves.
+        # Each distinct book_id becomes one Document node, populated with
+        # the denormalised book_* fields available on every highlight.
+        # This resolves Bug 13 (the Reader-documents namespace mismatch).
+        sources_by_id: dict = {}
+        for h in load_highlights:
+            bid = h.get("book_id")
+            if not bid:
+                continue
+            if bid in sources_by_id:
+                continue
+            sources_by_id[bid] = {
+                "book_id": bid,
+                "title": h.get("book_title") or "",
+                "author": h.get("author") or "",
+                "category": h.get("book_category") or "",
+                "source_kind": h.get("book_source_kind") or "",
+                "source_url": h.get("book_source_url") or "",
+                "cover_url": h.get("book_cover_url") or "",
+                "document_note": h.get("book_document_note") or "",
+            }
+
+        # MERGE Document nodes per Readwise book.
+        for bid, s in sources_by_id.items():
+            doc_id = f"readwise:book:{bid}"
+            ctx.graph.query(
                 "MERGE (doc:Document {id: $id}) "
-                "ON CREATE SET doc.title=$title, doc.author=$author, doc.url=$url, "
-                "doc.source_kind='book', doc.captured_at=$now "
+                "ON CREATE SET doc.title=$title, doc.author=$author, "
+                "doc.url=$url, doc.cover_url=$cover, doc.category=$cat, "
+                "doc.source_kind=$sk, doc.document_note=$note, "
+                "doc.captured_at=$now "
+                "ON MATCH SET doc.title=$title, doc.author=$author, "
+                "doc.url=$url, doc.cover_url=$cover, doc.category=$cat, "
+                "doc.source_kind=$sk, doc.document_note=$note "
                 "WITH doc "
                 "MATCH (src:DomainSource {name: 'Readwise Highlights'}) "
                 "MERGE (doc)-[r:CAPTURED_FROM]->(src) "
                 "ON CREATE SET r.captured_at = $now",
-                {"id": doc_id, "title": d.get("title") or "",
-                 "author": d.get("author") or "", "url": d.get("url") or "",
-                 "now": now},
+                {"id": doc_id, "title": s["title"], "author": s["author"],
+                 "url": s["source_url"], "cover": s["cover_url"],
+                 "cat": s["category"], "sk": s["source_kind"],
+                 "note": s["document_note"], "now": now},
             )
             counts["documents"] += 1
 
@@ -224,7 +293,7 @@ class HighlightDistill(Strategy):
                 continue
             hl_id = f"readwise:{hl['highlight_id']}"
             # MERGE Highlight + CAPTURED_FROM + PART_OF Document.
-            ctx.graph.execute(
+            ctx.graph.query(
                 "MERGE (h:Highlight {id: $id}) "
                 "ON CREATE SET h.text=$text, h.note=$note, h.location=$loc, "
                 "h.highlighted_at=$ha "
@@ -237,8 +306,8 @@ class HighlightDistill(Strategy):
                  "loc": "", "ha": hl.get("highlighted_at") or "", "now": now},
             )
             if hl.get("book_id"):
-                doc_id = f"readwise:{hl['book_id']}"
-                ctx.graph.execute(
+                doc_id = f"readwise:book:{hl['book_id']}"
+                ctx.graph.query(
                     "MATCH (h:Highlight {id: $hl}), (d:Document {id: $doc}) "
                     "MERGE (h)-[:PART_OF]->(d)",
                     {"hl": hl_id, "doc": doc_id},
@@ -267,7 +336,7 @@ class HighlightDistill(Strategy):
 
                 extracted_by = "|".join(cand["extractors"])
                 if route == "entity":
-                    ctx.graph.execute(
+                    ctx.graph.query(
                         "MERGE (e:Entity {name: $name}) "
                         "ON CREATE SET e.kind=$kind, e.extraction_score=$score "
                         "ON MATCH SET e.extraction_score = "
@@ -284,7 +353,7 @@ class HighlightDistill(Strategy):
                     )
                     counts["entities"] += 1
                 else:  # concept
-                    ctx.graph.execute(
+                    ctx.graph.query(
                         "MERGE (c:Concept {name: $name}) "
                         "ON CREATE SET c.display_name=$disp, "
                         "c.extraction_score=$score, c.first_seen_at=$now, "

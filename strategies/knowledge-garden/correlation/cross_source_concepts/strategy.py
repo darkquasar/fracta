@@ -77,7 +77,7 @@ class CrossSourceConcepts(Strategy):
             "avg(m.extraction_score) AS mean_extraction, "
             "count(DISTINCT ds) AS domain_source_count"
         )
-        rows = ctx.graph.execute(cypher)
+        rows = ctx.graph.query(cypher)
         out = []
         # FalkorDB returns rows as list of lists; normalise defensively.
         result_set = getattr(rows, "result_set", rows)
@@ -129,7 +129,7 @@ class CrossSourceConcepts(Strategy):
         for row in score:
             # Update Concept fields. NOTE: deliberately does NOT touch
             # c.extraction_score — that field belongs to highlight_distill.
-            ctx.graph.execute(
+            ctx.graph.query(
                 "MATCH (c:Concept {name: $name}) "
                 "SET c.confidence = $conf, "
                 "    c.mention_count = $mc, "
@@ -138,7 +138,7 @@ class CrossSourceConcepts(Strategy):
                  "mc": row["mention_count"], "now": now_iso},
             )
             # Derive MENTIONS.weight = extraction_score × recency_factor.
-            ctx.graph.execute(
+            ctx.graph.query(
                 "MATCH (c:Concept {name: $name})<-[m:MENTIONS]-() "
                 "WHERE m.extraction_score IS NOT NULL "
                 "SET m.weight = m.extraction_score * $rec",

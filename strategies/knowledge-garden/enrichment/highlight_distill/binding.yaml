@@ -1,0 +1,115 @@
+# Reference binding for the highlight-distill strategy (v3).
+#
+# v3 adds the book_* denormalised fields to the recent_highlights field_map
+# AND passes them through response_fields explicitly — Readwise omits these
+# by default. This unlocks the Sources DB / Documents-with-real-metadata
+# part of the v3 architecture without needing a separate Books API call
+# (Readwise's MCP does not expose one).
+#
+# The three concept-extraction MCPs (concept-keybert / concept-gliner /
+# concept-spacy) are called inline by strategy.py via ctx.mcp.call_tool —
+# they are NOT bound here, because the strategy iterates per-highlight
+# in a thread pool and the gateway-prestage path is geared toward bulk
+# row materialisation, not per-row inference.
+
+source_bindings:
+
+  recent_highlights:
+    backend: readwise
+    config_key: readwise
+    fetch_mode: fracta_mcp_gateway
+    mcp_tool: readwise_list_highlights
+    mcp_server: readwise
+    items_path: results
+    mcp_args:
+      updated_gt: "{{watermark_iso}}"
+      page_size: "{{page_size}}"
+      # CRITICAL: explicitly request book_* fields. Without this, the API
+      # returns them all as null. The 'id' field is always implicit (not
+      # in the response_fields enum).
+      response_fields:
+        - text
+        - note
+        - location
+        - location_type
+        - url
+        - color
+        - updated
+        - highlighted_at
+        - book_id
+        - tags
+        - book_title
+        - book_author
+        - book_category
+        - book_source
+        - book_cover_image_url
+        - book_highlights_url
+        - book_source_url
+        - book_asin
+        - book_tags
+        - book_document_note
+    field_map:
+      highlight_id: id
+      book_id: book_id
+      book_title: book_title
+      author: book_author
+      book_category: book_category
+      book_source_kind: book_source
+      book_source_url: book_source_url
+      book_cover_url: book_cover_image_url
+      book_document_note: book_document_note
+      text: text
+      note: note
+      tags: tags
+      highlighted_at: highlighted_at
+      updated_at: updated
+
+  recent_documents:
+    backend: readwise
+    config_key: readwise
+    fetch_mode: fracta_mcp_gateway
+    mcp_tool: reader_list_documents
+    mcp_server: readwise
+    items_path: results
+    mcp_args:
+      updated_after: "{{watermark_iso}}"
+      limit: "{{page_size}}"
+    field_map:
+      document_id: id
+      title: title
+      author: author
+      url: url
+      location: location
+      updated_at: updated_at
+
+# Tunable extraction parameters (spec §9). Defaults match the algorithm
+# findings; operators can override per environment without code edits.
+extraction_config:
+  commit_threshold: 0.40
+  stage_threshold: 0.30
+  keybert_rank_high: 0.70
+  keybert_rank_medium: 0.50
+  keybert_rank_low: 0.30
+  keybert_top_n: 15
+  keybert_diversity: 0.7
+  spacy_ner_prior: 0.55
+  spacy_np_prior: 0.30
+  np_only_discard: 0.35
+  agreement_bonus_2: 0.15
+  agreement_bonus_3: 0.30
+  type_consistency_bonus: 0.05
+  weak_join_penalty: 0.10
+  mmr_top_k: 8
+  mmr_lambda: 0.7
+  max_input_tokens: 256
+  gliner_threshold: 0.30
+  gliner_labels:
+    - Person
+    - Organisation
+    - Place
+    - Work
+    - Product
+    - Theory
+    - Method
+    - Concept
+    - Tool
