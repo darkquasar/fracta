@@ -40,6 +40,11 @@ data:
     strategy:
       dir: /opt/fracta/strategies
       pool_size: 1
+      # gateway_access wires --gateway-url + --agent-task into the per-request
+      # payload, enabling ctx.mcp.call_tool() from within strategies (e.g.
+      # highlight-distill calling the three concept extractors inline).
+      # Required by any strategy that declares requires.mcp: true.
+      gateway_access: true
 
     ontology:
       schemas:
@@ -72,6 +77,23 @@ spec:
         app: fracta
         component: fracta-gateway
     spec:
+      # Init container copies the image-layer strategies tree into a shared
+      # emptyDir so both the gateway and the strategy-runner sidecar see the
+      # SAME files at /opt/fracta/strategies/. Without this, each container
+      # has its own copy from its image layer — the gateway can read its
+      # binding.yaml but the runner reads a different one. Closes Bug 2
+      # (root fix). Mirrors the existing graph-schema/init pattern.
+      initContainers:
+        - name: stage-strategies
+          image: ghcr.io/darkquasar/fracta:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - "cp -r /opt/fracta/strategies/. /shared-strategies/"
+          volumeMounts:
+            - name: strategies-dir
+              mountPath: /shared-strategies
       containers:
         - name: fracta-gateway
           image: ghcr.io/darkquasar/fracta:latest
@@ -130,6 +152,8 @@ spec:
               mountPath: /workspace
             - name: strategy-socket
               mountPath: /tmp
+            - name: strategies-dir
+              mountPath: /opt/fracta/strategies
 
         - name: strategy-runner
           image: ghcr.io/darkquasar/fracta:latest
@@ -177,6 +201,8 @@ spec:
               mountPath: /tmp
             - name: workspace
               mountPath: /workspace
+            - name: strategies-dir
+              mountPath: /opt/fracta/strategies
       volumes:
         - name: config
           configMap:
@@ -185,6 +211,11 @@ spec:
           persistentVolumeClaim:
             claimName: fracta-workspace
         - name: strategy-socket
+          emptyDir: {}
+        # Shared strategies tree, populated by the stage-strategies init
+        # container from the image layer. Lets the gateway and the runner
+        # see identical strategy files at /opt/fracta/strategies/.
+        - name: strategies-dir
           emptyDir: {}
 ---
 apiVersion: v1

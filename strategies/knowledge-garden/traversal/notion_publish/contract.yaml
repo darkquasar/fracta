@@ -1,0 +1,54 @@
+name: "notion-publish"
+version: "1.0.0"
+description: >
+  Publish the knowledge-garden Concepts, Highlights, and Sources to Notion
+  as a three-database mirror (Sources DB <- Highlights DB <- Concepts DB,
+  linked via RELATION columns). Idempotent via Publication nodes keyed by
+  sink + external_id + content_hash. All Notion tool calls go through
+  ctx.mcp.call_tool directly against the hosted Notion MCP surface.
+tags: [traversal, knowledge-garden, notion]
+params:
+  concept_name:
+    type: str
+    required: false
+    description: "Single concept to publish; omit for batch (top-N by confidence)"
+  notion_concepts_database_id:
+    type: str
+    required: true
+    description: "Notion data_source_id of the Concepts DB (Concept pages)"
+  notion_highlights_database_id:
+    type: str
+    required: true
+    description: "Notion data_source_id of the Highlights DB (one page per Readwise highlight)"
+  notion_sources_database_id:
+    type: str
+    required: true
+    description: "Notion data_source_id of the Sources DB (one page per Readwise book/article)"
+  batch_size:
+    type: int
+    required: false
+    default: 10
+    description: "Number of top-confidence Concepts to publish when concept_name is omitted"
+requires:
+  graph: true
+  # Calls ctx.mcp.call_tool() for every Notion API operation (notion-search,
+  # notion-fetch, notion-create-pages, notion-update-page). Runner refuses
+  # to start if gateway access isn't wired.
+  mcp: true
+  tables: {}
+pinned_backend: notion
+discovery:
+  description: >
+    Reads Concepts, supporting Highlights, and derived Sources from the
+    graph; writes Notion pages via the notion MCP server. Idempotent via
+    Publication nodes (sink + external_id + content_hash) for each of
+    the three sinks: notion:source, notion:highlight, notion:concept.
+  mcp_hints:
+    - tool: "notion.notion-search"
+      purpose: "Lookup an existing Notion page by title (adopt path); verify via notion-fetch + properties.concept_name strict match"
+    - tool: "notion.notion-fetch"
+      purpose: "Strict-match verification of a notion-search hit before adoption"
+    - tool: "notion.notion-create-pages"
+      purpose: "Create new Notion pages when no Publication and no adoptable page exists"
+    - tool: "notion.notion-update-page"
+      purpose: "Update page properties + content (Markdown body via command: replace_content)"

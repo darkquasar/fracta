@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"reflect"
 	"strconv"
@@ -322,14 +323,27 @@ func makeStrategyDescribeHandler(sc strategy.Runner, gc graph.GraphClient, autoP
 
 // loadEffectiveBinding loads a per-strategy binding.yaml (if present in the strategy
 // directory) and merges it with the global binding. Per-strategy keys take precedence.
+//
+// Error classification (Bug 2 surfacing): a missing binding file is a normal,
+// expected case (logged at Debug). Any other ParseBindingFile error (YAML parse
+// failure, permission denied, etc.) is a real problem masquerading as "no binding" —
+// logged at Warn so operators see it in kubectl logs instead of silent fallback.
 func loadEffectiveBinding(sc strategy.Runner, info *strategy.StrategyInfo, globalBinding *contract.BindingSpec) *contract.BindingSpec {
 	if sc == nil || info == nil || info.ContractPath == "" {
 		return globalBinding
 	}
 	strategyDir := filepath.Dir(filepath.Join(sc.StrategyDir(), info.ContractPath))
 	bindingPath := filepath.Join(strategyDir, "binding.yaml")
+	log := fractalog.Component("strategy")
 	localBinding, err := contract.ParseBindingFile(bindingPath)
 	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			log.Debug("loadEffectiveBinding: no per-strategy binding.yaml",
+				"strategy", info.Name, "binding_path", bindingPath)
+		} else {
+			log.Warn("loadEffectiveBinding: failed to parse per-strategy binding.yaml; using global binding",
+				"strategy", info.Name, "binding_path", bindingPath, "error", err)
+		}
 		return globalBinding
 	}
 	return mergeBindings(localBinding, globalBinding)

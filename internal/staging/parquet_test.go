@@ -92,6 +92,24 @@ func TestCoerceValue(t *testing.T) {
 	}
 }
 
+// Bug 9 regression: JSON numbers from json.Decoder.UseNumber() must round-trip
+// as their exact textual form when bound to a VARCHAR column. Without this,
+// a 10-digit Readwise highlight ID (1018941958) gets formatted via %v as
+// scientific notation (1.018941958e+09), corrupting graph keys.
+func TestCoerceValue_VARCHAR_PreservesJSONNumber(t *testing.T) {
+	// Decoded via json.Decoder.UseNumber(), the value arrives as json.Number,
+	// not float64. The VARCHAR coercion must preserve the literal digits.
+	n := json.Number("1018941958")
+	v := CoerceValue("VARCHAR", n)
+	if v.IsNull() {
+		t.Fatalf("expected non-null VARCHAR for json.Number, got null")
+	}
+	got := string(v.ByteArray())
+	if got != "1018941958" {
+		t.Errorf("expected VARCHAR value %q, got %q (Bug 9 regression: scientific notation in graph IDs)", "1018941958", got)
+	}
+}
+
 func TestWriteParquetBasic(t *testing.T) {
 	dir := t.TempDir()
 

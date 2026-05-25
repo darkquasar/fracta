@@ -118,6 +118,10 @@ services:
 
   strategy-runner:
     image: ${FRACTA_IMAGE:-ghcr.io/darkquasar/fracta:latest}
+    # --gateway-url + --agent-task default the inline MCP gateway connection
+    # for strategies that call ctx.mcp.call_tool() (e.g. highlight-distill,
+    # notion-publish). Required when strategy.gateway_access: true in
+    # configs/gateway.yaml. Closes Bug 12.
     command:
       - uv
       - run
@@ -133,6 +137,10 @@ services:
       - falkordb:6379
       - --graph-name
       - fracta_knowledge
+      - --gateway-url
+      - http://gateway:8080
+      - --agent-task
+      - default
     volumes:
       - strategy-socket:/tmp
       - ${PWD}:/workspace:rw

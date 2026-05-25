@@ -263,6 +263,23 @@ The client attachment is identical: both use `RemoteControlPlaneClient` over HTT
 
 <hr />
 
+## Strategy runner gateway plumbing
+
+Strategies that call MCP tools inline (`ctx.mcp.call_tool(...)`) require gateway access from the runner. Since v0.5.2 the Compose scaffold ships this wired by default:
+
+- `deployment/configs/gateway.yaml` declares `strategy.gateway_access: true` — so `strategy_run` invocations include the gateway URL and the calling agent's task in the per-request payload.
+- The `strategy-runner` service in `deployment/docker-compose.yml` boots with `--gateway-url http://gateway:8080 --agent-task default`, providing a fallback gateway connection for strategies that need one before any per-request URL arrives.
+
+If you author a strategy that calls `ctx.mcp.call_tool()`, declare it in `contract.yaml`:
+
+```yaml
+requires:
+  graph: true
+  mcp: true   # runner refuses to start if ctx.mcp would be None
+```
+
+<hr />
+
 ## Next steps
 
 - **Full architecture reference**: [deployment overview](/guides/deployment/overview) (Section 2)

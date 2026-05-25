@@ -74,17 +74,8 @@ Commercial license terms, pricing, and turnaround time are handled case by case.
 
 Per the FSL terms, each release of Fracta automatically converts to the Apache License 2.0 on the second anniversary of its publication. Releases that have crossed that two-year mark may be used under Apache-2.0 like any other permissively-licensed software, with no commercial license required.
 
-## Licensing history
-
-Fracta was originally released under the MIT License from its first commit (`dd8a11d`, 2026-04-12) through commit `90b1864` (2026-05-20). The MIT license is irrevocable for those snapshots; any copies obtained at those revisions remain MIT-licensed in perpetuity.
-
-All commits introduced after `90b1864` — including all new releases of Fracta — are released under FSL-1.1-ALv2.
-
-See [LICENSE-HISTORY.md](https://github.com/darkquasar/fracta/blob/main/LICENSE-HISTORY.md) in the repo for the full timeline.
-
 ## Related files in the repo
 
 - [LICENSE](https://github.com/darkquasar/fracta/blob/main/LICENSE) — the full FSL-1.1-ALv2 text (authoritative)
 - [COMMERCIAL.md](https://github.com/darkquasar/fracta/blob/main/COMMERCIAL.md) — same plain-English guide as this page, kept in sync
-- [LICENSE-HISTORY.md](https://github.com/darkquasar/fracta/blob/main/LICENSE-HISTORY.md) — licensing timeline
 - [NOTICE](https://github.com/darkquasar/fracta/blob/main/NOTICE) — attribution and third-party software notice

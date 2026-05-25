@@ -24,7 +24,7 @@ The rest of this page is the framework reference — authoring paths, directory 
 
 There are two supported ways to create strategies:
 
-1. **Manual filesystem authoring** — create `contract.yaml`, `strategy.py`, and optional `binding.yaml` under `strategies/<domain>/<category>/<slug>/` (e.g. `strategies/security/enrichment/elastic_field_survey/`).
+1. **Manual filesystem authoring** — create `contract.yaml`, `strategy.py`, and optional `binding.yaml` under `strategies/<domain>/<category>/<slug>/` (e.g. `strategies/security/enrichment/splunk_field_survey/`).
 2. **MCP-driven creation** — call `strategy_create` with Python code plus either:
    - `contract` (preferred, YAML string for `contract.yaml`)
    - `metadata` (legacy JSON path)
@@ -47,7 +47,7 @@ strategies/
         binding.yaml       # Optional: maps tables to concrete MCP data sources
 ```
 
-The runner walks `strategies/` recursively on every call and picks up any directory with both `contract.yaml` and `strategy.py`. Nesting depth is up to you — the runner uses `os.walk`, so `strategies/security/enrichment/elastic_field_survey/` works the same as a flatter `strategies/enrichment/elastic_field_survey/`. See [Lifecycle](/strategies/lifecycle) for the full discovery and hot-reload rules.
+The runner walks `strategies/` recursively on every call and picks up any directory with both `contract.yaml` and `strategy.py`. Nesting depth is up to you — the runner uses `os.walk`, so `strategies/security/enrichment/splunk_field_survey/` works the same as a flatter `strategies/enrichment/splunk_field_survey/`. See [Lifecycle](/strategies/lifecycle) for the full discovery and hot-reload rules.
 
 The convention is **domain first, then category**. `<domain>` is your top-level grouping (e.g. `security`, `infra`, `finance`); `<category>` is the strategy type within that domain. The directory layout is purely organizational — a strategy's identity is the `name` field in its `contract.yaml`, not its path.
 

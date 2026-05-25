@@ -1,0 +1,66 @@
+name: "splunk-field-survey"
+version: "1.0.0"
+description: >
+  Survey Splunk indexes and the fields extracted per sourcetype for knowledge
+  graph enrichment. Reads pre-staged index metadata + a `| fieldsummary`
+  field-extraction snapshot to build a schema view of what each index carries.
+tags: [enrichment, splunk, schema-discovery]
+params:
+  index_filter:
+    type: str
+    required: false
+    default: "*"
+    description: "Index name pattern to survey (default: all non-internal indexes)"
+  sample_window:
+    type: str
+    required: false
+    default: "-7d"
+    description: >
+      Search-time window passed to the fieldsummary call. Relative Splunk
+      time expression — keep this short on noisy deploys; `fieldsummary`
+      scales linearly with event count.
+requires:
+  graph: false
+  tables:
+    splunk_indexes:
+      description: "Splunk index metadata (one row per index)"
+      optional: false
+      columns:
+        index:
+          type: VARCHAR
+        event_count:
+          type: VARCHAR
+        size_bytes:
+          type: VARCHAR
+        earliest:
+          type: VARCHAR
+        latest:
+          type: VARCHAR
+    splunk_field_summary:
+      description: "Extracted fields per index/sourcetype (from `| fieldsummary`)"
+      optional: false
+      columns:
+        index:
+          type: VARCHAR
+        sourcetype:
+          type: VARCHAR
+        field_name:
+          type: VARCHAR
+        field_count:
+          type: VARCHAR
+        distinct_count:
+          type: VARCHAR
+pinned_backend: splunk
+discovery:
+  description: >
+    Requires Splunk metadata. The orchestrator must use Splunk MCP tools to
+    pre-stage index information and a per-index fieldsummary slice.
+  mcp_hints:
+    - tool: "splunk.list_indexes"
+      purpose: "Get index names, event counts, size, and time bounds"
+      stage_as: "splunk_indexes"
+    - tool: "splunk.run_search"
+      purpose: >
+        Run `| tstats count where index=<idx> by index sourcetype | head 5000`
+        then `| fieldsummary` to capture extracted fields per sourcetype.
+      stage_as: "splunk_field_summary"

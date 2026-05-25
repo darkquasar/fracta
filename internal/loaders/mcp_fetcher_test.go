@@ -10,6 +10,7 @@ import (
 
 	"github.com/darkquasar/fracta/internal/contract"
 	"github.com/darkquasar/fracta/internal/mcpclient"
+	"github.com/parquet-go/parquet-go"
 )
 
 // mockToolCaller implements mcpclient.ToolCaller for testing.
@@ -213,6 +214,105 @@ func TestMCPFetcher_TypedFields(t *testing.T) {
 		t.Errorf("expected 1 row, got %d", result.RowCount)
 	}
 	verifyParquet(t, result.ParquetPath, 1, []string{"id", "count", "active", "ts"})
+}
+
+// Bug 9 regression: a Readwise-style 10-digit integer ID in a JSON response
+// must land in the VARCHAR column as its exact textual form, not as
+// scientific notation. Before the json.Decoder.UseNumber() switch, decoding
+// produced a float64 which Sprintf("%v", ...) formatted as "1.018941958e+09",
+// corrupting downstream graph keys (e.g. "readwise:1.018941958e+09").
+func TestMCPFetcher_PreservesLargeIntegerIDsInVARCHAR(t *testing.T) {
+	// Raw JSON literal — must go through json.Decoder, not Marshal of a Go int.
+	rawJSON := `{"results":[{"id":1018941958,"name":"alpha"},{"id":2030405060,"name":"beta"}]}`
+
+	caller := &mockToolCaller{
+		result: &mcpclient.ToolResult{Text: rawJSON},
+	}
+	fetcher := NewMCPFetcher(caller)
+
+	dir := t.TempDir()
+	result, err := fetcher.Fetch(context.Background(), MCPFetchOpts{
+		Server:    "readwise",
+		Tool:      "readwise_list_highlights",
+		ItemsPath: "results",
+		Fields: []FieldMapping{
+			{Source: "id", Column: "highlight_id", Type: "VARCHAR"},
+			{Source: "name", Column: "name", Type: "VARCHAR"},
+		},
+		StagingDir: dir,
+		Table:      "recent_highlights",
+		RunID:      "bug9test",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.RowCount != 2 {
+		t.Fatalf("expected 2 rows, got %d", result.RowCount)
+	}
+
+	// Read the parquet back and assert the textual form of the highlight_id column.
+	f, err := os.Open(result.ParquetPath)
+	if err != nil {
+		t.Fatalf("open parquet: %v", err)
+	}
+	defer f.Close()
+	info, err := f.Stat()
+	if err != nil {
+		t.Fatalf("stat: %v", err)
+	}
+	pf, err := parquet.OpenFile(f, info.Size())
+	if err != nil {
+		t.Fatalf("open parquet file: %v", err)
+	}
+	if pf.NumRows() != 2 {
+		t.Fatalf("expected 2 parquet rows, got %d", pf.NumRows())
+	}
+
+	// Read column 0 (highlight_id, after alphabetical sort of fields) raw.
+	// Fields are sorted alphabetically by Column name in BuildSchema:
+	// ["highlight_id", "name"]. We assert the literal string form.
+	schema := pf.Schema()
+	cols := schema.Columns()
+	highlightIDIdx := -1
+	for i, c := range cols {
+		if len(c) > 0 && c[len(c)-1] == "highlight_id" {
+			highlightIDIdx = i
+			break
+		}
+	}
+	if highlightIDIdx < 0 {
+		t.Fatalf("highlight_id column not found in schema: %v", cols)
+	}
+
+	reader := parquet.NewReader(pf)
+	defer reader.Close()
+	rawRows := make([]parquet.Row, 2)
+	n, err := reader.ReadRows(rawRows)
+	if err != nil && err.Error() != "EOF" {
+		t.Fatalf("read rows: %v", err)
+	}
+	if n != 2 {
+		t.Fatalf("expected 2 raw rows, got %d", n)
+	}
+	wantIDs := map[string]bool{"1018941958": false, "2030405060": false}
+	for _, row := range rawRows {
+		var idStr string
+		for _, val := range row {
+			if int(val.Column()) == highlightIDIdx {
+				idStr = string(val.ByteArray())
+				break
+			}
+		}
+		if _, expected := wantIDs[idStr]; !expected {
+			t.Errorf("unexpected or malformed highlight_id %q (Bug 9 regression: scientific notation in graph IDs)", idStr)
+		}
+		wantIDs[idStr] = true
+	}
+	for id, seen := range wantIDs {
+		if !seen {
+			t.Errorf("expected highlight_id %q in parquet output, not found", id)
+		}
+	}
 }
 
 func TestMCPFetcher_InvalidJSON(t *testing.T) {

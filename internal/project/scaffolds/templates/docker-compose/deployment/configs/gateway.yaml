@@ -46,6 +46,10 @@ gateway:
 strategy:
   dir: /opt/fracta/strategies
   pool_size: 1
+  # gateway_access wires --gateway-url + --agent-task into the per-request
+  # payload, enabling ctx.mcp.call_tool() from within strategies. Required
+  # by any strategy that declares requires.mcp: true.
+  gateway_access: true
 
 
 ontology:

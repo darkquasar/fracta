@@ -192,6 +192,22 @@ fracta peek --name hello-k8s
 
 <hr />
 
+## Strategy runner gateway plumbing
+
+Strategies that call MCP tools inline (`ctx.mcp.call_tool(...)`) require gateway access from the runner sidecar. Since v0.5.2 the K8s scaffold ships this wired by default:
+
+1. The gateway ConfigMap (`fracta-gateway-config`) sets `strategy.gateway_access: true` — so `strategy_run` invocations include the gateway URL and the calling agent's task in the per-request payload.
+2. A `stage-strategies` init container mounts a shared `emptyDir` volume at `/shared-strategies/` and copies the image's `/opt/fracta/strategies/` into it. The same volume is mounted at `/opt/fracta/strategies/` on **both** the `fracta-gateway` and `strategy-runner` containers, so they see identical strategy files (closes the v0.5.0 split-tree class of bugs).
+3. The strategy-runner container reads the shared tree on boot and serves requests over the Unix socket the gateway dials.
+
+If you author a strategy that calls `ctx.mcp.call_tool()`, declare it in `contract.yaml`:
+
+```yaml
+requires:
+  graph: true
+  mcp: true   # runner refuses to start if ctx.mcp would be None
+```
+
 ## Full reference
 
 The complete K8s guide covers images, agent pod lifecycle, multi-runtime MCP configs, observability, troubleshooting, and teardown:

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/darkquasar/fracta/internal/contract"
@@ -85,8 +86,14 @@ func parseResponse(text string, opts MCPFetchOpts, singleItem bool) ([]map[strin
 		}
 		return items, nil, nil
 	default: // "json" or ""
+		// Use json.Decoder with UseNumber() so large integer IDs round-trip
+		// as json.Number (preserving exact textual form) instead of float64
+		// (which corrupts them to scientific notation like 1.018941958e+09).
+		// Closes Bug 9 (readwise:1.018941958e+09 graph-key corruption).
+		dec := json.NewDecoder(strings.NewReader(text))
+		dec.UseNumber()
 		var parsed any
-		if err := json.Unmarshal([]byte(text), &parsed); err != nil {
+		if err := dec.Decode(&parsed); err != nil {
 			preview := text
 			if len(preview) > 200 {
 				preview = preview[:200]

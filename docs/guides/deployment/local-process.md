@@ -228,6 +228,19 @@ Or via MCP: `fracta_list()` and `fracta_peek(name="hello-world")`.
 
 <hr />
 
+## Strategy runner gateway plumbing
+
+Local mode runs the gateway and the strategy runner in one process, so the runner can in principle reach the gateway directly. The framework still relies on the per-request `gateway_url` and `agent_task` to be set, which only happens when `strategy.gateway_access: true` is in `fracta.yaml`. Since v0.5.2 the local scaffold ships with that flag enabled by default:
+
+```yaml
+strategy:
+  gateway_access: true   # required for ctx.mcp.call_tool() from strategies
+```
+
+Strategies declaring `requires.mcp: true` (e.g. `highlight-distill`, `notion-publish`) will refuse to start without it.
+
+<hr />
+
 ## Next steps
 
 - **Full local-process reference**: [deployment overview](/guides/deployment/overview) (Section 1)

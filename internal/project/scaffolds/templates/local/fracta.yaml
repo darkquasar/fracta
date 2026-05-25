@@ -60,3 +60,10 @@ agents:
 
 runtime:
   backend: local
+
+strategy:
+  # Local mode runs the gateway + strategy runner in one process. gateway_access
+  # is still required for the per-request payload path used by strategies that
+  # call ctx.mcp.call_tool() (e.g. highlight-distill, notion-publish). Closes
+  # Bug 12 addendum.
+  gateway_access: true

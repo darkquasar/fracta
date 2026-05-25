@@ -12,7 +12,7 @@ Discovery rules:
 - The runner looks for directories containing both `contract.yaml` AND `strategy.py`.
 - Directories starting with `.` or `_` are skipped (`.venv`, `__pycache__`, etc.).
 - `contract.yaml` must contain a `name` field; otherwise the strategy is rejected.
-- Subdirectories are arbitrary — the runner uses `os.walk`, so paths can nest as deep as you want. The convention is **domain first, then category**: `strategies/<domain>/<category>/<slug>/`, e.g. `strategies/security/enrichment/elastic_field_survey/`. Common categories: `enrichment`, `hunt`, `detection`, `correlation`, `traversal`. The directory layout is purely organizational — a strategy's identity comes from the `name` field in its `contract.yaml`, not its path.
+- Subdirectories are arbitrary — the runner uses `os.walk`, so paths can nest as deep as you want. The convention is **domain first, then category**: `strategies/<domain>/<category>/<slug>/`, e.g. `strategies/security/enrichment/splunk_field_survey/`. Common categories: `enrichment`, `hunt`, `detection`, `correlation`, `traversal`. The directory layout is purely organizational — a strategy's identity comes from the `name` field in its `contract.yaml`, not its path.
 
 `binding.yaml` is loaded if present alongside the contract. Its absence does not block discovery — the resolver falls back to semantic-tag auto-resolve. See [Portability](/strategies/portability) for when each path applies.
 
@@ -97,7 +97,7 @@ make docs-gen
 
 This runs `scripts/gen-strategy-catalogue.py`, which writes `.mdx` files into `docs/strategies/catalogue/` and updates the `Catalogue` subgroup in `docs.json`. On push to `main`, the [`strategy-catalogue` GitHub workflow](https://github.com/darkquasar/fracta/blob/main/.github/workflows/strategy-catalogue.yml) regenerates and commits the catalogue automatically. CI also runs `make docs-gen-check` on every PR — a PR that changes a strategy without committing the regenerated catalogue will fail.
 
-The example strategy at [`strategies/_example/security/enrichment/elastic_field_survey/`](https://github.com/darkquasar/fracta/tree/main/strategies/_example/security/enrichment/elastic_field_survey) shows the file shape an author should aim for: contract + strategy + binding + README. Copy it as your starting point.
+The example strategy at [`strategies/_example/security/enrichment/splunk_field_survey/`](https://github.com/darkquasar/fracta/tree/main/strategies/_example/security/enrichment/splunk_field_survey) shows the file shape an author should aim for: contract + strategy + binding + README. Copy it as your starting point.
 
 ## Next
 
