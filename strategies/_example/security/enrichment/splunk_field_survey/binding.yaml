@@ -1,0 +1,53 @@
+# Reference binding for the splunk-field-survey strategy.
+#
+# This file is environment-specific. When you copy this strategy into your
+# own strategies/ tree, edit this binding to match your Splunk setup —
+# config_key, search head URL, search-time window, and any field renames
+# live here.
+#
+# The contract.yaml and strategy.py files are publishable and portable;
+# this binding.yaml is what makes them concrete in *your* environment.
+
+source_bindings:
+
+  splunk_indexes:
+    backend: splunk
+    config_key: splunk               # ← change to your Splunk config key
+    fetch_mode: fracta_mcp_gateway   # gateway pulls directly; LLM never sees the rows
+    mcp_tool: list_indexes
+    mcp_server: splunk               # ← change to your registered MCP server name
+    items_path: indexes
+    mcp_args:
+      pattern: "{{index_filter}}"    # contract param threaded into the tool call
+    field_map:
+      index: name
+      event_count: totalEventCount
+      size_bytes: currentDBSizeMB
+      earliest: minTime
+      latest: maxTime
+
+  splunk_field_summary:
+    backend: splunk
+    config_key: splunk
+    fetch_mode: fracta_mcp_gateway
+    mcp_tool: run_search
+    mcp_server: splunk
+    items_path: results
+    mcp_args:
+      # `| tstats` bounds the search to recent events; `| fieldsummary` is
+      # the canonical "what fields exist in this slice" report. Operators
+      # typically pin earliest_time/latest_time at the search head; the
+      # `sample_window` contract param is the override.
+      search: >
+        | tstats count where index={{index_filter}} earliest={{sample_window}}
+            by index sourcetype
+        | head 5000
+        | fieldsummary
+      earliest_time: "{{sample_window}}"
+      latest_time: "now"
+    field_map:
+      index: index
+      sourcetype: sourcetype
+      field_name: field
+      field_count: count
+      distinct_count: distinct_count
