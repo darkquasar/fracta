@@ -371,6 +371,35 @@ fracta config mcp auth status [server]     Show validity and expiry of stored to
 fracta config mcp auth export <server>     Render credentials (env / k8s-secret / files)
 ```
 
+### The `--config <yaml>` flag (required for in-cluster OAuth)
+
+`fracta config mcp auth login` and `fracta config mcp auth export` read the
+target server's definition from a YAML file rather than introspecting a
+running gateway. Pass `--config <path>` to point them at one.
+
+- In deployments where the in-cluster gateway ConfigMap is the source of
+  truth (Kubernetes, Docker Compose), the host's `fracta.yaml` typically
+  describes only the thin-client control-plane connection — it does NOT
+  list the OAuth servers. Without `--config`, the CLI errors with
+  `server "<name>" not found in config`.
+- The recommended pattern is a tiny **throwaway** `<server>-login.yaml` per
+  server, describing only the OAuth endpoint shape (no token file paths).
+  The CLI uses it to drive the OAuth dance; the tokens land in your OS
+  keyring, and `fracta config mcp auth export --format k8s-secret --config
+  <server>-login.yaml` renders them as a Kubernetes Secret you can apply.
+
+```bash
+# Login (opens browser, writes tokens to OS keyring)
+fracta config mcp auth login notion --config ./notion-login.yaml
+
+# Export as a k8s Secret for the gateway to consume
+fracta config mcp auth export notion \
+  --format k8s-secret --config ./notion-login.yaml \
+  > notion-oauth-secret.yaml
+```
+
+See [Reading Garden — Setup](/patterns/reading-garden/setup#step-1--wire-the-hosted-mcps-through-fractas-native-oauth) for an end-to-end worked example covering both Notion and Readwise.
+
 ## Authoring contract
 
 The catalog at `<root>/mcp-servers/` is **operator-owned, git-tracked

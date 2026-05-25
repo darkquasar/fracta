@@ -104,7 +104,7 @@ An agent calls `strategy_run(name="my-strategy")`. The gateway reads the binding
 
 ## A complete worked example in the repo
 
-For a runnable three-file strategy you can copy and adapt, see [`strategies/_example/security/enrichment/elastic_field_survey/`](https://github.com/darkquasar/fracta/tree/main/strategies/_example/security/enrichment/elastic_field_survey) in the repo. It surveys Elasticsearch indices and field mappings, and ships with a reference `binding.yaml` you can edit to point at your own ES instance. The `_example/` directory is skipped by the runner (directories starting with `_` are ignored on discovery) — copy a strategy out into a real `<domain>/<category>/` path under `strategies/` to make it live.
+For a runnable three-file strategy you can copy and adapt, see [`strategies/_example/security/enrichment/splunk_field_survey/`](https://github.com/darkquasar/fracta/tree/main/strategies/_example/security/enrichment/splunk_field_survey) in the repo. It surveys Splunk indexes and the fields extracted per sourcetype, and ships with a reference `binding.yaml` you can edit to point at your own Splunk MCP server. The `_example/` directory is skipped by the runner (directories starting with `_` are ignored on discovery) — copy a strategy out into a real `<domain>/<category>/` path under `strategies/` to make it live.
 
 ## Next
 

@@ -223,20 +223,20 @@ requires:
 ### Pinned-backend contract
 
 ```yaml
-name: "elastic-field-survey"
+name: "splunk-field-survey"
 version: "1.0.0"
-description: "Survey Elasticsearch indices and field mappings"
-tags: [enrichment, elasticsearch, schema-discovery]
+description: "Survey Splunk indexes and extracted fields per sourcetype"
+tags: [enrichment, splunk, schema-discovery]
 params:
-  index_pattern: { type: str, required: false, default: "*" }
-pinned_backend: elasticsearch
+  index_filter: { type: str, required: false, default: "*" }
+pinned_backend: splunk
 requires:
   graph: false
   tables:
-    es_indices:
+    splunk_indexes:
       description: "Index metadata"
       columns:
         index: { type: VARCHAR }
-        docs: { type: VARCHAR }
-        size: { type: VARCHAR }
+        event_count: { type: VARCHAR }
+        size_bytes: { type: VARCHAR }
 ```
