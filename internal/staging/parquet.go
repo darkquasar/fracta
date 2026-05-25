@@ -82,6 +82,13 @@ func coerceString(val any) parquet.Value {
 	switch v := val.(type) {
 	case string:
 		return parquet.ByteArrayValue([]byte(v))
+	case json.Number:
+		// Preserve the exact textual form of JSON numbers. Without this,
+		// large integer IDs decoded by json.Decoder.UseNumber() would still
+		// be safe (json.Number's underlying type is string), but this
+		// explicit case documents the contract: VARCHAR columns receive
+		// the raw number string, never scientific notation. (Bug 9.)
+		return parquet.ByteArrayValue([]byte(string(v)))
 	default:
 		rv := reflect.ValueOf(val)
 		if rv.IsValid() && (rv.Kind() == reflect.Slice || rv.Kind() == reflect.Map) {

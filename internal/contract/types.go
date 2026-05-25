@@ -25,7 +25,11 @@ type TableSpec struct {
 
 // RequiresSpec declares what a strategy needs at runtime.
 type RequiresSpec struct {
-	Graph   bool                 `yaml:"graph"`
+	Graph bool `yaml:"graph"`
+	// MCP indicates the strategy calls ctx.mcp.call_tool() inline. When true,
+	// the runner refuses to start if ctx.mcp would be None (gateway access
+	// not configured). Closes Bug 10: silent None instead of loud failure.
+	MCP     bool                 `yaml:"mcp,omitempty"`
 	Sources []string             `yaml:"sources,omitempty"`
 	Tables  map[string]TableSpec `yaml:"tables,omitempty"`
 }
