@@ -58,12 +58,76 @@ def _try_import_falkordb():
         return None
 
 
+def _invalidate_sibling_modules(strategy_path):
+    """Pop sibling .py files from sys.modules before reloading a strategy.
+
+    Strategies often have helpers next to strategy.py (render.py, merge.py).
+    Those siblings get imported into sys.modules as top-level names — so when
+    the strategy is reloaded (e.g. between strategy_run invocations on a
+    long-lived runner), the helper modules stay cached and operator in-place
+    edits to them are invisible. Walk the strategy directory and remove every
+    sibling Python file's module entry before reloading. Closes Bug 22.
+    """
+    import sys
+
+    strategy_dir = os.path.dirname(os.path.abspath(strategy_path))
+    try:
+        entries = os.listdir(strategy_dir)
+    except OSError:
+        return
+    for entry in entries:
+        if not entry.endswith(".py"):
+            continue
+        if entry in ("__init__.py", "strategy.py"):
+            continue
+        mod_name = entry[:-3]
+        sys.modules.pop(mod_name, None)
+
+
 def load_strategy_module(path):
-    """Load a Python module from a file path."""
+    """Load a Python module from a file path.
+
+    Before loading, evict sibling helper modules from sys.modules so live
+    edits to render.py / merge.py / etc. take effect on the next run.
+    """
+    _invalidate_sibling_modules(path)
     spec = importlib.util.spec_from_file_location("strategy_mod", path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
+
+
+def _wrap_graph_with_execute_alias(graph):
+    """Attach a deprecated graph.execute alias forwarding to graph.query.
+
+    The FalkorDB Python SDK's Graph object only exposes .query(). Some
+    older example strategies were authored against a hypothetical .execute()
+    method that never shipped — this alias lets them run while emitting a
+    DeprecationWarning so authors notice and migrate. Closes Bug 11 back-compat.
+    """
+    if graph is None or hasattr(graph, "_fracta_execute_aliased"):
+        return graph
+    import warnings
+
+    original_query = graph.query
+
+    def _execute(*args, **kwargs):
+        warnings.warn(
+            "Graph.execute() is deprecated; use Graph.query() instead. "
+            "This alias is provided for backward compatibility with older "
+            "strategy code and will be removed in a future release.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return original_query(*args, **kwargs)
+
+    try:
+        graph.execute = _execute
+        graph._fracta_execute_aliased = True
+    except (AttributeError, TypeError):
+        # Some graph implementations forbid attribute assignment; skip silently.
+        pass
+    return graph
 
 
 def discover_strategies(strategy_dir):
@@ -467,12 +531,35 @@ def handle_run(strategy_dir, name, params, graph_client, graph_name="fracta_know
     graph = None
     if graph_client is not None:
         graph = graph_client.select_graph(graph_name)
+        graph = _wrap_graph_with_execute_alias(graph)
 
     # Create MCP gateway client if both URL and task are available
     mcp_client = None
     if gateway_url and agent_task:
         from fracta_strategies.mcp_client import MCPGatewayClient
         mcp_client = MCPGatewayClient(gateway_url, agent_task)
+
+    # Bug 10: enforce requires.mcp at load time. Refuse to start a strategy
+    # that declares requires.mcp: true when mcp_client is None — that path
+    # silently passed None and failed per-call mid-run, hiding the root cause
+    # (gateway_access not configured or runner not wired with --gateway-url).
+    contract_path = os.path.join(strategy_dir, target["contract_path"])
+    with open(contract_path, "r") as f:
+        contract_for_requires = yaml.safe_load(f) or {}
+    requires_mcp = (
+        bool(contract_for_requires.get("requires", {}).get("mcp", False))
+    )
+    if requires_mcp and mcp_client is None:
+        db.close()
+        return {
+            "status": "error",
+            "error": (
+                f"Strategy '{name}' declares requires.mcp: true but ctx.mcp is None. "
+                "Configure strategy.gateway_access: true in the gateway config, and "
+                "ensure the strategy runner is started with --gateway-url and "
+                "--agent-task (or that they arrive in the per-request payload)."
+            ),
+        }
 
     ctx = StrategyContext(
         graph=graph,
