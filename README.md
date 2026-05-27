@@ -226,7 +226,6 @@ Requires Go 1.25+. See [Building from source](docs/development/building.md) for 
 Fracta is released under the **Functional Source License v1.1 with Apache License 2.0 future grant** ([FSL-1.1-ALv2](./LICENSE)).
 
 - **Free for internal use** by any organization — startups, enterprises, charities, research institutions. Run it, modify it, build on top of it, integrate it with your stack.
-- **Commercial license required** for offering Fracta (or a fork/derivative) as a hosted product or managed service, or for productizing it as a branded consulting offering. See [COMMERCIAL.md](./COMMERCIAL.md) for the full guide and how to request a license.
 - **Auto-converts to Apache-2.0** two years after each release, per the standard FSL terms.
 
-For commercial licensing questions: Diego Perez — <diego.perez@quasarops.com> / <https://www.linkedin.com/in/diegope/>.
+<diego.perez@quasarops.com>
