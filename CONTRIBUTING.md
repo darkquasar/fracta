@@ -16,7 +16,7 @@ Fracta (or a derivative) as a hosted commercial product or service
 competing with the project, until each release's two-year anniversary
 has passed.
 
-See [LICENSE](./LICENSE), [COMMERCIAL.md](./COMMERCIAL.md), and the
+See [LICENSE](./LICENSE), [USE.md](./USE.md), and the
 [Licensing docs page](https://fracta.quasarops.com/docs/introduction/licensing)
 for the full picture.
 
@@ -164,10 +164,8 @@ reach out: <diego.perez@quasarops.com>.
 
 ## Questions
 
-For licensing questions (including whether your intended use of Fracta
-requires a commercial license), see
-[COMMERCIAL.md](./COMMERCIAL.md) or contact Diego Perez
-(<diego.perez@quasarops.com>,
-<https://www.linkedin.com/in/diegope/>).
+For licensing questions or anything else about how you'd like to use
+Fracta, see [USE.md](./USE.md) or reach out:
+<diego.perez@quasarops.com>.
 
 For everything else, open an issue or a discussion on GitHub.
