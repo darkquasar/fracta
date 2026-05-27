@@ -73,17 +73,6 @@ func (g *e2eGateway) toolCount(name string) int {
 	return len(g.servers[name])
 }
 
-func (g *e2eGateway) wasUnregistered(name string) bool {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	for _, n := range g.unregistered {
-		if n == name {
-			return true
-		}
-	}
-	return false
-}
-
 // e2eGraph is a no-op graph client for E2E tests.
 type e2eGraph struct{}
 

@@ -10,50 +10,6 @@ import (
 	"github.com/darkquasar/fracta/internal/strategy"
 )
 
-const stagingSchema = `
-CREATE TABLE IF NOT EXISTS staging_runs (
-    id                   TEXT PRIMARY KEY,
-    strategy_name        TEXT NOT NULL,
-    params_json          TEXT NOT NULL,
-    params_fp            TEXT NOT NULL,
-    status               TEXT NOT NULL DEFAULT 'created',
-    error_json           TEXT,
-    result_json          TEXT,
-    trace_json           TEXT,
-    resume_count         INTEGER DEFAULT 0,
-    recovered_at         TEXT,
-    execution_claimed_at TEXT,
-    created_at           TEXT NOT NULL,
-    updated_at           TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS staging_run_tables (
-    run_id               TEXT NOT NULL REFERENCES staging_runs(id) ON DELETE CASCADE,
-    table_name           TEXT NOT NULL,
-    fetch_mode           TEXT NOT NULL,
-    required             INTEGER NOT NULL DEFAULT 1,
-    status               TEXT NOT NULL DEFAULT 'pending',
-    partial              INTEGER NOT NULL DEFAULT 0,
-    parquet_path         TEXT,
-    row_count            INTEGER DEFAULT 0,
-    bytes_staged         INTEGER DEFAULT 0,
-    pages_completed      INTEGER DEFAULT 0,
-    total_estimate       INTEGER DEFAULT 0,
-    error_json           TEXT,
-    fetch_plan_json      TEXT,
-    retry_count          INTEGER DEFAULT 0,
-    last_offset          INTEGER DEFAULT 0,
-    last_cursor          TEXT,
-    last_error_at        TEXT,
-    resumed_from_restart INTEGER DEFAULT 0,
-    started_at           TEXT,
-    completed_at         TEXT,
-    PRIMARY KEY (run_id, table_name)
-);
-
-CREATE INDEX IF NOT EXISTS idx_staging_runs_status ON staging_runs(status);
-`
-
 // StagingRunStore implements strategy.StagingRunStore using SQLite.
 type StagingRunStore struct {
 	db *sql.DB

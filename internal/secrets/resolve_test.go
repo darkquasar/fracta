@@ -19,8 +19,7 @@ func TestResolve_Value(t *testing.T) {
 }
 
 func TestResolve_Env(t *testing.T) {
-	os.Setenv("TEST_SECRET_RESOLVE", "from-env")
-	defer os.Unsetenv("TEST_SECRET_RESOLVE")
+	t.Setenv("TEST_SECRET_RESOLVE", "from-env")
 
 	got, err := Resolve(&config.SecretValue{Env: "TEST_SECRET_RESOLVE"})
 	if err != nil {
@@ -32,7 +31,9 @@ func TestResolve_Env(t *testing.T) {
 }
 
 func TestResolve_EnvUnset(t *testing.T) {
-	os.Unsetenv("DEFINITELY_UNSET_SECRET")
+	if err := os.Unsetenv("DEFINITELY_UNSET_SECRET"); err != nil {
+		t.Fatalf("unsetenv: %v", err)
+	}
 	_, err := Resolve(&config.SecretValue{Env: "DEFINITELY_UNSET_SECRET"})
 	if err == nil {
 		t.Fatal("expected error for unset env var")

@@ -106,7 +106,7 @@ func TestStagingSession_IDFormat(t *testing.T) {
 	}
 	// Should be hex characters only
 	for _, c := range s.ID {
-		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')) {
+		if (c < '0' || c > '9') && (c < 'a' || c > 'f') {
 			t.Errorf("ID contains non-hex char %q", string(c))
 		}
 	}

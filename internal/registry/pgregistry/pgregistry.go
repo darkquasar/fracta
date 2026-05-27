@@ -76,7 +76,6 @@ func (r *PgRegistry) ListServers(ctx context.Context, filter registry.ServerFilt
 	if filter.ProxyEnabled != nil {
 		conditions = append(conditions, fmt.Sprintf("proxy_enabled = $%d", argIdx))
 		args = append(args, *filter.ProxyEnabled)
-		argIdx++
 	}
 	if len(conditions) > 0 {
 		query += " WHERE " + strings.Join(conditions, " AND ")
@@ -250,7 +249,6 @@ func (r *PgRegistry) ListTools(ctx context.Context, filter registry.ToolFilter) 
 	if filter.Enabled != nil {
 		conditions = append(conditions, fmt.Sprintf("enabled = $%d", argIdx))
 		args = append(args, *filter.Enabled)
-		argIdx++
 	}
 	if len(conditions) > 0 {
 		query += " WHERE " + strings.Join(conditions, " AND ")
@@ -331,7 +329,6 @@ func (r *PgRegistry) ListAuditLog(ctx context.Context, filter registry.AuditFilt
 	if filter.ResourceName != "" {
 		conditions = append(conditions, fmt.Sprintf("resource_name = $%d", argIdx))
 		args = append(args, filter.ResourceName)
-		argIdx++
 	}
 	if len(conditions) > 0 {
 		query += " WHERE " + strings.Join(conditions, " AND ")

@@ -339,23 +339,6 @@ func (m *mockMailbox) messagesTo(to string) []string {
 	return result
 }
 
-// --- Test helpers ---
-
-func makePayload(t *testing.T) json.RawMessage {
-	t.Helper()
-	p := queue.MissionPayload{
-		Task:        "root task",
-		Model:       "claude-sonnet-4-5-20250929",
-		RuntimeType: "claude",
-		Backend:     "memory",
-	}
-	b, err := json.Marshal(p)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return b
-}
-
 type testHarness struct {
 	objStore  *mockObjectiveStore
 	propStore *mockProposalStore

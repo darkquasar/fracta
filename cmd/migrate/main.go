@@ -15,7 +15,11 @@ func main() {
 		addr = os.Args[1]
 	}
 	client := graph.NewFalkorDBClient(addr, graph.WithGraphName("fracta_knowledge"))
-	defer client.Close()
+	defer func() {
+		if err := client.Close(); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: close client: %v\n", err)
+		}
+	}()
 
 	ctx := context.Background()
 	if err := client.Ping(ctx); err != nil {

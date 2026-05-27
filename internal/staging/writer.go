@@ -11,7 +11,12 @@ import (
 // Each WriteRows() call buffers data; Flush() writes a row group.
 // Close() finalizes the file.
 type StreamingParquetWriter struct {
-	writer *parquet.Writer
+	// TODO: migrate to parquet.GenericWriter[T] once the row type is
+	// fixed across the staging pipeline. parquet.Writer is deprecated
+	// but still functional; the generic API requires a concrete row
+	// schema which we don't have today (rows arrive as parquet.Row
+	// slices from heterogeneous strategy backends).
+	writer *parquet.Writer //nolint:staticcheck // SA1019: see TODO above
 	file   *os.File
 	schema *parquet.Schema
 	rows   int64
@@ -61,7 +66,9 @@ func (w *StreamingParquetWriter) Flush() error {
 // row group, then writes the footer). Also closes the underlying file.
 func (w *StreamingParquetWriter) Close() error {
 	if err := w.writer.Close(); err != nil {
-		w.file.Close()
+		if cerr := w.file.Close(); cerr != nil {
+			return fmt.Errorf("close writer: %w (and close file: %v)", err, cerr)
+		}
 		return fmt.Errorf("close writer: %w", err)
 	}
 	return w.file.Close()

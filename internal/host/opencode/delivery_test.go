@@ -290,7 +290,10 @@ func TestHostInterface_Compliance(t *testing.T) {
 	var _ host.Host = Host{}
 
 	h := Host{}
-	h.Capabilities()
+	caps := h.Capabilities()
+	if !caps.Stream || !caps.StructuredEvents {
+		t.Fatalf("opencode host should advertise Stream and StructuredEvents: %+v", caps)
+	}
 	h.Bootstrap("t", "main", "contract")
 	h.BuildBatchCommand("prompt", "model", "")
 	h.BuildBatchCommand("prompt", "", "token")

@@ -81,9 +81,18 @@ func TestAttachFile_ComponentTag(t *testing.T) {
 func TestAttachFile_RelativePath(t *testing.T) {
 	dir := t.TempDir()
 	// Change to temp dir so relative path resolves there.
-	orig, _ := os.Getwd()
-	defer os.Chdir(orig)
-	os.Chdir(dir)
+	orig, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd: %v", err)
+	}
+	defer func() {
+		if err := os.Chdir(orig); err != nil {
+			t.Errorf("restore cwd: %v", err)
+		}
+	}()
+	if err := os.Chdir(dir); err != nil {
+		t.Fatalf("chdir %s: %v", dir, err)
+	}
 
 	if err := AttachFile("relative.log", ""); err != nil {
 		t.Fatalf("AttachFile: %v", err)

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"text/tabwriter"
-	"time"
 
 	"github.com/darkquasar/fracta/internal/cpapi"
 	"github.com/spf13/cobra"
@@ -65,18 +64,4 @@ func runList(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
-}
-
-func relativeTime(ts time.Time) string {
-	delta := time.Since(ts)
-	if delta < time.Minute {
-		return "just now"
-	}
-	if delta < time.Hour {
-		return fmt.Sprintf("%d minutes ago", int(delta.Minutes()))
-	}
-	if delta < 24*time.Hour {
-		return fmt.Sprintf("%d hours ago", int(delta.Hours()))
-	}
-	return ts.Format(time.RFC3339)
 }

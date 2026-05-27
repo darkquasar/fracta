@@ -232,7 +232,11 @@ func (rb *RemoteBus) post(batch []Event) error {
 	if err != nil {
 		return fmt.Errorf("post events: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			rb.log.Warn("close response body", "err", err)
+		}
+	}()
 
 	if resp.StatusCode != http.StatusAccepted && resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("unexpected status: %d", resp.StatusCode)

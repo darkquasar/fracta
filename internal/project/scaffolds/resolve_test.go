@@ -16,7 +16,11 @@ func TestResolveSource_Empty(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ResolveSource: %v", err)
 	}
-	defer src.Close()
+	defer func() {
+		if err := src.Close(); err != nil {
+			t.Errorf("close source: %v", err)
+		}
+	}()
 	if _, ok := src.(*embeddedSource); !ok {
 		t.Errorf("got %T, want *embeddedSource", src)
 	}
@@ -32,7 +36,11 @@ func TestResolveSource_Path(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ResolveSource: %v", err)
 	}
-	defer src.Close()
+	defer func() {
+		if err := src.Close(); err != nil {
+			t.Errorf("close source: %v", err)
+		}
+	}()
 	if _, ok := src.(*pathSource); !ok {
 		t.Errorf("got %T, want *pathSource", src)
 	}
@@ -55,7 +63,11 @@ func TestResolveSource_Github(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ResolveSource: %v", err)
 	}
-	defer src.Close()
+	defer func() {
+		if err := src.Close(); err != nil {
+			t.Errorf("close source: %v", err)
+		}
+	}()
 	if _, ok := src.(*githubSource); !ok {
 		t.Errorf("got %T, want *githubSource", src)
 	}
@@ -76,7 +88,11 @@ func TestResolveSource_Https(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ResolveSource: %v", err)
 	}
-	defer src.Close()
+	defer func() {
+		if err := src.Close(); err != nil {
+			t.Errorf("close source: %v", err)
+		}
+	}()
 	if _, ok := src.(*httpsSource); !ok {
 		t.Errorf("got %T, want *httpsSource", src)
 	}

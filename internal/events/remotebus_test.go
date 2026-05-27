@@ -26,7 +26,9 @@ func TestRemoteBus_PostsBatchOnFull(t *testing.T) {
 		received = append(received, req)
 		mu.Unlock()
 		w.WriteHeader(http.StatusAccepted)
-		w.Write([]byte(`{"accepted":` + fmt.Sprintf("%d", len(req.Events)) + `,"dropped":0}`))
+		if _, err := w.Write([]byte(`{"accepted":` + fmt.Sprintf("%d", len(req.Events)) + `,"dropped":0}`)); err != nil {
+			t.Errorf("write response: %v", err)
+		}
 	}))
 	defer srv.Close()
 
@@ -71,7 +73,9 @@ func TestRemoteBus_FlushOnClose(t *testing.T) {
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req ingestRequest
-		json.NewDecoder(r.Body).Decode(&req)
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			t.Errorf("decode request: %v", err)
+		}
 		mu.Lock()
 		received = append(received, req)
 		mu.Unlock()

@@ -131,7 +131,11 @@ func Fetch(ctx context.Context, projectRoot string, opts FetchOpts) (*FetchResul
 	}
 	// Best-effort cleanup of any prior staging dir before we start.
 	_ = os.RemoveAll(staging)
-	defer os.RemoveAll(staging)
+	defer func() {
+		if err := os.RemoveAll(staging); err != nil {
+			fractalog.Component("mcpcatalog").Warn("cleanup staging dir", "path", staging, "err", err)
+		}
+	}()
 
 	if err := os.MkdirAll(staging, 0o755); err != nil {
 		return nil, fmt.Errorf("mcpcatalog: mkdir staging: %w", err)
@@ -350,14 +354,14 @@ func rewriteStagedCatalogYAML(staging string, remote, local *Catalog) error {
 	type entry struct{ ID, Path string }
 	var rows []entry
 	for _, s := range remote.Servers {
-		rows = append(rows, entry{s.ID, s.Path})
+		rows = append(rows, entry(s))
 		seen[s.ID] = true
 	}
 	for _, s := range local.Servers {
 		if seen[s.ID] {
 			continue
 		}
-		rows = append(rows, entry{s.ID, s.Path})
+		rows = append(rows, entry(s))
 	}
 
 	var buf strings.Builder
@@ -443,6 +447,7 @@ func ensureCatalogGitignore(catRoot string) error {
 
 // writeFile creates parents and writes content atomically (temp+rename).
 func writeFile(path string, content []byte) error {
+	log := fractalog.Component("mcpcatalog")
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
@@ -451,18 +456,26 @@ func writeFile(path string, content []byte) error {
 		return err
 	}
 	tmpName := tmp.Name()
+	cleanup := func(cause string) {
+		if cerr := tmp.Close(); cerr != nil {
+			log.Warn("close temp file", "path", tmpName, "cause", cause, "err", cerr)
+		}
+		if rerr := os.Remove(tmpName); rerr != nil {
+			log.Warn("remove temp file", "path", tmpName, "cause", cause, "err", rerr)
+		}
+	}
 	if _, err := io.Copy(tmp, strings.NewReader(string(content))); err != nil {
-		tmp.Close()
-		os.Remove(tmpName)
+		cleanup("copy failed")
 		return err
 	}
 	if err := tmp.Sync(); err != nil {
-		tmp.Close()
-		os.Remove(tmpName)
+		cleanup("sync failed")
 		return err
 	}
 	if err := tmp.Close(); err != nil {
-		os.Remove(tmpName)
+		if rerr := os.Remove(tmpName); rerr != nil {
+			log.Warn("remove temp file", "path", tmpName, "cause", "close failed", "err", rerr)
+		}
 		return err
 	}
 	return os.Rename(tmpName, path)

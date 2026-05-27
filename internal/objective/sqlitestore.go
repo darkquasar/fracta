@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/darkquasar/fracta/internal/fractalog"
 )
 
 // SQLiteStore implements ObjectiveStore backed by SQLite.
@@ -155,7 +157,11 @@ func (s *SQLiteStore) ListByStatus(ctx context.Context, status ObjectiveStatus) 
 	if err != nil {
 		return nil, fmt.Errorf("objective sqlitestore: list by status: %w", err)
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			fractalog.Component("objective").Warn("close rows", "err", err)
+		}
+	}()
 
 	var result []*Objective
 	for rows.Next() {

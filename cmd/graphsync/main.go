@@ -23,8 +23,16 @@ func main() {
 
 	src := graph.NewFalkorDBClient(srcAddr, graph.WithGraphName("fracta_knowledge"))
 	dst := graph.NewFalkorDBClient(dstAddr, graph.WithGraphName("fracta_knowledge"))
-	defer src.Close()
-	defer dst.Close()
+	defer func() {
+		if err := src.Close(); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: close source client: %v\n", err)
+		}
+	}()
+	defer func() {
+		if err := dst.Close(); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: close target client: %v\n", err)
+		}
+	}()
 
 	ctx := context.Background()
 	for _, c := range []struct {

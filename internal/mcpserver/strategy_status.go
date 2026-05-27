@@ -18,17 +18,6 @@ const (
 	StatusRetired     = "retired"
 )
 
-// strategyVersionInfo holds the fields returned by the status resolution query.
-type strategyVersionInfo struct {
-	Name        string
-	Version     string
-	Status      string
-	RunCount    int
-	Reliability float64
-	Composite   float64
-	LastRunAt   string // ISO 8601 or empty
-}
-
 // resolveEffectiveStatus queries the StrategyVersion node and applies lazy
 // status transitions. It returns the effective status after any auto-transitions.
 //

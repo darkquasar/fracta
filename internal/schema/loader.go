@@ -195,10 +195,7 @@ func loadNodeDir(fsys fs.FS, dir, expectedLayer string, reg *SchemaRegistry) err
 			}
 		}
 		for _, yi := range yn.Indexes {
-			nt.Indexes = append(nt.Indexes, IndexDef{
-				Properties: yi.Properties,
-				Type:       yi.Type,
-			})
+			nt.Indexes = append(nt.Indexes, IndexDef(yi))
 		}
 		reg.Nodes[yn.Label] = nt
 	}

@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/darkquasar/fracta/internal/cpapi"
-	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -304,7 +303,3 @@ func TestParityErrorSurface(t *testing.T) {
 // makeToolRequest and textContent are defined in server_test.go in this package.
 // Since they're in the same test package, they're available here.
 
-// makeCallToolRequest is a typed wrapper for readability in parity tests.
-func makeCallToolRequest(params map[string]interface{}) mcp.CallToolRequest {
-	return makeToolRequest(params)
-}

@@ -330,12 +330,8 @@ type addPlan struct {
 	actions []addAction
 }
 
-func planAdd(root string, entry *mcpcatalog.Entry, mode scaffolds.Kind, variant string, force bool) (*addPlan, error) {
-	return planAddWithTargets(root, entry, mode, variant, force, addTargets{})
-}
-
-// planAddWithTargets is the standalone-capable form of planAdd. Empty fields
-// in targets fall back to the project-root convention. Used by runConfigMcpAdd
+// planAddWithTargets builds the plan for `config mcp add`. Empty fields in
+// targets fall back to the project-root convention. Used by runConfigMcpAdd
 // after spec-49 added the --config / --compose-file / --k8s-manifest-dir flags.
 func planAddWithTargets(root string, entry *mcpcatalog.Entry, mode scaffolds.Kind, variant string, force bool, targets addTargets) (*addPlan, error) {
 	fractaYAMLPath := targets.fractaYAML

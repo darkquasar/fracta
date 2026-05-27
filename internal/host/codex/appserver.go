@@ -13,8 +13,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/coder/websocket"
+
 	"github.com/darkquasar/fracta/internal/host"
-	"nhooyr.io/websocket"
 )
 
 // Verify AppServerSession implements host.StreamSession at compile time.
@@ -49,12 +50,6 @@ type threadStartedParams struct {
 	Thread struct {
 		ID string `json:"id"`
 	} `json:"thread"`
-}
-
-// turnCompletedParams is the params for a turn/completed notification.
-type turnCompletedParams struct {
-	ThreadID string `json:"threadId"`
-	TurnID   string `json:"turnId"`
 }
 
 // agentMessageDeltaParams is the params for an item/agentMessage/delta notification.

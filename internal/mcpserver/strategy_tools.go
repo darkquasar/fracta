@@ -759,9 +759,10 @@ func makeStrategyRunHandler(
 		}
 
 		// Emit execution outcome event.
-		if status == "complete" {
+		switch status {
+		case "complete":
 			emitStrategyEvent(bus, "run_complete", "success", "", name, nil)
-		} else if status == "error" {
+		case "error":
 			emitStrategyEvent(bus, "run_complete", "failure", "", name, map[string]string{
 				"phase": "execution",
 			})
@@ -980,11 +981,12 @@ func handleRunReentry(
 		}
 
 		// Emit execution outcome event.
-		if status == "complete" {
+		switch status {
+		case "complete":
 			log.Info("staging.run.complete",
 				"run_id", runID, "strategy", run.StrategyName)
 			emitStrategyEvent(bus, "run_complete", "success", runID, run.StrategyName, nil)
-		} else if status == "error" {
+		case "error":
 			emitStrategyEvent(bus, "run_complete", "failure", runID, run.StrategyName, map[string]string{
 				"phase": "execution",
 			})
@@ -1173,13 +1175,14 @@ func buildPendingResponse(run *strategy.StagingRun) *strategyRunResponse {
 func buildManifestFromRun(run *strategy.StagingRun, sc strategy.Runner) strategy.StagingManifest {
 	manifest := make(strategy.StagingManifest)
 	for tableName, ts := range run.Tables {
-		if ts.Status == strategy.TableStatusStaged {
+		switch ts.Status {
+		case strategy.TableStatusStaged:
 			manifest[tableName] = strategy.StagingManifestEntry{
 				Staged:      true,
 				ParquetPath: ts.ParquetPath,
 				Partial:     ts.Partial,
 			}
-		} else if ts.Status == strategy.TableStatusSkipped {
+		case strategy.TableStatusSkipped:
 			manifest[tableName] = strategy.StagingManifestEntry{
 				Staged: false,
 			}
@@ -1490,7 +1493,7 @@ func extractKeywords(text string) []string {
 		"this": true, "that": true, "are": true, "was": true, "do": true, "has": true,
 	}
 	words := strings.FieldsFunc(strings.ToLower(text), func(r rune) bool {
-		return !((r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '_' || r == '-')
+		return (r < 'a' || r > 'z') && (r < '0' || r > '9') && r != '_' && r != '-'
 	})
 	var keywords []string
 	for _, w := range words {

@@ -51,7 +51,6 @@ type localHandle struct {
 	startTime time.Time
 	done      chan struct{}
 	waitErr   error
-	waitOnce  sync.Once
 }
 
 func (h *localHandle) Wait() error {

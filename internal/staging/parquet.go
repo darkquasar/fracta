@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/parquet-go/parquet-go"
+
+	"github.com/darkquasar/fracta/internal/fractalog"
 )
 
 const DefaultStagingDir = "/tmp/fracta-staging"
@@ -259,7 +261,11 @@ func WriteParquet(table string, columns []string, types []string, data [][]any, 
 	if err != nil {
 		return "", fmt.Errorf("create file: %w", err)
 	}
-	defer f.Close()
+	defer func() {
+		if err := f.Close(); err != nil {
+			fractalog.Component("staging").Warn("close parquet file", "path", outPath, "err", err)
+		}
+	}()
 
 	writer := parquet.NewWriter(f, schema)
 

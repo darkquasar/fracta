@@ -398,7 +398,9 @@ func TestLoadSchema_InvalidEdgeEndpoint(t *testing.T) {
 	dir := t.TempDir()
 	os.WriteFile(filepath.Join(dir, "_meta.yaml"), []byte("version: 1\n"), 0o644)
 	os.WriteFile(filepath.Join(dir, "semantics.yaml"), []byte("vocabulary: []\n"), 0o644)
-	os.MkdirAll(filepath.Join(dir, "edges"), 0o755)
+	if err := os.MkdirAll(filepath.Join(dir, "edges"), 0o755); err != nil {
+		t.Fatalf("mkdir edges: %v", err)
+	}
 	os.WriteFile(filepath.Join(dir, "edges", "bad.yaml"), []byte(
 		"type: BAD_EDGE\nendpoints:\n  from: [NonExistent]\n  to: [AlsoFake]\nproperties: {}\n",
 	), 0o644)

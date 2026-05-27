@@ -51,22 +51,7 @@ func (k *KubernetesConfig) UnmarshalYAML(node *yamlv3.Node) error {
 	if err := sigsyaml.Unmarshal(raw, &dst); err != nil {
 		return fmt.Errorf("kubernetes config: %w", err)
 	}
-	*k = KubernetesConfig{
-		Namespace:         dst.Namespace,
-		Image:             dst.Image,
-		ImagePullPolicy:   dst.ImagePullPolicy,
-		ServiceAccount:    dst.ServiceAccount,
-		PVC:               dst.PVC,
-		PVCMountPath:      dst.PVCMountPath,
-		Labels:            dst.Labels,
-		Annotations:       dst.Annotations,
-		Tolerations:       dst.Tolerations,
-		NodeSelector:      dst.NodeSelector,
-		Resources:         dst.Resources,
-		JobTTLSeconds:     dst.JobTTLSeconds,
-		ExtraVolumes:      dst.ExtraVolumes,
-		ExtraVolumeMounts: dst.ExtraVolumeMounts,
-	}
+	*k = KubernetesConfig(dst)
 	return nil
 }
 

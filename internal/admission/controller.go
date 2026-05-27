@@ -219,11 +219,10 @@ func (ac *AdmissionController) materialize(ctx context.Context, p *proposal.Miss
 		return
 	}
 
-	// 5. Set mission_id on the payload (now that we have the ID from enqueue).
+	// 5. Set mission_id on the payload. The queue already holds the
+	// pre-enqueue bytes, but the worker reads mission.ID from the mission
+	// row, so we only need to mutate the in-memory struct here.
 	childPayload.MissionID = mission.ID
-	payloadBytes, _ = json.Marshal(childPayload)
-	// Note: mission.ID is set by Enqueue. The payload in the queue already has
-	// the old bytes, but the worker reads from the mission row which has the ID.
 
 	// 6. Increment objective counters.
 	if err := ac.objectiveStore.IncrementMissionCount(ctx, obj.ID); err != nil {
