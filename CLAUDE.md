@@ -1,5 +1,10 @@
 # Fracta Multi-Agent Orchestration System
 
+## Local instructions
+
+If a `REPOLOCAL.md` file exists at the repository root, read it before starting
+work. It holds machine-local instructions and is not tracked.
+
 ## Overview
 
 Fracta is a multi-agent orchestration system that allows spawning autonomous Claude agents, each working in isolated git worktrees. Agents communicate via mailbox messaging and coordinate through the chessmaster (main orchestrator).

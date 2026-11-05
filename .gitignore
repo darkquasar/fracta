@@ -20,3 +20,4 @@ go.work.sum
 
 # Local work-in-progress notes (not tracked).
 summary.md
+/REPOLOCAL.md
